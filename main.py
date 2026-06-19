@@ -2,13 +2,147 @@ import sys
 import cv2
 import subprocess  # <--- 新增這個
 import argparse
+import os
+import time
 from pathlib import Path
 from tqdm import tqdm
 
 # 導入模組
 from config import settings
-from core.detectors import TableDetector, PoseEngine
+from core.detectors import TableDetector, PoseEngine, BallDetector
 from core.tracker import VIPGameTracker
+
+# --- 新增：更穩定的剪輯合併與 AI 導演函式 ---
+def concatenate_videos(clips, output_path):
+    """
+    使用 FFmpeg 快速無損合併多個影片剪輯。
+    """
+    if not clips:
+        return
+    file_list_path = output_path.parent / "file_list.txt"
+    # 寫入暫存的合併清單
+    with open(file_list_path, "w", encoding="utf-8") as f:
+        for clip_path, _, _, _ in clips:
+            f.write(f"file '{Path(clip_path).name}'\n")
+    
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", str(file_list_path),
+        "-c", "copy",
+        str(output_path)
+    ]
+    # 在輸出目錄下執行，避免路徑轉義問題
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=str(output_path.parent))
+    if file_list_path.exists():
+        file_list_path.unlink()
+
+def run_agentic_director(clips, output_dir, api_key):
+    """
+    呼叫 Gemini VLM (多模態 API) 自動驗證、評分並描述每一段 Highlight，最後過濾並重新排序合併。
+    """
+    try:
+        from google import genai
+    except ImportError:
+        print("[Agentic Director] 正在安裝 google-genai 函式庫...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "google-genai"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            from google import genai
+        except ImportError:
+            print("[Agentic Director] ❌ 無法安裝或載入 google-genai 函式庫。跳過 VLM 驗證。")
+            return
+            
+    client = genai.Client(api_key=api_key)
+    print("\n[Agentic Director] 🎬 開始進行 AI Highlight 影片導演分析與過濾...")
+    
+    report_lines = [
+        "# 🎬 Table Tennis Highlight Analysis Report",
+        f"\n**Source Video:** {output_dir.name}",
+        f"**Generated:** {time.strftime('%Y-%m-%d %H:%M:%S')}",
+        "\n| 剪輯檔名 | 時間區間 | 球體活動率 | AI 精彩度評分 | 該球勝方 | 精彩對決內容描述 | 狀態 |",
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    ]
+    
+    verified_clips = []
+    
+    for i, (clip_path, start, end, ball_ratio) in enumerate(clips):
+        print(f"  [{i+1}/{len(clips)}] 正在上傳與分析: {clip_path.name}...")
+        try:
+            # 上傳影片到 Gemini 暫存空間
+            video_file = client.files.upload(file=str(clip_path))
+            
+            # 等待影片處理完成
+            while video_file.state.name == "PROCESSING":
+                time.sleep(2)
+                video_file = client.files.get(name=video_file.name)
+                
+            if video_file.state.name == "FAILED":
+                print(f"    ⚠️ 影片上傳處理失敗: {clip_path.name}")
+                continue
+                
+            prompt = (
+                "You are an expert table tennis referee and sports video director. Analyze this video clip of a table tennis rally. "
+                "Provide a JSON response with the following keys:\n"
+                "1. 'is_valid_rally': boolean (true if it represents actual table tennis play/rally, false if it's just players picking up the ball, walking around, or adjusting equipment)\n"
+                "2. 'intensity_score': integer between 1 and 10 (rating how exciting the rally is based on exchange length, smashes, player movements)\n"
+                "3. 'winner': string ('Player Left', 'Player Right', or 'Unknown')\n"
+                "4. 'description': string (a short, exciting 1-sentence description of the rally highlights in Traditional Chinese)\n"
+                "Respond ONLY with a valid JSON block."
+            )
+            
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[video_file, prompt]
+            )
+            
+            text = response.text
+            
+            # 擷取 JSON
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+                
+            import json
+            res_data = json.loads(text.strip())
+            
+            is_valid = res_data.get("is_valid_rally", True)
+            intensity = res_data.get("intensity_score", 5)
+            winner = res_data.get("winner", "Unknown")
+            desc = res_data.get("description", "精彩乒乓球來回對決。")
+            
+            status = "✅ 經 AI 驗證" if is_valid else "❌ 雜訊/誤判 (過濾)"
+            report_lines.append(
+                f"| {clip_path.name} | {start:.1f}s - {end:.1f}s | {ball_ratio:.1%} | {intensity}/10 | {winner} | {desc} | {status} |"
+            )
+            
+            if is_valid:
+                verified_clips.append((clip_path, start, end, ball_ratio, intensity))
+                
+            # 刪除檔案，避免佔用雲端空間
+            client.files.delete(name=video_file.name)
+            
+        except Exception as e:
+            print(f"    ⚠️ VLM 分析出錯 ({clip_path.name}): {e}")
+            report_lines.append(
+                f"| {clip_path.name} | {start:.1f}s - {end:.1f}s | {ball_ratio:.1%} | N/A | Unknown | VLM 處理錯誤或超時 | ⚠️ 未能驗證 |"
+            )
+            verified_clips.append((clip_path, start, end, ball_ratio, 5))
+            
+    # 寫入 Markdown 報告
+    report_path = output_dir / "highlight_report.md"
+    report_path.write_text("\n".join(report_lines), encoding='utf-8')
+    print(f"\n[Agentic Director] AI 分析報告已儲存至: {report_path}")
+    
+    # 根據 AI 精彩度評分，將 Verified Clips 重新排序（高分到低分）並重新合併
+    if verified_clips:
+        verified_clips.sort(key=lambda x: x[4], reverse=True)
+        print(f"[Agentic Director] 正在將 {len(verified_clips)} 段經驗證的 Highlight (已依精彩度評分排序) 合併為單一精華影片...")
+        concatenate_videos([(vc[0], vc[1], vc[2], vc[3]) for vc in verified_clips], output_dir / "final_highlight_reel.mp4")
+        print(f"🎉 [Agentic Director] 完成！已合併精華影片儲存至: {output_dir / 'final_highlight_reel.mp4'}")
+    else:
+        print("[Agentic Director] ⚠️ 沒有任何片段通過 AI 乒乓球來回對決驗證。")
 
 # --- 新增：更穩定的剪輯函式 (不依賴 moviepy 版本) ---
 def fast_cut_video(input_path: str, output_path: str, start_time: float, end_time: float):
@@ -46,6 +180,10 @@ def main(video_path_str: str):
     pose_engine = PoseEngine(
         settings.POSE_MODEL_NAME, 
         settings.POSE_MODEL_PATH
+    )
+    ball_detector = BallDetector(
+        settings.BALL_MODEL_NAME,
+        settings.BALL_MODEL_PATH
     )
     # 2. 尋找球桌 (使用 settings 中的搜尋範圍)
     # 有時候影片剛開始會有人擋住鏡頭，多看幾秒比較準
@@ -87,7 +225,8 @@ def main(video_path_str: str):
         
         current_time = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
         results = pose_engine.track(frame)
-        tracker.update(current_time, results)
+        ball_pos = ball_detector.detect(frame)
+        tracker.update(current_time, results, ball_pos)
         
         # --- [新增] Debug 區塊 ---
         debug_counter += 1
@@ -114,14 +253,29 @@ def main(video_path_str: str):
         video_output_dir.mkdir(exist_ok=True)
         
         print(f"Exporting clips to {video_output_dir}...")
-        for i, (start, end) in enumerate(tracker.captured_rallies):
+        exported_clips = []
+        for i, (start, end, ball_ratio) in enumerate(tracker.captured_rallies):
             out_name = video_output_dir / f"highlight_{i+1:03d}.mp4"
             end = min(end, total_frames/fps)
             
             # 使用新的剪輯函式
             fast_cut_video(str(video_path), str(out_name), start, end)
+            exported_clips.append((out_name, start, end, ball_ratio))
             
-        print(f"✅ All Done! Saved to {video_output_dir}")
+        print(f"✅ All individual clips exported. Saved to {video_output_dir}")
+        
+        # 預設無損合併所有剪輯
+        default_reel_path = video_output_dir / "final_highlight_reel.mp4"
+        concatenate_videos(exported_clips, default_reel_path)
+        print(f"✅ Lossless compilation video created at: {default_reel_path}")
+
+        # AI 導演過濾與評分 (如果有 API Key)
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            run_agentic_director(exported_clips, video_output_dir, api_key)
+        else:
+            print("\n💡 Tip: To enable automatic AI verification, intensity scoring, and video sorting, set your Gemini API key:")
+            print("   export GEMINI_API_KEY='your-key-here'")
     else:
         print("No highlights found. Try adjusting 'score_in_core' or 'min_rally_duration' in settings.")
 

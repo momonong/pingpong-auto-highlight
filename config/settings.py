@@ -22,10 +22,12 @@ ultralytics_settings.update({'weights_dir': str(MODEL_DIR)})
 # 檔名 (用來告訴 YOLO 要下載哪一個)
 WORLD_MODEL_NAME = "yolov8l-worldv2.pt"
 POSE_MODEL_NAME = "yolo11l-pose.pt"
+BALL_MODEL_NAME = "yolo11n.pt"
 
 # 絕對路徑 (用來告訴程式檔案應該在哪裡)
 WORLD_MODEL_PATH = MODEL_DIR / WORLD_MODEL_NAME
 POSE_MODEL_PATH = MODEL_DIR / POSE_MODEL_NAME
+BALL_MODEL_PATH = MODEL_DIR / BALL_MODEL_NAME
 
 # --- 3. 演算法參數 ---
 ALGO_PARAMS = {

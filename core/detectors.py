@@ -95,3 +95,25 @@ class PoseEngine:
         
     def track(self, frame, persist=True):
         return self.model.track(frame, persist=persist, verbose=False, device=self.device)
+
+class BallDetector:
+    def __init__(self, model_name: str, model_path: Path, device: str = '0'):
+        # 使用新的安全載入邏輯
+        self.model = load_model_safely(model_name, model_path, device)
+        self.device = device
+        self.ball_class_id = 32  # COCO dataset 'sports ball'
+        
+    def detect(self, frame) -> Optional[Tuple[int, int]]:
+        """
+        偵測畫面中的桌球 (sports ball)。
+        傳回桌球的中心座標 (cx, cy)；若未偵測到則傳回 None。
+        """
+        results = self.model.predict(frame, verbose=False, device=self.device, classes=[self.ball_class_id], conf=0.15)
+        if len(results[0].boxes) > 0:
+            # 取得信心度最高的偵測框
+            best_box = max(results[0].boxes, key=lambda b: b.conf[0].item())
+            x1, y1, x2, y2 = best_box.xyxy.cpu().numpy()[0]
+            cx = int((x1 + x2) / 2)
+            cy = int((y1 + y2) / 2)
+            return (cx, cy)
+        return None

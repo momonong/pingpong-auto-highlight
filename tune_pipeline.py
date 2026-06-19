@@ -20,7 +20,7 @@ def get_video_duration(video_path: Path) -> float:
 
 def run_highlight_pipeline(video_path: Path, params: dict) -> dict:
     """Runs main.py with the specified parameters and captures output metrics."""
-    cmd = ["python", "main.py", str(video_path)]
+    cmd = [sys.executable, "main.py", str(video_path)]
     for key, val in params.items():
         cmd.append(f"--{key}")
         cmd.append(str(val))

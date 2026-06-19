@@ -23,14 +23,32 @@ class VIPGameTracker:
         self.last_active_time = 0.0
         self.captured_rallies = []
 
+        # 桌球軌跡相關
+        self.ball_history: List[Tuple[float, float, float]] = []  # 儲存 (time, x, y)
+        self.ball_detections_in_current_rally = 0
+        self.frames_in_current_rally = 0
+
     def _is_in_zone(self, point: Tuple[float, float]) -> bool:
         px, py = point
         x1, y1, x2, y2 = self.core_zone
         return x1 <= px <= x2 and y1 <= py <= y2
 
-    def update(self, current_time: float, track_results) -> None:
+    def update(self, current_time: float, track_results, ball_pos: Tuple[int, int] = None) -> None:
         """每一幀呼叫此函式更新狀態"""
         current_frame_ids = []
+        
+        # 更新球軌跡
+        if ball_pos is not None:
+            bx, by = ball_pos
+            self.ball_history.append((current_time, bx, by))
+            if self.is_rallying:
+                self.ball_detections_in_current_rally += 1
+                
+        # 移除超過 2.0 秒的軌跡
+        self.ball_history = [h for h in self.ball_history if current_time - h[0] <= 2.0]
+        
+        if self.is_rallying:
+            self.frames_in_current_rally += 1
         
         if track_results[0].boxes.id is not None:
             track_ids = track_results[0].boxes.id.int().cpu().tolist()
@@ -102,6 +120,8 @@ class VIPGameTracker:
             if not self.is_rallying:
                 self.is_rallying = True
                 self.rally_start_time = now
+                self.ball_detections_in_current_rally = 0
+                self.frames_in_current_rally = 0
         else:
             # 檢查 Dropout
             if self.is_rallying and (now - self.last_active_time > self.cfg['max_dropout_duration']):
@@ -114,5 +134,10 @@ class VIPGameTracker:
                     final_start = max(0, self.rally_start_time - 3.0) 
                     final_end = rally_end_time + 2.0
                     
-                    self.captured_rallies.append((final_start, final_end))
-                    print(f"✅ Highlight: {final_start:.1f}s - {final_end:.1f}s (Dur: {duration:.1f}s) | Active VIPs: {current_vips}")
+                    # 計算球活動比例
+                    ball_ratio = 0.0
+                    if self.frames_in_current_rally > 0:
+                        ball_ratio = self.ball_detections_in_current_rally / self.frames_in_current_rally
+                    
+                    self.captured_rallies.append((final_start, final_end, ball_ratio))
+                    print(f"✅ Highlight Proposal: {final_start:.1f}s - {final_end:.1f}s (Dur: {duration:.1f}s, Ball Activity: {ball_ratio:.1%}) | Active VIPs: {current_vips}")

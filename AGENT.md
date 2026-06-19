@@ -24,31 +24,41 @@ When operating autonomously, the agent runs in a closed-loop cycle: **Inspect âž
 
 ```mermaid
 graph TD
-    A[Inspect Input Video & Configs] --> B[Run Highlight Pipeline]
-    B --> C[Analyze Console Logs & Output Metrics]
-    C --> D{Is Quality Acceptable?}
-    D -- Yes --> E[Package & Present Highlights]
-    D -- No --> F[Apply Parameter Tuning / Fixes]
-    F --> B
+    A[Inspect Input Video & Configs] --> B[Run CV Pipeline & Track Ball]
+    B --> C[Stitch Video & Run VLM Verification]
+    C --> D[Analyze Logs & AI Director Ratings]
+    D --> E{Is Quality Acceptable?}
+    E -- Yes --> F[Package & Present Highlights Reel]
+    E -- No --> G[Apply Parameter Tuning / Fixes]
+    G --> B
 ```
 
 ### 1. Pre-Run Inspection & Environment Setup
 Before executing the pipeline, the agent checks:
-* **Operating System**: Detect the current host OS and patch paths in [config/settings.py](file:///home/ubuntu/projects/pingpong-auto-highlight/config/settings.py) dynamically if invalid Windows paths exist.
+* **Operating System**: Detect the current host OS and normalize paths in [config/settings.py](file:///home/ubuntu/projects/pingpong-auto-highlight/config/settings.py).
 * **Dependencies**: Verify `ffmpeg` is installed.
 * **Video Metadata**: Check duration, frame rate, and resolution.
+* **API Credentials**: Check if `GEMINI_API_KEY` is present. If set, VLM AI Director features will be enabled automatically.
 
 ### 2. Pipeline Execution & Monitoring
-Run the CLI tool and capture stdout, stderr, and the generated files:
+Run the CLI tool and capture metrics:
 ```bash
 python main.py /path/to/video.mp4
 ```
+During execution, TTHAC runs two parallel models:
+1. **Pose Tracker (`yolo11l-pose.pt`)**: Tracks players' coordinates and keypoints.
+2. **Ball Tracker (`yolo11n.pt`)**: Identifies table tennis ball coordinates (`class: 32`) to measure active play and calculate the `ball_activity_ratio` per rally.
 
-### 3. Metric Evaluation
+### 3. Output Generation & AI Verification
+* **Stitching**: TTHAC automatically compiles all generated highlight segments into a single concatenated video file: `storage/clips/<video_stem>/final_highlight_reel.mp4` using FFmpeg.
+* **Agentic VLM Director (Optional)**: If `GEMINI_API_KEY` is present, each highlight segment is uploaded to Gemini (using `gemini-2.5-flash` on the free tier). The VLM verifies the rally, grades its intensity (1-10), extracts the winner, and writes a Traditional Chinese description into a markdown analysis report. The final merged reel is then compiled containing only AI-verified clips, sorted by highest intensity.
+
+### 4. Metric Evaluation
 Analyze the output run logs and metrics:
 * **Highlight Count**: Target 3 to 15 highlights for a standard 10-minute video.
 * **Rally Durations**: Highlights should average between 3 to 15 seconds.
-* **Table Detection Success**: Verify if a valid table bounding box was found. If center fallback was used, flag it.
+* **Table Detection Success**: Verify if table bounding box was found.
+* **AI Director Feedback**: Check if VLM filtered out false positives.
 
 ---
 
