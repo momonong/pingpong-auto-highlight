@@ -7,24 +7,24 @@ from typing import Optional, Tuple
 
 def load_model_safely(model_name: str, target_path: Path, device: str) -> YOLO:
     """
-    強制將模型檔案管理在指定路徑 (D槽)。
-    如果 D 槽沒有，就下載並移動過去。
+    強制將模型檔案管理在指定路徑 (storage/weights)。
+    如果指定路徑沒有，就下載並移動過去。
     """
-    # 1. 如果 D 槽已經有檔案，直接讀取絕對路徑
+    # 1. 如果指定路徑已經有檔案，直接讀取絕對路徑
     if target_path.exists():
         print(f"[Loader] Found model at {target_path}, loading...")
         return YOLO(str(target_path), task='detect') # task='detect' is safer to infer
 
-    # 2. 如果 D 槽沒有，先用檔名初始化 (這會觸發下載到目前目錄)
+    # 2. 如果指定路徑沒有，先用檔名初始化 (這會觸發下載到目前目錄)
     print(f"[Loader] Model not found at {target_path}. Downloading...")
     temp_model = YOLO(model_name) 
     
-    # 3. 下載完後，檢查是否出現在根目錄，並移動到 D 槽
+    # 3. 下載完後，檢查是否出現在根目錄，並移動到指定路徑
     local_file = Path(model_name)
     if local_file.exists():
         print(f"[Loader] Moving {local_file} to {target_path}...")
         shutil.move(str(local_file), str(target_path))
-        # 4. 移動完後，重新從 D 槽讀取
+        # 4. 移動完後，重新從指定路徑讀取
         return YOLO(str(target_path))
     else:
         # 萬一 Ultralytics 真的聽話下載到設定的目錄了，就直接回傳 temp_model

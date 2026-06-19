@@ -2,9 +2,9 @@ import os
 from pathlib import Path
 from ultralytics import settings as ultralytics_settings
 
-# --- 1. 基礎路徑設定 (D 槽) ---
-# 確保這個路徑是你想要存放所有資料的地方
-BASE_STORAGE_DIR = Path("D:/AI_Project_Data/TableTennis_Highlight")
+# --- 1. 基礎路徑設定 ---
+# 確保這個路徑是你想要存放所有資料的地方 (改為專案目錄下的 storage)
+BASE_STORAGE_DIR = Path(__file__).parent.parent / "storage"
 
 # 自動建立子目錄
 MODEL_DIR = BASE_STORAGE_DIR / "weights"

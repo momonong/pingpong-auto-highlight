@@ -1,6 +1,7 @@
 import sys
 import cv2
 import subprocess  # <--- 新增這個
+import argparse
 from pathlib import Path
 from tqdm import tqdm
 
@@ -46,9 +47,9 @@ def main(video_path_str: str):
         settings.POSE_MODEL_NAME, 
         settings.POSE_MODEL_PATH
     )
-    # 2. 尋找球桌 (增加搜尋範圍到 90 幀 = 3秒)
+    # 2. 尋找球桌 (使用 settings 中的搜尋範圍)
     # 有時候影片剛開始會有人擋住鏡頭，多看幾秒比較準
-    table_box = world_detector.find_table_roi(str(video_path), search_frames=90)
+    table_box = world_detector.find_table_roi(str(video_path), search_frames=settings.ALGO_PARAMS['table_search_frames'])
     
     cap = cv2.VideoCapture(str(video_path))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -125,7 +126,25 @@ def main(video_path_str: str):
         print("No highlights found. Try adjusting 'score_in_core' or 'min_rally_duration' in settings.")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <video_file_path>")
-    else:
-        main(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Table Tennis Highlight Clipper (TTHAC)")
+    parser.add_argument("video_path", type=str, help="Path to input video file")
+    parser.add_argument("--table_search_frames", type=int, default=None, help="Frames to search for the table")
+    parser.add_argument("--min_rally_duration", type=float, default=None, help="Min rally duration in seconds")
+    parser.add_argument("--max_dropout_duration", type=float, default=None, help="Max dropout duration in seconds")
+    parser.add_argument("--vip_warmup_score", type=int, default=None, help="VIP warmup score threshold")
+    parser.add_argument("--score_in_frame", type=int, default=None, help="Score per visible frame")
+    parser.add_argument("--score_in_core", type=int, default=None, help="Score per frame in core zone")
+    parser.add_argument("--core_zone_expansion", type=float, default=None, help="Core zone expansion ratio")
+    
+    args = parser.parse_args()
+    
+    # 套用外部參數覆蓋設定
+    for param in [
+        "table_search_frames", "min_rally_duration", "max_dropout_duration",
+        "vip_warmup_score", "score_in_frame", "score_in_core", "core_zone_expansion"
+    ]:
+        val = getattr(args, param)
+        if val is not None:
+            settings.ALGO_PARAMS[param] = val
+            
+    main(args.video_path)
