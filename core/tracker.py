@@ -29,12 +29,16 @@ class VIPGameTracker:
         self.frames_in_current_rally = 0
 
     def _is_in_zone(self, point: Tuple[float, float]) -> bool:
+        if self.core_zone is None:
+            return False
         px, py = point
         x1, y1, x2, y2 = self.core_zone
         return x1 <= px <= x2 and y1 <= py <= y2
 
-    def update(self, current_time: float, track_results, ball_pos: Tuple[int, int] = None) -> None:
+    def update(self, current_time: float, track_results, ball_pos: Tuple[int, int] = None, core_zone: Tuple[int, int, int, int] = None) -> None:
         """每一幀呼叫此函式更新狀態"""
+        if core_zone is not None:
+            self.core_zone = core_zone
         current_frame_ids = []
         
         # 更新球軌跡

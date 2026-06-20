@@ -161,6 +161,30 @@ def fast_cut_video(input_path: str, output_path: str, start_time: float, end_tim
     # 執行指令，並隱藏冗長的輸出
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+def is_scene_change(prev_frame, curr_frame, threshold=0.55) -> bool:
+    """
+    Detects if there is a scene cut/change between two frames using downsampled HSV histogram correlation.
+    """
+    if prev_frame is None or curr_frame is None:
+        return False
+    try:
+        prev_small = cv2.resize(prev_frame, (128, 128))
+        curr_small = cv2.resize(curr_frame, (128, 128))
+        
+        hsv_prev = cv2.cvtColor(prev_small, cv2.COLOR_BGR2HSV)
+        hsv_curr = cv2.cvtColor(curr_small, cv2.COLOR_BGR2HSV)
+        
+        hist_prev = cv2.calcHist([hsv_prev], [0, 1], None, [16, 16], [0, 180, 0, 256])
+        hist_curr = cv2.calcHist([hsv_curr], [0, 1], None, [16, 16], [0, 180, 0, 256])
+        
+        cv2.normalize(hist_prev, hist_prev, 0, 1, cv2.NORM_MINMAX)
+        cv2.normalize(hist_curr, hist_curr, 0, 1, cv2.NORM_MINMAX)
+        
+        metric = cv2.compareHist(hist_prev, hist_curr, cv2.HISTCMP_CORREL)
+        return metric < threshold
+    except Exception:
+        return False
+
 def main(video_path_str: str):
     video_path = Path(video_path_str)
     if not video_path.exists():
@@ -210,32 +234,62 @@ def main(video_path_str: str):
     print(f"Core Zone: {core_zone}")
     
     # 3. 初始化追蹤器
-    tracker = VIPGameTracker(settings.ALGO_PARAMS, core_zone)
+    current_table_box = table_box
+    current_core_zone = core_zone
+    tracker = VIPGameTracker(settings.ALGO_PARAMS, current_core_zone)
     
     # 4. 主迴圈
     print("Starting Analysis Loop...")
     pbar = tqdm(total=total_frames, unit="frame")
     
-    # 記錄每 100 幀印出一次 Debug 資訊
     debug_counter = 0
+    frame_idx = 0
+    prev_frame_small = None
 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret: break
         
+        frame_idx += 1
         current_time = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+        
+        # 偵測鏡頭切換 (Scene Cut)
+        scene_cut = False
+        if frame_idx % 5 == 0:  # 每 5 幀檢查一次以節省計算資源
+            curr_small = cv2.resize(frame, (128, 128))
+            if prev_frame_small is not None:
+                if is_scene_change(prev_frame_small, curr_small, threshold=0.55):
+                    scene_cut = True
+                    tqdm.write(f"  [Camera Shift] Frame {frame_idx}: Detected camera angle/scene switch at {current_time:.1f}s.")
+            prev_frame_small = curr_small
+        
+        # 每 90 幀 (約 3 秒) 或者在鏡頭切換時，動態重新偵測球桌以適應不同視角或鏡頭移動
+        if scene_cut or (frame_idx % 90 == 0):
+            new_box = world_detector.detect_table_in_frame(frame, conf_threshold=0.15)
+            if new_box is not None:
+                current_table_box = new_box
+                current_core_zone = world_detector.calculate_core_zone(
+                    new_box, (width, height), settings.ALGO_PARAMS['core_zone_expansion']
+                )
+                # tqdm.write(f"  [Dynamic Table] Frame {frame_idx}: Updated core zone to {current_core_zone}")
+            else:
+                if scene_cut:
+                    # 如果切換了鏡頭而且完全找不到球桌（例如特寫畫面），暫時關閉核心判定區以避免誤判
+                    current_table_box = None
+                    current_core_zone = None
+                    # tqdm.write(f"  [Dynamic Table] Frame {frame_idx}: Table lost on scene cut. Suspending core zone.")
+
         results = pose_engine.track(frame)
         ball_pos = ball_detector.detect(frame)
-        tracker.update(current_time, results, ball_pos)
         
-        # --- [新增] Debug 區塊 ---
+        # 傳入動態的 core_zone 給追蹤器
+        tracker.update(current_time, results, ball_pos, core_zone=current_core_zone)
+        
+        # --- Debug 區塊 ---
         debug_counter += 1
-        if debug_counter % 100 == 0: # 每 100 幀 (約 3 秒) 印一次
-            # 找出目前分數最高的幾個 ID
+        if debug_counter % 100 == 0: # 每 100 幀印一次
             top_players = sorted(tracker.players.values(), key=lambda p: p.score, reverse=True)[:3]
             stats = [f"ID:{p.id}(Score:{p.score})" for p in top_players]
-            # 使用 tqdm.write 才不會打亂進度條
-            # 顯示目前狀態：Is_Rallying? 以及前三名分數
             # tqdm.write(f"Time:{current_time:.1f}s | Rally:{tracker.is_rallying} | Stats: {stats}")
             pass 
         # -----------------------

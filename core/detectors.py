@@ -36,12 +36,32 @@ class TableDetector:
         self.model = load_model_safely(model_name, model_path, device)
         self.device = device
 
-    def find_table_roi(self, video_path: str, search_frames: int = 90) -> Optional[Tuple[int, int, int, int]]:
-        cap = cv2.VideoCapture(video_path)
-        
-        # 多種 Prompts 增加成功率
+    def detect_table_in_frame(self, frame, conf_threshold: float = 0.1) -> Optional[Tuple[int, int, int, int]]:
+        """
+        Detects the table in a single frame and returns the best bounding box.
+        """
         prompts = ["ping pong table", "table", "tennis table"]
         self.model.set_classes(prompts)
+        results = self.model.predict(frame, verbose=False, device=self.device, conf=conf_threshold)
+        
+        max_area = 0
+        best_box = None
+        
+        if len(results[0].boxes) > 0:
+            for box in results[0].boxes.xyxy.cpu().numpy():
+                x1, y1, x2, y2 = box
+                area = (x2 - x1) * (y2 - y1)
+                
+                frame_area = frame.shape[0] * frame.shape[1]
+                if area < frame_area * 0.05: continue
+
+                if area > max_area:
+                    max_area = area
+                    best_box = (int(x1), int(y1), int(x2), int(y2))
+        return best_box
+
+    def find_table_roi(self, video_path: str, search_frames: int = 90) -> Optional[Tuple[int, int, int, int]]:
+        cap = cv2.VideoCapture(video_path)
         
         max_area = 0
         best_box = None
@@ -53,19 +73,13 @@ class TableDetector:
             
             if i % 5 != 0: continue 
 
-            results = self.model.predict(frame, verbose=False, device=self.device, conf=0.1)
-            
-            if len(results[0].boxes) > 0:
-                for box in results[0].boxes.xyxy.cpu().numpy():
-                    x1, y1, x2, y2 = box
-                    area = (x2 - x1) * (y2 - y1)
-                    
-                    frame_area = frame.shape[0] * frame.shape[1]
-                    if area < frame_area * 0.05: continue
-
-                    if area > max_area:
-                        max_area = area
-                        best_box = (int(x1), int(y1), int(x2), int(y2))
+            box = self.detect_table_in_frame(frame, conf_threshold=0.1)
+            if box is not None:
+                x1, y1, x2, y2 = box
+                area = (x2 - x1) * (y2 - y1)
+                if area > max_area:
+                    max_area = area
+                    best_box = box
         
         cap.release()
         return best_box
@@ -77,8 +91,23 @@ class TableDetector:
         w_table, h_table = tx2 - tx1, ty2 - ty1
         cx, cy = (tx1 + tx2) / 2, (ty1 + ty2) / 2
         
-        zone_w = w_table * expansion
-        zone_h = h_table * expansion * 1.5 
+        # Check aspect ratio to determine camera perspective (side view vs vertical view vs diagonal view)
+        aspect_ratio = w_table / max(1.0, h_table)
+        
+        if aspect_ratio > 1.2:
+            # Horizontal / Side view: players stand to the left and right.
+            # Expand width significantly more than height.
+            zone_w = w_table * expansion * 1.6
+            zone_h = h_table * expansion * 1.1
+        elif aspect_ratio < 0.8:
+            # Vertical / Baseline view: players stand to the top and bottom.
+            # Expand height significantly more than width.
+            zone_w = w_table * expansion * 1.1
+            zone_h = h_table * expansion * 1.6
+        else:
+            # Diagonal / Corner view: expand both moderately.
+            zone_w = w_table * expansion * 1.3
+            zone_h = h_table * expansion * 1.3
         
         zx1 = max(0, cx - zone_w / 2)
         zy1 = max(0, cy - zone_h / 2)
