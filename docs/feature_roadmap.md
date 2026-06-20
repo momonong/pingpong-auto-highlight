@@ -14,6 +14,7 @@ graph TD
     F3 -->|Multimodal Filtering| F4[Stage 4: AI Director Gemini VLM]
     F4 -->|Multi-Cam Adaptability| F5[Stage 5: Dynamic Camera Angles]
     F5 -->|Ingestion Optimization| F6[Stage 6: Long Video Import System]
+    F6 -->|Tracking & Reporting Robustness| F7[Stage 7: Stabilized Tracking & Offline Reports]
     
     %% Details
     style F1 fill:#f9f,stroke:#333,stroke-width:2px
@@ -22,6 +23,7 @@ graph TD
     style F4 fill:#dfd,stroke:#333,stroke-width:2px
     style F5 fill:#fdd,stroke:#333,stroke-width:2px
     style F6 fill:#fdd,stroke:#333,stroke-width:2px
+    style F7 fill:#ffd,stroke:#333,stroke-width:2px
 ```
 
 ---
@@ -75,3 +77,11 @@ graph TD
   * Built `import_tool.py` supporting client-side H.264 pre-compression, reducing file sizes by up to 90% before processing.
   * Implemented direct streaming/cloud URL downloading (YouTube, direct links) bypass.
   * Built a background folder daemon that monitors uploads, waits for file write stability, and triggers highlight generation automatically.
+
+### 📊 Stage 7: Stabilized Tracking & Offline Reports (Jun 2026)
+* **Status**: Current Production Standard
+* **Goal**: Maximize player tracking stability and provide offline analytics.
+* **Technology**:
+  * Built the **Spatial ID Tracking Stabilizer** mapping YOLO detections to fixed coordinates slots (`Player_Left`/`Player_Right` or `Player_Near`/`Player_Far`), preventing tracker ID flickering.
+  * Implemented **Trajectory Hit Count Analysis** estimating racket hits by monitoring direction changes in horizontal/vertical ball velocity.
+  * Created the premium, self-contained **Offline HTML Dashboard** (`local_report.html`) complete with HSL CSS styles, dynamic SVG charts, and intensity calculations.

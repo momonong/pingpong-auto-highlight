@@ -22,7 +22,8 @@ def concatenate_videos(clips, output_path):
     file_list_path = output_path.parent / "file_list.txt"
     # 寫入暫存的合併清單
     with open(file_list_path, "w", encoding="utf-8") as f:
-        for clip_path, _, _, _ in clips:
+        for item in clips:
+            clip_path = item[0]
             f.write(f"file '{Path(clip_path).name}'\n")
     
     cmd = [
@@ -66,7 +67,8 @@ def run_agentic_director(clips, output_dir, api_key):
     
     verified_clips = []
     
-    for i, (clip_path, start, end, ball_ratio) in enumerate(clips):
+    for i, item in enumerate(clips):
+        clip_path, start, end, ball_ratio = item[0], item[1], item[2], item[3]
         print(f"  [{i+1}/{len(clips)}] 正在上傳與分析: {clip_path.name}...")
         try:
             # 上傳影片到 Gemini 暫存空間
@@ -184,6 +186,360 @@ def is_scene_change(prev_frame, curr_frame, threshold=0.55) -> bool:
         return metric < threshold
     except Exception:
         return False
+
+def generate_local_html_report(clips, output_dir, video_name):
+    """
+    Generates a premium, interactive, dark-themed HTML report for local highlight analytics.
+    """
+    report_path = Path(output_dir) / "local_report.html"
+    
+    total_clips = len(clips)
+    if total_clips == 0:
+        return
+        
+    durations = [end - start for _, start, end, _, _ in clips]
+    avg_duration = sum(durations) / total_clips
+    max_duration = max(durations)
+    
+    total_hits = sum(hit for _, _, _, _, hit in clips)
+    avg_hits = total_hits / total_clips
+    
+    # Generate HTML rows
+    table_rows = ""
+    for i, (clip_path, start, end, ball_ratio, estimated_hits) in enumerate(clips):
+        dur = end - start
+        # Calculate local intensity score
+        intensity = min(10.0, max(1.0, (estimated_hits / max(1.0, dur)) * 4.0 + ball_ratio * 5.0))
+        intensity_color = "hsl(142, 70%, 45%)" if intensity > 6 else "hsl(38, 92%, 50%)" if intensity > 3.5 else "hsl(0, 84%, 60%)"
+        
+        table_rows += f"""
+        <tr>
+            <td>Highlight {i+1:03d}</td>
+            <td>{clip_path.name}</td>
+            <td>{start:.1f}s - {end:.1f}s</td>
+            <td>{dur:.1f}s</td>
+            <td>{ball_ratio:.1%}</td>
+            <td>{estimated_hits}</td>
+            <td><span class="badge" style="background-color: {intensity_color}; color: white;">{intensity:.1f}/10</span></td>
+        </tr>
+        """
+        
+    # Generate SVG timeline chart
+    svg_bars = ""
+    bar_width = 700 / total_clips
+    max_val = max(1.0, max_duration)
+    for i, dur in enumerate(durations):
+        x = 50 + i * bar_width + (bar_width * 0.1)
+        w = bar_width * 0.8
+        h = (dur / max_val) * 120
+        y = 150 - h
+        svg_bars += f"""
+        <rect x="{x}" y="{y}" width="{w}" height="{h}" rx="4" fill="url(#gradient)" class="bar-rect">
+            <title>Highlight {i+1}: {dur:.1f}s</title>
+        </rect>
+        <text x="{x + w/2}" y="170" text-anchor="middle" fill="#888" font-size="10">#{i+1}</text>
+        """
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTHAC Highlight Match Analytics - {video_name}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-color: #3b82f6;
+            --accent-grad: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.08);
+        }}
+        
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }}
+        
+        body {{
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }}
+        
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+        
+        header {{
+            margin-bottom: 40px;
+            text-align: center;
+        }}
+        
+        header h1 {{
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            background: var(--accent-grad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        
+        header p {{
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }}
+        
+        /* Dashboard Stats Grid */
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }}
+        
+        .stat-card {{
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }}
+        
+        .stat-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
+        }}
+        
+        .stat-label {{
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }}
+        
+        .stat-value {{
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        
+        /* Grid Layout for visual content */
+        .content-layout {{
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }}
+        
+        @media (min-width: 900px) {{
+            .content-layout {{
+                grid-template-columns: 2fr 1fr;
+            }}
+        }}
+        
+        .panel {{
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }}
+        
+        .panel-title {{
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        /* Table styles */
+        .table-container {{
+            overflow-x: auto;
+        }}
+        
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }}
+        
+        th, td {{
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }}
+        
+        th {{
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        
+        td {{
+            font-size: 0.95rem;
+        }}
+        
+        tr:hover td {{
+            background: rgba(255, 255, 255, 0.02);
+            color: #fff;
+        }}
+        
+        .badge {{
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }}
+        
+        /* SVG Timeline Chart */
+        .chart-svg {{
+            width: 100%;
+            height: auto;
+            display: block;
+        }}
+        
+        .bar-rect {{
+            transition: fill 0.3s ease;
+            cursor: pointer;
+        }}
+        
+        .bar-rect:hover {{
+            fill: #60a5fa;
+        }}
+        
+        .info-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }}
+        
+        .info-item {{
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }}
+        
+        .info-label {{
+            color: var(--text-secondary);
+        }}
+        
+        .info-value {{
+            font-weight: 600;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏓 TTHAC Highlight Match Analytics</h1>
+            <p>Source Video: {video_name}</p>
+        </header>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Highlights Count</div>
+                <div class="stat-value">{total_clips}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Duration</div>
+                <div class="stat-value">{avg_duration:.1f}s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Max Duration</div>
+                <div class="stat-value">{max_duration:.1f}s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Ball Hits</div>
+                <div class="stat-value">{total_hits}</div>
+            </div>
+        </div>
+        
+        <div class="content-layout">
+            <div class="panel">
+                <div class="panel-title">🎬 Rally Clips & Local Evaluation</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Clip Index</th>
+                                <th>Filename</th>
+                                <th>Time Interval</th>
+                                <th>Duration</th>
+                                <th>Ball Activity</th>
+                                <th>Est. Hits</th>
+                                <th>Local Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {table_rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-title">📊 Match Summary</div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">Report Date</span>
+                        <span class="info-value">{time.strftime('%Y-%m-%d %H:%M')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Avg Shots/Rally</span>
+                        <span class="info-value">{avg_hits:.1f} hits</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Rally Density</span>
+                        <span class="info-value">{(total_hits / max(1.0, sum(durations))):.2f} hits/sec</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Stitching Status</span>
+                        <span class="info-value" style="color: #4ade80;">✅ Completed</span>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <div class="panel-title" style="margin-bottom: 12px; font-size: 1.1rem;">📈 Rally Duration Timeline</div>
+                    <svg viewBox="0 0 800 200" class="chart-svg">
+                        <defs>
+                            <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#3b82f6" />
+                                <stop offset="100%" stop-color="#8b5cf6" />
+                            </linearGradient>
+                        </defs>
+                        {svg_bars}
+                        <line x1="50" y1="150" x2="750" y2="150" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
+                        <line x1="50" y1="20" x2="50" y2="150" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    report_path.write_text(html_content, encoding='utf-8')
+    print(f"🎉 Local Interactive Analytics Report generated: {report_path.resolve()}")
 
 def main(video_path_str: str):
     video_path = Path(video_path_str)
@@ -308,13 +664,13 @@ def main(video_path_str: str):
         
         print(f"Exporting clips to {video_output_dir}...")
         exported_clips = []
-        for i, (start, end, ball_ratio) in enumerate(tracker.captured_rallies):
+        for i, (start, end, ball_ratio, estimated_hits) in enumerate(tracker.captured_rallies):
             out_name = video_output_dir / f"highlight_{i+1:03d}.mp4"
             end = min(end, total_frames/fps)
             
             # 使用新的剪輯函式
             fast_cut_video(str(video_path), str(out_name), start, end)
-            exported_clips.append((out_name, start, end, ball_ratio))
+            exported_clips.append((out_name, start, end, ball_ratio, estimated_hits))
             
         print(f"✅ All individual clips exported. Saved to {video_output_dir}")
         
@@ -322,6 +678,9 @@ def main(video_path_str: str):
         default_reel_path = video_output_dir / "final_highlight_reel.mp4"
         concatenate_videos(exported_clips, default_reel_path)
         print(f"✅ Lossless compilation video created at: {default_reel_path}")
+        
+        # 產生本地互動式分析網頁報告
+        generate_local_html_report(exported_clips, video_output_dir, video_path.name)
 
         # AI 導演過濾與評分 (如果有 API Key)
         api_key = os.environ.get("GEMINI_API_KEY")

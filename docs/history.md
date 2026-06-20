@@ -28,7 +28,7 @@ gantt
 | **`34a2f46`** | 2026-06-20 | momonong | `docs: add README and AGENT specifications...` | Defined agent rules, platform path compliance requirements, and documentation of algorithm parameters. |
 | **`2d20c00`** | 2026-06-20 | momonong | `feat: integrate auto-tuning pipeline...` | Implemented `tune_pipeline.py` to auto-adjust VIP thresholds; standardized platform storage under `./storage`. |
 | **`38663de`** | 2026-06-20 | momonong | `feat: implement local ball tracking...` | Integrated YOLO ball tracking, lossless highlight concatenation, and Gemini 2.5 VLM AI Director post-verification. |
-| **Working Tree** | 2026-06-21 | Antigravity | *Dynamic Camera Angles & Large Importer* | Added real-time scene cut detection, aspect-ratio-aware play zones, and `import_tool.py` for long videos. |
+| **Working Tree** | 2026-06-21 | Antigravity | *Stabilized Tracking & Local HTML Reports* | Added real-time scene cut detection, aspect-ratio-aware play zones, `import_tool.py` for long videos, spatial player ID mapping, and offline HTML dashboard generation. |
 
 ---
 
@@ -58,6 +58,14 @@ gantt
 * **Architecture**:
   * **Ball Tracking**: Configured `yolo11n.pt` class 32 (`sports ball`) to track the ball and measure `ball_activity_ratio` per rally to verify active play.
   * **Concatenation**: Replaced separate output folders with seamless compile clips (`final_highlight_reel.mp4`).
-  * **Gemini AI Director**: Added API integration with `gemini-2.5-flash` to upload clips, filter false positives (picking up balls, walking), rate intensity, and output localized Traditional Chinese descriptions.
+  * **Gemini AI Director**: Added API integration with `gemini-2.5-flash` to upload clips, filter false positives, rate intensity, and output localized Traditional Chinese descriptions.
   * **Dynamic Camera Angles**: Added HSV histogram cut detection to handle multi-cam matches and aspect-ratio-aware core zones to automatically adjust zone dimensions for baseline, side, or diagonal camera views.
   * **Large Video Imports**: Created `import_tool.py` providing client-side H.264 video compression, YouTube/direct URL downloads, and background watch-folder automation.
+
+### 📊 Phase 4: Spatial ID Stabilization & Offline Dashboards (June 2026)
+* **Status**: Current Working Changes (Working Tree)
+* **Objective**: Solve YOLO tracking ID flickering/swapping, estimate rally hit counts from ball speed directions, and generate offline HTML visual analytics.
+* **Architecture**:
+  * **Spatial ID Tracking Stabilizer**: Maps detected poses to fixed spatial roles: `Player_Left`/`Player_Right` or `Player_Near`/`Player_Far` relative to the table center, making the tracker immune to YOLO tracker ID switching.
+  * **Trajectory Hit Count Analysis**: Analyzes changes in horizontal (side view) or vertical (baseline view) ball velocity vectors to count racket hits during each rally.
+  * **Premium Offline Dashboard**: Generates a self-contained interactive dark-mode HTML dashboard (`local_report.html`) complete with SVG duration timelines, density analytics, and highlight stats.
