@@ -1,0 +1,374 @@
+const elements = {
+  tokenWarning: document.querySelector("#tokenWarning"),
+  videoInput: document.querySelector("#videoInput"),
+  filePrompt: document.querySelector("#filePrompt"),
+  fileMeta: document.querySelector("#fileMeta"),
+  uploadButton: document.querySelector("#uploadButton"),
+  transferPanel: document.querySelector("#transferPanel"),
+  transferLabel: document.querySelector("#transferLabel"),
+  transferPercent: document.querySelector("#transferPercent"),
+  transferBar: document.querySelector("#transferBar"),
+  transferDetail: document.querySelector("#transferDetail"),
+  pauseButton: document.querySelector("#pauseButton"),
+  refreshButton: document.querySelector("#refreshButton"),
+  emptyJobs: document.querySelector("#emptyJobs"),
+  jobList: document.querySelector("#jobList"),
+};
+
+const queryToken = new URLSearchParams(window.location.search).get("token");
+if (queryToken) {
+  localStorage.setItem("pingpong-upload-token", queryToken);
+  history.replaceState({}, "", window.location.pathname);
+}
+const token = queryToken || localStorage.getItem("pingpong-upload-token") || "";
+
+let selectedFile = null;
+let chunkSize = 8 * 1024 * 1024;
+let paused = false;
+let uploadRunning = false;
+let wakeLock = null;
+let jobsLoading = false;
+let authReady = false;
+
+const stageNames = {
+  queued: "等待電腦處理",
+  "queued-after-restart": "重新排入處理",
+  starting: "準備分析",
+  probing: "讀取影片時間軸",
+  "audio-analysis": "分析擊球聲",
+  "motion-analysis": "分析畫面動態",
+  "detecting-rallies": "組合精彩回合",
+  "building-reel": "合併精華影片",
+  completed: "完成",
+  failed: "處理失敗",
+};
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / 1024 ** unit).toFixed(unit > 1 ? 1 : 0)} ${units[unit]}`;
+}
+
+function formatDuration(seconds) {
+  const value = Math.max(0, Math.round(seconds || 0));
+  const minutes = Math.floor(value / 60);
+  const remainder = value % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function authHeaders(extra = {}) {
+  return { "X-Upload-Token": token, ...extra };
+}
+
+async function apiFetch(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: authHeaders(options.headers || {}),
+  });
+  if (!response.ok) {
+    let message = `${response.status} ${response.statusText}`;
+    try {
+      message = (await response.json()).detail || message;
+    } catch (_) {
+      // Keep the HTTP status as the useful fallback.
+    }
+    throw new Error(message);
+  }
+  return response;
+}
+
+function encodeMetadata(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function fingerprint(file) {
+  return `pingpong-upload:${file.name}:${file.size}:${file.lastModified}`;
+}
+
+async function createSession(file) {
+  const metadata = [
+    `filename ${encodeMetadata(file.name)}`,
+    `filetype ${encodeMetadata(file.type || "application/octet-stream")}`,
+  ].join(",");
+  const response = await apiFetch("/api/uploads", {
+    method: "POST",
+    headers: {
+      "Tus-Resumable": "1.0.0",
+      "Upload-Length": String(file.size),
+      "Upload-Metadata": metadata,
+    },
+  });
+  const location = response.headers.get("Location");
+  if (!location) throw new Error("伺服器沒有回傳續傳網址");
+  localStorage.setItem(fingerprint(file), location);
+  return { location, offset: 0, jobId: null };
+}
+
+async function inspectSession(location, file) {
+  const response = await apiFetch(location, {
+    method: "HEAD",
+    headers: { "Tus-Resumable": "1.0.0" },
+  });
+  const length = Number(response.headers.get("Upload-Length"));
+  if (length !== file.size) throw new Error("已儲存的續傳工作階段與影片大小不同");
+  return {
+    location,
+    offset: Number(response.headers.get("Upload-Offset")) || 0,
+    jobId: null,
+  };
+}
+
+async function findOrCreateSession(file) {
+  const saved = localStorage.getItem(fingerprint(file));
+  if (saved) {
+    try {
+      return await inspectSession(saved, file);
+    } catch (error) {
+      if (!String(error.message).includes("404")) console.info("Starting a new upload:", error);
+      localStorage.removeItem(fingerprint(file));
+    }
+  }
+  return createSession(file);
+}
+
+async function checksumHeader(blob) {
+  if (!globalThis.crypto?.subtle) return null;
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  const bytes = new Uint8Array(digest);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `sha256 ${btoa(binary)}`;
+}
+
+async function serverOffset(location) {
+  const response = await apiFetch(location, {
+    method: "HEAD",
+    headers: { "Tus-Resumable": "1.0.0" },
+  });
+  return Number(response.headers.get("Upload-Offset")) || 0;
+}
+
+async function sendChunk(location, offset, blob) {
+  const checksum = await checksumHeader(blob);
+  let lastError = null;
+  for (const delay of [0, 700, 1800, 4000]) {
+    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+    try {
+      const headers = {
+        "Tus-Resumable": "1.0.0",
+        "Upload-Offset": String(offset),
+        "Content-Type": "application/offset+octet-stream",
+      };
+      if (checksum) headers["Upload-Checksum"] = checksum;
+      const response = await apiFetch(location, { method: "PATCH", headers, body: blob });
+      return {
+        offset: Number(response.headers.get("Upload-Offset")),
+        jobId: response.headers.get("Upload-Job-Id"),
+      };
+    } catch (error) {
+      lastError = error;
+      try {
+        const recovered = await serverOffset(location);
+        if (recovered > offset) return { offset: recovered, jobId: null };
+      } catch (_) {
+        // The retry loop will surface the original transfer error.
+      }
+    }
+  }
+  throw lastError || new Error("分塊傳送失敗");
+}
+
+function setTransferProgress(offset, total, startedAt) {
+  const fraction = total ? Math.min(1, offset / total) : 0;
+  const percent = Math.round(fraction * 100);
+  const elapsed = Math.max(0.25, (performance.now() - startedAt) / 1000);
+  const speed = offset / elapsed;
+  elements.transferPercent.textContent = `${percent}%`;
+  elements.transferBar.style.width = `${percent}%`;
+  elements.transferDetail.textContent = `${formatBytes(offset)} / ${formatBytes(total)} · ${formatBytes(speed)}/s`;
+}
+
+async function acquireWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock?.request("screen");
+  } catch (_) {
+    wakeLock = null;
+  }
+}
+
+async function releaseWakeLock() {
+  try {
+    await wakeLock?.release();
+  } catch (_) {
+    // The browser may already have released it when the tab lost focus.
+  }
+  wakeLock = null;
+}
+
+async function startUpload() {
+  if (!selectedFile || uploadRunning || !authReady) return;
+  uploadRunning = true;
+  paused = false;
+  elements.uploadButton.disabled = true;
+  elements.videoInput.disabled = true;
+  elements.transferPanel.hidden = false;
+  elements.pauseButton.hidden = false;
+  elements.pauseButton.textContent = "暫停";
+  elements.transferLabel.textContent = "建立可續傳連線";
+  const startedAt = performance.now();
+  await acquireWakeLock();
+
+  try {
+    const session = await findOrCreateSession(selectedFile);
+    let offset = session.offset;
+    let jobId = session.jobId;
+    setTransferProgress(offset, selectedFile.size, startedAt);
+    elements.transferLabel.textContent = offset ? "繼續傳送影片" : "正在傳送影片";
+
+    while (offset < selectedFile.size) {
+      while (paused) await new Promise((resolve) => setTimeout(resolve, 250));
+      const end = Math.min(offset + chunkSize, selectedFile.size);
+      const result = await sendChunk(session.location, offset, selectedFile.slice(offset, end));
+      if (!Number.isFinite(result.offset) || result.offset <= offset) {
+        throw new Error("伺服器沒有推進上傳 offset");
+      }
+      offset = result.offset;
+      jobId = result.jobId || jobId;
+      setTransferProgress(offset, selectedFile.size, startedAt);
+    }
+
+    if (!jobId) {
+      const response = await apiFetch(session.location);
+      jobId = (await response.json()).job_id;
+    }
+    elements.transferLabel.textContent = "影片已送達電腦";
+    elements.transferDetail.textContent = "分析已排入佇列；現在可以關閉這個頁面";
+    elements.pauseButton.hidden = true;
+    await loadJobs();
+  } catch (error) {
+    elements.transferLabel.textContent = "傳送暫停";
+    elements.transferDetail.textContent = `${error.message}。重新按開始會從已完成的位置繼續。`;
+    elements.uploadButton.disabled = false;
+  } finally {
+    uploadRunning = false;
+    elements.videoInput.disabled = false;
+    await releaseWakeLock();
+  }
+}
+
+function jobStage(job) {
+  if (job.stage.startsWith("exporting-highlight-")) {
+    return `輸出第 ${job.stage.split("-").at(-1)} 段精華`;
+  }
+  return stageNames[job.stage] || job.stage;
+}
+
+function renderJobs(jobs) {
+  elements.emptyJobs.hidden = jobs.length > 0;
+  elements.jobList.innerHTML = jobs
+    .map((job) => {
+      const result = job.result;
+      const filename = result?.source_name || `影片 ${job.upload_id.slice(0, 8)}`;
+      const progress = Math.round(job.progress * 100);
+      const statusText =
+        job.status === "completed"
+          ? "完成"
+          : job.status === "failed"
+            ? "失敗"
+            : job.status === "processing"
+              ? "分析中"
+              : "排隊中";
+      const summary = result?.summary;
+      const details = job.error
+        ? escapeHtml(job.error)
+        : result
+          ? summary.highlight_count
+            ? `找到 ${summary.highlight_count} 段精華，偵測到 ${summary.impact_count} 個擊球瞬變。`
+            : "這次沒有足夠可靠的精彩回合；可下載分析報告檢查訊號。"
+          : escapeHtml(jobStage(job));
+      const stats = result
+        ? `<div class="job-stats"><span><b>${summary.highlight_count}</b> 段精華</span><span><b>${formatDuration(result.media.duration)}</b> 原片</span><span><b>${summary.impact_count}</b> 擊球訊號</span></div>`
+        : "";
+      const downloads = result
+        ? `<div class="downloads">${result.files
+            .map((file) => {
+              const label =
+                file.kind === "reel" ? "下載精華合輯" : file.kind === "analysis" ? "分析報告" : file.name.replace("highlight_", "片段 ");
+              const separator = file.url.includes("?") ? "&" : "?";
+              return `<a href="${escapeHtml(file.url)}${separator}token=${encodeURIComponent(token)}" download>${escapeHtml(label)}</a>`;
+            })
+            .join("")}</div>`
+        : "";
+      const progressBar =
+        job.status === "processing" || job.status === "queued"
+          ? `<div class="job-progress"><span style="width:${progress}%"></span></div>`
+          : "";
+      return `<article class="job">
+        <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(job.status)}">${statusText}</span></div>
+        <p class="job-detail">${details}</p>
+        ${progressBar}${stats}${downloads}
+      </article>`;
+    })
+    .join("");
+}
+
+async function loadJobs() {
+  if (!token || jobsLoading) return;
+  jobsLoading = true;
+  try {
+    const response = await apiFetch("/api/jobs");
+    renderJobs((await response.json()).jobs);
+  } catch (error) {
+    if (String(error.message).includes("401")) elements.tokenWarning.hidden = false;
+  } finally {
+    jobsLoading = false;
+  }
+}
+
+elements.videoInput.addEventListener("change", () => {
+  selectedFile = elements.videoInput.files?.[0] || null;
+  if (!selectedFile) return;
+  elements.filePrompt.textContent = selectedFile.name;
+  elements.fileMeta.textContent = `${formatBytes(selectedFile.size)} · 選好後可直接開始`;
+  elements.uploadButton.disabled = !authReady;
+});
+
+elements.uploadButton.addEventListener("click", startUpload);
+elements.pauseButton.addEventListener("click", () => {
+  paused = !paused;
+  elements.pauseButton.textContent = paused ? "繼續" : "暫停";
+  elements.transferLabel.textContent = paused ? "已暫停（已傳部分會保留）" : "正在傳送影片";
+});
+elements.refreshButton.addEventListener("click", loadJobs);
+
+async function initialize() {
+  if (!token) {
+    elements.tokenWarning.hidden = false;
+    return;
+  }
+  try {
+    const [configResponse] = await Promise.all([apiFetch("/api/config"), loadJobs()]);
+    const config = await configResponse.json();
+    chunkSize = config.chunk_size || chunkSize;
+    authReady = true;
+    elements.uploadButton.disabled = !selectedFile;
+  } catch (error) {
+    elements.tokenWarning.hidden = false;
+  }
+  setInterval(loadJobs, 2500);
+}
+
+initialize();

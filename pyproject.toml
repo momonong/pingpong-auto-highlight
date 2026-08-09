@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pingpong-auto-highlight"
+version = "0.2.0"
+description = "Local-first, resumable table-tennis highlight extraction"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.125,<1",
+    "numpy>=2.3,<3",
+    "qrcode>=8.2,<9",
+    "uvicorn[standard]>=0.38,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx2>=2.9,<3",
+    "pytest>=9,<10",
+    "pytest-cov>=7,<8",
+    "ruff>=0.14,<1",
+]
+
+[project.scripts]
+pingpong-highlight = "pingpong_highlight.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pingpong_highlight"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+allowed-confusables = ["：", "，", "（", "）"]
