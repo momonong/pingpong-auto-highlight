@@ -49,7 +49,7 @@ flowchart LR
 - FFmpeg 直接產生固定時間取樣的單色小畫面與單聲道音訊，不依賴原片 frame index。分析不需要 OpenCV 或大型 YOLO 權重。
 - 精華輸出會重新編碼，確保切點準確；偵測到 NVIDIA NVENC 時優先走 GPU，否則自動回退 `libx264`。
 
-完整設計與後續模型策略見 [docs/architecture.md](docs/architecture.md) 與 [docs/evaluation.md](docs/evaluation.md)。
+完整設計與後續模型策略見 [docs/architecture.md](docs/architecture.md) 與 [docs/evaluation.md](docs/evaluation.md)；舊原型到這次重做的取捨記錄在 [docs/history.md](docs/history.md)。
 
 ## 常用設定
 

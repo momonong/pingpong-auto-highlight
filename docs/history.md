@@ -1,71 +1,38 @@
-# 🗃️ TTHAC Repository Development History
+# Project history
 
-This document traces the historical development timeline of the Table Tennis Highlight Clipper (TTHAC) codebase, documenting the key milestones, commits, and engineering decisions from its inception to its current advanced state.
+## February 2026: first prototype
 
----
+Commits `67aee40` and `1c53645` established the first runnable pipeline:
 
-## 📈 Timeline & Commits Overview
+- YOLO-World searched the opening frames for a table.
+- YOLO-Pose tracked people around an expanded table region.
+- A VIP score treated persistent player presence as rally activity.
+- OpenCV read frames and FFmpeg stream-copy exported proposed intervals.
 
-```mermaid
-gantt
-    title TTHAC Development Timeline (2026)
-    dateFormat  YYYY-MM-DD
-    section Phase 1: Inception
-    Initial Repository Setup           :2026-02-02, 2026-02-05
-    Scaffolding CV & Tracking Pipeline :2026-02-05, 2026-02-10
-    section Phase 2: Specs & Tuning
-    Specs and Rules Definition         :2026-06-19, 2026-06-20
-    Auto-Tuning Pipeline               :2026-06-20, 2026-06-20
-    section Phase 3: Agentic Features
-    Ball Track, Concat & VLM Director  :2026-06-20, 2026-06-20
-    Dynamic Angles & Long Video Import :2026-06-21, 2026-06-21
-```
+This proved that local automatic clipping was feasible, but it did not distinguish a rally from waiting, picking up balls, or conversation.
 
-| Commit Hash | Date | Author | Commit Message / Milestone | Key Contributions |
-| :--- | :--- | :--- | :--- | :--- |
-| **`67aee40`** | 2026-02-02 | momonong | `Initial commit` | Base `.gitignore` configuration and initial directory structure setup. |
-| **`1c53645`** | 2026-02-10 | Morris Chen | `Try to low the threshold...` | CV pipeline scaffolding; introduced YOLO-World table detection, YOLO-Pose tracking, and frame VIP scoring. |
-| **`34a2f46`** | 2026-06-20 | momonong | `docs: add README and AGENT specifications...` | Defined agent rules, platform path compliance requirements, and documentation of algorithm parameters. |
-| **`2d20c00`** | 2026-06-20 | momonong | `feat: integrate auto-tuning pipeline...` | Implemented `tune_pipeline.py` to auto-adjust VIP thresholds; standardized platform storage under `./storage`. |
-| **`38663de`** | 2026-06-20 | momonong | `feat: implement local ball tracking...` | Integrated YOLO ball tracking, lossless highlight concatenation, and Gemini 2.5 VLM AI Director post-verification. |
-| **Working Tree** | 2026-06-21 | Antigravity | *Stabilized Tracking & Local HTML Reports* | Added real-time scene cut detection, aspect-ratio-aware play zones, `import_tool.py` for long videos, spatial player ID mapping, and offline HTML dashboard generation. |
+## June 2026: experiments on the original architecture
 
----
+Commits `34a2f46` through `cdad2b7` explored several useful ideas:
 
-## 🔍 Detailed Milestone Breakdown
+- workspace-relative storage and a parameter-tuning loop;
+- generic COCO sports-ball detections and trajectory direction changes;
+- optional Gemini clip verification and intensity ranking;
+- scene-change detection, repeated table detection, and aspect-ratio-aware play zones;
+- a watch-folder/import utility, spatial player roles, stitched reels, and an offline report.
 
-### 🛠️ Phase 1: Pipeline Scaffolding (February 2026)
-* **Commit: [1c53645](file:///home/ubuntu/projects/pingpong-auto-highlight/main.py#L1-L131)** (Feb 10, 2026)
-* **Objective**: Create a functional local CV script to identify rallies and cut highlights from table tennis videos.
-* **Architecture**:
-  * **Table Detection**: Configured `TableDetector` to query `yolov8l-worldv2.pt` for the coordinate bounds of the ping pong table.
-  * **Pose Tracking**: Integrated `yolo11l-pose.pt` tracking keypoints (ankles) of players in the frame.
-  * **Rally State Machine**: Programmed `VIPGameTracker` which calculates "VIP score" based on the frame duration a player spends within the expanded table zone. If VIP score crosses a warmup threshold, active play is recognized and clipped using FFmpeg `-ss` and `-to` cuts.
+These commits remain in Git history for reference. They were not carried into the active runtime because the underlying rally state still depended on player presence, generic sports-ball detections were only diagnostic, and the tuner optimized clip count rather than labeled precision or recall. OpenCV frame indexing and FFmpeg stream-copy also left mobile VFR, rotation, and exact-cut problems unresolved. The optional Gemini path sent clips to a third party, which does not fit the new local-first default.
 
-### 📚 Phase 2: Agent Guidelines & Auto-Tuning (June 2026)
-* **Commits: [34a2f46](file:///home/ubuntu/projects/pingpong-auto-highlight/README.md) & [2d20c00](file:///home/ubuntu/projects/pingpong-auto-highlight/tune_pipeline.py)** (Jun 20, 2026)
-* **Objective**: Standardize system configurations and automate parameter adjustments.
-* **Architecture**:
-  * **Cross-platform Compliance**: Refactored settings to map storage to workspace-relative `./storage/` dirs, preventing hardcoded paths.
-  * **Automated Parameter Tuner**: Built [tune_pipeline.py](file:///home/ubuntu/projects/pingpong-auto-highlight/tune_pipeline.py) using an iterative feedback loop:
-    * It runs TTHAC and counts output clips.
-    * If clips are too few or zero, it lowers `vip_warmup_score` and expands the core zone.
-    * If clips are too many, it increases thresholds to make selection stricter.
+## August 2026: local-first pipeline restart
 
-### 🤖 Phase 3: Intelligent & Multi-Camera Enhancements (June 2026)
-* **Commit: [38663de](file:///home/ubuntu/projects/pingpong-auto-highlight/main.py#L15-L146) & Current Working Changes** (Jun 20-21, 2026)
-* **Objective**: Add precision tracking, automated compilation, multimodality verification, and robust camera angle handling.
-* **Architecture**:
-  * **Ball Tracking**: Configured `yolo11n.pt` class 32 (`sports ball`) to track the ball and measure `ball_activity_ratio` per rally to verify active play.
-  * **Concatenation**: Replaced separate output folders with seamless compile clips (`final_highlight_reel.mp4`).
-  * **Gemini AI Director**: Added API integration with `gemini-2.5-flash` to upload clips, filter false positives, rate intensity, and output localized Traditional Chinese descriptions.
-  * **Dynamic Camera Angles**: Added HSV histogram cut detection to handle multi-cam matches and aspect-ratio-aware core zones to automatically adjust zone dimensions for baseline, side, or diagonal camera views.
-  * **Large Video Imports**: Created `import_tool.py` providing client-side H.264 video compression, YouTube/direct URL downloads, and background watch-folder automation.
+Version 0.2 replaced the experiment scripts with a package-oriented system:
 
-### 📊 Phase 4: Spatial ID Stabilization & Offline Dashboards (June 2026)
-* **Status**: Current Working Changes (Working Tree)
-* **Objective**: Solve YOLO tracking ID flickering/swapping, estimate rally hit counts from ball speed directions, and generate offline HTML visual analytics.
-* **Architecture**:
-  * **Spatial ID Tracking Stabilizer**: Maps detected poses to fixed spatial roles: `Player_Left`/`Player_Right` or `Player_Near`/`Player_Far` relative to the table center, making the tracker immune to YOLO tracker ID switching.
-  * **Trajectory Hit Count Analysis**: Analyzes changes in horizontal (side view) or vertical (baseline view) ball velocity vectors to count racket hits during each rally.
-  * **Premium Offline Dashboard**: Generates a self-contained interactive dark-mode HTML dashboard (`local_report.html`) complete with SVG duration timelines, density analytics, and highlight stats.
+- a phone-facing LAN page with resumable chunk upload and persistent offsets;
+- SQLite-backed upload and processing jobs that recover after restart;
+- timestamp-based FFmpeg audio/video decoding for mobile formats;
+- adaptive audio-transient and localized-motion signal fusion;
+- ranked rally candidates, accurate H.264/AAC cuts, and a combined reel;
+- synthetic media, API, recovery, export, and end-to-end tests;
+- an explicit labeled-data evaluation plan before adding trained models.
+
+The earlier work informed failure analysis, while the production path was intentionally rebuilt around measurable rally evidence and reliable mobile ingestion.
