@@ -3,84 +3,138 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#101813" />
-    <title>桌球精華剪輯</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.4.0-20260809-2" />
+    <meta name="theme-color" content="#0a0d12" />
+    <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" />
+    <title>RallyCut — 桌球精彩集錦</title>
+    <link rel="stylesheet" href="/static/styles.css?v=0.5.0-20260810" />
   </head>
   <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="RallyCut 首頁">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+        <span><b>RALLYCUT</b><small>LOCAL HIGHLIGHT STUDIO</small></span>
+      </a>
+      <span class="service-pill"><i aria-hidden="true"></i> 本機服務運作中</span>
+    </header>
+
     <main class="shell">
-      <header class="hero">
-        <div class="eyebrow"><span></span> LOCAL COURT LAB</div>
-        <h1>手機傳原片，<br /><em>電腦剪好球。</em></h1>
-        <p>在同一個 Wi‑Fi 內把影片送到這台電腦，完成後直接預覽、下載或存回手機。原片不會上傳到雲端。</p>
-      </header>
-
-      <section class="flow-strip" aria-label="使用流程">
-        <div><span>01</span><b>手機上傳</b><small>可暫停、可續傳</small></div>
-        <div><span>02</span><b>電腦剪輯</b><small>頁面可以關閉</small></div>
-        <div><span>03</span><b>預覽儲存</b><small>下載或分享 MP4</small></div>
-      </section>
-
-      <section class="notice info">
-        手機與電腦需連到同一個 Wi‑Fi；處理與下載期間請保持電腦上的服務開啟。
-      </section>
-
-      <section id="tokenWarning" class="notice danger" hidden>
-        這個網址沒有上傳權限。請在電腦重新執行服務，並用終端機顯示的 QR code 開啟。
-      </section>
-
-      <section class="card upload-card">
-        <div class="card-heading">
-          <div>
-            <span class="step">01</span>
-            <h2>上傳原始影片</h2>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span>TABLE TENNIS</span><i></i><span>POINT REEL</span></p>
+          <h1>把整場球，<br /><em>剪成值得重播的幾分。</em></h1>
+          <p class="hero-lead">
+            手機直接傳原片，電腦自動找出每一分、挑選精彩球，再用原始比例剪成一支流暢集錦。
+          </p>
+          <div class="hero-pills" aria-label="產品特色">
+            <span>逐分切點</span><span>原尺寸輸出</span><span>本機處理</span>
           </div>
-          <span class="privacy">同網路直傳</span>
         </div>
 
-        <label class="drop-zone" for="videoInput">
-          <input id="videoInput" type="file" accept="video/*,.mov,.mp4,.m4v,.mkv" />
-          <span class="ball" aria-hidden="true"></span>
-          <strong id="filePrompt">從相簿或檔案選擇原片</strong>
-          <small id="fileMeta">MOV、MP4、HEVC 都可以；只會傳到目前這台電腦</small>
-        </label>
-
-        <button id="uploadButton" class="primary" type="button" disabled>開始傳送與分析</button>
-
-        <div id="transferPanel" class="transfer" hidden>
-          <div class="transfer-row">
-            <strong id="transferLabel">準備中</strong>
-            <span id="transferPercent">0%</span>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="visual-topline"><span>HIGHLIGHT MODE</span><b>REC</b></div>
+          <div class="court">
+            <span class="court-center"></span>
+            <span class="court-net"></span>
+            <span class="court-ball"></span>
+            <span class="court-shadow"></span>
           </div>
-          <div class="progress-track"><span id="transferBar"></span></div>
-          <div class="transfer-row muted">
-            <span id="transferDetail">正在建立續傳工作階段</span>
-            <button id="pauseButton" class="text-button" type="button">暫停</button>
+          <div class="visual-footer">
+            <span><small>SELECTED POINTS</small><b>06</b></span>
+            <span><small>TARGET REEL</small><b>00:55</b></span>
           </div>
+          <span class="floating-tag tag-one">TOPSPIN</span>
+          <span class="floating-tag tag-two">+ GREAT RALLY</span>
         </div>
       </section>
 
-      <section class="card jobs-card">
-        <div class="card-heading">
-          <div>
-            <span class="step">02</span>
-            <h2>處理進度與成品</h2>
-          </div>
-          <button id="refreshButton" class="icon-button" type="button" aria-label="重新整理">↻</button>
-        </div>
-        <div id="emptyJobs" class="empty-state">
-          <span>球還沒發。</span>
-          上傳完成後，可以離開此頁；回來時會繼續顯示進度。完成後可先播放，再下載或存到相簿。
-        </div>
-        <div id="jobList" class="job-list"></div>
+      <section id="tokenWarning" class="notice danger" hidden role="alert">
+        <span class="notice-icon">!</span>
+        <span><b>這個網址沒有上傳權限。</b>請回到電腦查看服務顯示的 QR code，再重新掃描一次。</span>
       </section>
 
-      <section class="how-it-works">
-        <p><b>逐分切點</b><span>從發球到得分各自成段</span></p>
-        <p><b>精彩排序</b><span>挑出節奏與動態最好的幾分</span></p>
-        <p><b>原尺寸剪接</b><span>保留原片比例與短暫 dissolve</span></p>
+      <section class="workspace">
+        <article class="panel upload-card">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">01 / ADD FOOTAGE</span>
+              <h2>選一段比賽影片</h2>
+              <p>大檔案會分段傳送，中斷後可從原處繼續。</p>
+            </div>
+            <span class="privacy"><i></i> 不上雲端</span>
+          </div>
+
+          <label id="dropZone" class="drop-zone" for="videoInput">
+            <input id="videoInput" type="file" accept="video/*,.mov,.mp4,.m4v,.mkv" />
+            <span class="drop-icon" aria-hidden="true">
+              <svg viewBox="0 0 32 32" role="presentation">
+                <path d="M16 22V7m0 0-6 6m6-6 6 6M7 20v5h18v-5" />
+              </svg>
+            </span>
+            <strong id="filePrompt">點一下，從相簿選擇原片</strong>
+            <small id="fileMeta">也可以把 MOV、MP4、HEVC 影片拖到這裡</small>
+            <span class="format-row"><i>MOV</i><i>MP4</i><i>HEVC</i><i>4K</i></span>
+          </label>
+
+          <button id="uploadButton" class="primary" type="button" disabled>
+            <span>開始上傳與製作</span><i aria-hidden="true">↗</i>
+          </button>
+
+          <div id="transferPanel" class="transfer" hidden aria-live="polite">
+            <div class="transfer-row">
+              <strong id="transferLabel">準備中</strong>
+              <span id="transferPercent">0%</span>
+            </div>
+            <div class="progress-track"><span id="transferBar"></span></div>
+            <div class="transfer-row muted">
+              <span id="transferDetail">正在建立續傳工作階段</span>
+              <button id="pauseButton" class="text-button" type="button">暫停</button>
+            </div>
+          </div>
+
+          <div class="upload-note">
+            <span class="network-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+            <p><b>手機與電腦請連同一個 Wi‑Fi</b><small>開始處理後可以關閉此頁，電腦會繼續工作。</small></p>
+          </div>
+        </article>
+
+        <article class="panel jobs-card">
+          <div class="panel-heading jobs-heading">
+            <div>
+              <span class="section-kicker">02 / YOUR REELS</span>
+              <h2>處理進度與成品</h2>
+              <p id="jobCount">等待第一支影片</p>
+            </div>
+            <button id="refreshButton" class="icon-button" type="button" aria-label="重新整理">
+              <span aria-hidden="true">↻</span>
+            </button>
+          </div>
+
+          <div id="emptyJobs" class="empty-state">
+            <div class="empty-reel" aria-hidden="true">
+              <span></span><span></span><span></span><i></i>
+            </div>
+            <strong>你的第一支集錦會出現在這裡</strong>
+            <p>我們會依照每一分挑出好球，完成後可直接預覽、下載，或用手機分享。</p>
+          </div>
+          <div id="jobList" class="job-list" aria-live="polite"></div>
+        </article>
+      </section>
+
+      <section class="process-strip" aria-label="集錦製作流程">
+        <div><span>01</span><p><b>讀懂每一分</b><small>從發球到得分各自成段</small></p></div>
+        <div><span>02</span><p><b>挑出精彩球</b><small>依節奏、動態與回合排序</small></p></div>
+        <div><span>03</span><p><b>串成一支 Reel</b><small>原比例剪輯，加上短暫 dissolve</small></p></div>
       </section>
     </main>
-    <script src="/static/app.js?v=0.4.0-20260809-2" defer></script>
+
+    <footer class="footer">
+      <span>RALLYCUT / LOCAL COURT LAB</span>
+      <span>PRIVATE BY DEFAULT · MADE FOR THE NEXT RALLY</span>
+    </footer>
+
+    <script src="/static/app.js?v=0.5.0-20260810" defer></script>
   </body>
 </html>

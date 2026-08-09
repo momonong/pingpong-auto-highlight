@@ -37,11 +37,18 @@ def _print_qr(url: str) -> None:
     qr.print_ascii(invert=True)
 
 
+def _service_url(settings: Settings, address: str) -> str:
+    base_url = settings.public_url.rstrip("/") if settings.public_url else (
+        f"http://{address}:{settings.port}"
+    )
+    return f"{base_url}/?token={quote(settings.upload_token)}"
+
+
 def _serve(args: argparse.Namespace) -> int:
     settings = Settings.from_env(data_dir=args.data_dir, host=args.host, port=args.port)
     require_media_tools()
     address = _lan_address() if settings.host in {"0.0.0.0", "::"} else settings.host
-    url = f"http://{address}:{settings.port}/?token={quote(settings.upload_token)}"
+    url = _service_url(settings, address)
     print("\n桌球剪輯服務已準備好。手機與電腦需在同一個區域網路。")
     print(f"手機網址：{url}\n")
     if not args.no_qr:
