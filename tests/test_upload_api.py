@@ -26,8 +26,12 @@ class FakeProcessor:
             "source_name": source_name,
             "media": {"duration": 1.0},
             "summary": {"point_count": 0, "impact_count": 0, "reel_duration": None},
-            "files": [{"name": "analysis.json", "kind": "analysis"}],
+            "files": [
+                {"name": "best_points_reel.mp4", "kind": "reel"},
+                {"name": "analysis.json", "kind": "analysis"},
+            ],
         }
+        (output_dir / "best_points_reel.mp4").write_bytes(b"fake-video")
         (output_dir / "analysis.json").write_text(json.dumps(result), encoding="utf-8")
         return result
 
@@ -130,6 +134,21 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
             headers={"X-Upload-Token": "test-secret"},
         )
         assert download.status_code == 200
+
+        preview = client.get(
+            f"/api/jobs/{job_id}/files/best_points_reel.mp4",
+            headers={"X-Upload-Token": "test-secret"},
+        )
+        assert preview.status_code == 200
+        assert preview.headers["content-type"] == "video/mp4"
+        assert "content-disposition" not in preview.headers
+
+        attachment = client.get(
+            f"/api/jobs/{job_id}/files/best_points_reel.mp4?download=true",
+            headers={"X-Upload-Token": "test-secret"},
+        )
+        assert attachment.status_code == 200
+        assert attachment.headers["content-disposition"].startswith("attachment;")
 
 
 def test_api_rejects_missing_token(tmp_path: Path) -> None:

@@ -30,9 +30,6 @@ class Settings:
     max_points: int = 6
     reel_target_seconds: float = 55.0
     reel_transition_seconds: float = 0.35
-    reel_width: int = 1080
-    reel_height: int = 1920
-    reel_fps: int = 30
     worker_count: int = 1
 
     @property
@@ -87,9 +84,6 @@ class Settings:
             ),
             reel_target_seconds=_env_float("PINGPONG_REEL_TARGET_SECONDS", 55.0),
             reel_transition_seconds=_env_float("PINGPONG_REEL_TRANSITION_SECONDS", 0.35),
-            reel_width=_env_int("PINGPONG_REEL_WIDTH", 1080),
-            reel_height=_env_int("PINGPONG_REEL_HEIGHT", 1920),
-            reel_fps=_env_int("PINGPONG_REEL_FPS", 30),
             worker_count=_env_int("PINGPONG_WORKERS", 1),
         )
         settings.ensure_directories()

@@ -29,6 +29,7 @@ let uploadRunning = false;
 let wakeLock = null;
 let jobsLoading = false;
 let authReady = false;
+let lastJobsSignature = "";
 
 const stageNames = {
   queued: "等待電腦處理",
@@ -38,7 +39,7 @@ const stageNames = {
   "audio-analysis": "分析擊球聲",
   "motion-analysis": "分析畫面動態",
   "detecting-points": "切分每一個得分",
-  "editing-social-reel": "剪接直式集錦與轉場",
+  "editing-point-reel": "剪接得分集錦與轉場",
   completed: "完成",
   failed: "處理失敗",
 };
@@ -68,6 +69,13 @@ function formatDuration(seconds) {
 
 function authHeaders(extra = {}) {
   return { "X-Upload-Token": token, ...extra };
+}
+
+function fileAccessUrl(path, { download = false } = {}) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("token", token);
+  if (download) url.searchParams.set("download", "true");
+  return `${url.pathname}${url.search}`;
 }
 
 async function apiFetch(path, options = {}) {
@@ -276,6 +284,95 @@ function jobStage(job) {
   return stageNames[job.stage] || job.stage;
 }
 
+function triggerDownload(url, filename) {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
+async function shareOrSave(button) {
+  const path = button.dataset.url;
+  const filename = button.dataset.filename || "best_points_reel.mp4";
+  const fallbackUrl = fileAccessUrl(path, { download: true });
+  if (!navigator.share) {
+    triggerDownload(fallbackUrl, filename);
+    return;
+  }
+
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "準備影片…";
+  try {
+    const response = await apiFetch(path);
+    const blob = await response.blob();
+    const file = new File([blob], filename, { type: blob.type || "video/mp4" });
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+      triggerDownload(fallbackUrl, filename);
+      return;
+    }
+    await navigator.share({
+      files: [file],
+      title: "桌球得分集錦",
+    });
+  } catch (error) {
+    if (error?.name !== "AbortError") triggerDownload(fallbackUrl, filename);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+function renderResultPanel(result) {
+  const reel = result.files.find((file) => file.kind === "reel");
+  const pointFiles = result.files.filter((file) => file.kind === "point" || file.kind === "clip");
+  const analysis = result.files.find((file) => file.kind === "analysis");
+  if (!reel) {
+    return `<div class="downloads">${result.files
+      .map((file) => {
+        const url = fileAccessUrl(file.url, { download: true });
+        return `<a href="${escapeHtml(url)}" download>${escapeHtml(file.name)}</a>`;
+      })
+      .join("")}</div>`;
+  }
+
+  const previewUrl = fileAccessUrl(reel.url);
+  const downloadUrl = fileAccessUrl(reel.url, { download: true });
+  const webShareAvailable = typeof navigator.share === "function";
+  const shareAction = webShareAvailable
+    ? `<button class="share-button" type="button" data-url="${escapeHtml(reel.url)}" data-filename="${escapeHtml(reel.name)}">分享／存到相簿</button>`
+    : "";
+  const saveHint = webShareAvailable
+    ? "可從手機分享選單選擇「儲存影片」。"
+    : "下載後若要放進相簿，請開啟 MP4，再使用手機的分享或儲存影片功能。";
+  const pointLinks = pointFiles
+    .map((file, index) => {
+      const url = fileAccessUrl(file.url, { download: true });
+      return `<a href="${escapeHtml(url)}" download>得分 ${index + 1}</a>`;
+    })
+    .join("");
+  const analysisLink = analysis
+    ? `<a href="${escapeHtml(fileAccessUrl(analysis.url, { download: true }))}" download>分析報告</a>`
+    : "";
+
+  return `<div class="result-panel">
+    <video controls playsinline preload="metadata" aria-label="得分集錦預覽">
+      <source src="${escapeHtml(previewUrl)}" type="video/mp4" />
+    </video>
+    <div class="result-actions">
+      <a class="result-primary" href="${escapeHtml(downloadUrl)}" download>下載 MP4</a>
+      ${shareAction}
+    </div>
+    <p class="save-hint">${saveHint}</p>
+    <details class="more-files">
+      <summary>單分片段與分析檔</summary>
+      <div class="downloads">${pointLinks}${analysisLink}</div>
+    </details>
+  </div>`;
+}
+
 function renderJobs(jobs) {
   elements.emptyJobs.hidden = jobs.length > 0;
   elements.jobList.innerHTML = jobs
@@ -297,26 +394,13 @@ function renderJobs(jobs) {
         ? escapeHtml(job.error)
         : result
           ? pointCount
-            ? `選出 ${pointCount} 個精彩得分，已剪成直式集錦。`
+            ? `選出 ${pointCount} 個精彩得分，已剪成得分集錦。`
             : "這次沒有足夠可靠的得分回合；可下載分析報告檢查訊號。"
           : escapeHtml(jobStage(job));
       const stats = result
-        ? `<div class="job-stats"><span><b>${pointCount}</b> 個得分</span><span><b>${formatDuration(summary.reel_duration)}</b> 集錦</span><span><b>${formatDuration(result.media.duration)}</b> 原片</span></div>`
+        ? `<div class="job-stats"><span><b>${pointCount}</b> 個得分</span>${summary.reel_duration ? `<span><b>${formatDuration(summary.reel_duration)}</b> 集錦</span>` : ""}<span><b>${formatDuration(result.media.duration)}</b> 原片</span></div>`
         : "";
-      const downloads = result
-        ? `<div class="downloads">${result.files
-            .map((file) => {
-              const label =
-                file.kind === "reel"
-                  ? "下載直式得分集錦"
-                  : file.kind === "analysis"
-                    ? "分析報告"
-                    : file.name.replace("point_", "得分 ").replace("highlight_", "片段 ");
-              const separator = file.url.includes("?") ? "&" : "?";
-              return `<a href="${escapeHtml(file.url)}${separator}token=${encodeURIComponent(token)}" download>${escapeHtml(label)}</a>`;
-            })
-            .join("")}</div>`
-        : "";
+      const resultPanel = result ? renderResultPanel(result) : "";
       const progressBar =
         job.status === "processing" || job.status === "queued"
           ? `<div class="job-progress"><span style="width:${progress}%"></span></div>`
@@ -324,7 +408,7 @@ function renderJobs(jobs) {
       return `<article class="job">
         <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(job.status)}">${statusText}</span></div>
         <p class="job-detail">${details}</p>
-        ${progressBar}${stats}${downloads}
+        ${progressBar}${stats}${resultPanel}
       </article>`;
     })
     .join("");
@@ -335,7 +419,12 @@ async function loadJobs() {
   jobsLoading = true;
   try {
     const response = await apiFetch("/api/jobs");
-    renderJobs((await response.json()).jobs);
+    const jobs = (await response.json()).jobs;
+    const signature = JSON.stringify(jobs);
+    if (signature !== lastJobsSignature) {
+      lastJobsSignature = signature;
+      renderJobs(jobs);
+    }
   } catch (error) {
     if (String(error.message).includes("401")) elements.tokenWarning.hidden = false;
   } finally {
@@ -357,7 +446,17 @@ elements.pauseButton.addEventListener("click", () => {
   elements.pauseButton.textContent = paused ? "繼續" : "暫停";
   elements.transferLabel.textContent = paused ? "已暫停（已傳部分會保留）" : "正在傳送影片";
 });
+elements.jobList.addEventListener("click", (event) => {
+  const button = event.target.closest(".share-button");
+  if (button) shareOrSave(button);
+});
 elements.refreshButton.addEventListener("click", loadJobs);
+
+window.addEventListener("beforeunload", (event) => {
+  if (!uploadRunning) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 
 async function initialize() {
   if (!token) {

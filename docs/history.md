@@ -47,3 +47,14 @@ Version 0.3 changed the product unit from a long activity interval to one scored
 - selected points are rendered on a 9:16 blurred-background canvas;
 - video and audio cross-dissolve only between points, with no fade-out after the final point;
 - the real 10-minute Pixel recording produced a six-point, 44.2-second vertical Reel during validation.
+
+## August 2026: source-format output and transfer UX
+
+Version 0.4 separated analysis output from publishing format:
+
+- the default Reel now preserves the source resolution and aspect ratio;
+- the vertical blurred-background renderer remains optional for a later publish step;
+- the LAN page explains the phone-to-PC-to-phone workflow in three steps;
+- completed jobs provide inline video preview, a primary MP4 download, Web Share fallback, and secondary per-point downloads;
+- preview responses are inline while explicit downloads use attachment headers;
+- stable job polling no longer rebuilds the video player and interrupts playback.

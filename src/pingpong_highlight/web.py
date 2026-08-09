@@ -108,7 +108,7 @@ def create_app(
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="0.3.0",
+        version="0.4.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -240,7 +240,7 @@ def create_app(
         return _job_payload(job)
 
     @app.get("/api/jobs/{job_id}/files/{filename}", dependencies=[Depends(authorize)])
-    async def download_file(job_id: str, filename: str) -> FileResponse:
+    async def download_file(job_id: str, filename: str, download: bool = False) -> FileResponse:
         job = database.get_job(job_id)
         if job is None or not job.result:
             raise HTTPException(status_code=404, detail="Result not found")
@@ -252,7 +252,11 @@ def create_app(
         if path.parent != job_dir or not path.is_file():
             raise HTTPException(status_code=404, detail="Result file not found")
         media_type = "application/json" if path.suffix == ".json" else "video/mp4"
-        return FileResponse(path, media_type=media_type, filename=filename)
+        return FileResponse(
+            path,
+            media_type=media_type,
+            filename=filename if download else None,
+        )
 
     @app.get("/")
     async def index() -> FileResponse:

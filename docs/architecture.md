@@ -49,7 +49,9 @@ point candidate 不會再彼此合併。相鄰兩分的 padding 若重疊，兩�
 
 舊版的 `-c copy` 只能在 keyframe 附近切割。現在每個 point 都經 accurate seek 後重編碼成 H.264/AAC，加 `faststart` 方便手機播放。
 
-`build_social_reel()` 將每分放進 9:16 畫布：原畫面等比例完整置中，背景放大、模糊並降低亮度。FFmpeg `xfade` 與 `acrossfade` 只建立在相鄰 point 的交界，因此 N 個 point 只有 N−1 個 dissolve，最後一分不會 fade-out。最終影片固定為 1080 × 1920、30 fps，並保留各分的獨立橫式片段。
+`build_point_reel()` 以第一個單分片段的解析度與畫面比例作為成品規格。FFmpeg `xfade` 與 `acrossfade` 只建立在相鄰 point 的交界，因此 N 個 point 只有 N−1 個 dissolve，最後一分不會 fade-out。直式、裁切與字幕屬於發佈衍生版本，不改變核心分析輸出；`build_social_reel()` 保留為後續 renderer，但不在預設流程使用。
+
+完成頁以同一個受 token 保護的檔案端點提供兩種回應：inline response 供 `<video>` range playback，`download=true` 則加入 attachment header。手機可以先預覽，再使用一般下載或 Web Share 儲存；單分片段與分析報告收在次要展開區。
 
 ## Failure and recovery model
 

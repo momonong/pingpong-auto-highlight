@@ -10,7 +10,7 @@ from pingpong_highlight.pipeline.audio import analyze_audio
 from pingpong_highlight.pipeline.detect import DetectionConfig, detect_points
 from pingpong_highlight.pipeline.media import (
     MediaError,
-    build_social_reel,
+    build_point_reel,
     export_clip,
     probe_media,
 )
@@ -81,26 +81,25 @@ class HighlightProcessor:
             files.append({"name": filename, "kind": "point"})
 
         reel_duration: float | None = None
+        reel_media = None
         if clip_paths:
-            report(0.95, "editing-social-reel")
+            report(0.95, "editing-point-reel")
             reel_path = output_dir / "best_points_reel.mp4"
             try:
-                build_social_reel(
+                build_point_reel(
                     clip_paths,
                     reel_path,
                     transition_duration=self.settings.reel_transition_seconds,
-                    width=self.settings.reel_width,
-                    height=self.settings.reel_height,
-                    fps=self.settings.reel_fps,
                 )
             except MediaError as exc:
                 warnings.append(str(exc))
             else:
                 files.insert(0, {"name": reel_path.name, "kind": "reel"})
-                reel_duration = probe_media(reel_path).duration
+                reel_media = probe_media(reel_path)
+                reel_duration = reel_media.duration
 
         result: dict[str, Any] = {
-            "algorithm_version": "point-reel-v1",
+            "algorithm_version": "point-reel-v2",
             "source_name": source_name,
             "media": media.to_dict() | {"path": source_name},
             "summary": {
@@ -113,8 +112,10 @@ class HighlightProcessor:
             },
             "editing": {
                 "unit": "scored-point",
-                "layout": f"{self.settings.reel_width}x{self.settings.reel_height}",
-                "fps": self.settings.reel_fps,
+                "layout": "source-aspect",
+                "width": reel_media.width if reel_media is not None else media.width,
+                "height": reel_media.height if reel_media is not None else media.height,
+                "fps": round(reel_media.fps, 3) if reel_media is not None else round(media.fps, 3),
                 "transition": "cross-dissolve",
                 "transition_seconds": self.settings.reel_transition_seconds,
                 "final_point_fades_out": False,
