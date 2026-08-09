@@ -108,7 +108,7 @@ def create_app(
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="0.2.0",
+        version="0.3.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -145,6 +145,8 @@ def create_app(
             "chunk_size": min(8 * 1024**2, settings.max_chunk_bytes),
             "max_upload_size": settings.max_upload_bytes,
             "video_sample_fps": settings.video_sample_fps,
+            "max_points": settings.max_points,
+            "reel_target_seconds": settings.reel_target_seconds,
         }
 
     @app.options("/api/uploads")

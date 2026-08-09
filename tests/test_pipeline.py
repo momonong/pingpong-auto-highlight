@@ -59,12 +59,21 @@ def test_end_to_end_signal_fusion_pipeline(tmp_path: Path) -> None:
         check=True,
     )
 
-    settings = Settings(data_dir=tmp_path / "data", upload_token="test")
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        upload_token="test",
+        reel_width=360,
+        reel_height=640,
+        reel_fps=24,
+        reel_target_seconds=10.0,
+    )
     settings.ensure_directories()
     output = tmp_path / "output"
     result = HighlightProcessor(settings).run(source, output)
 
     assert result["summary"]["impact_count"] >= 5
-    assert result["summary"]["highlight_count"] >= 1
-    assert (output / "highlight_reel.mp4").is_file()
+    assert result["summary"]["point_count"] >= 1
+    assert result["editing"]["unit"] == "scored-point"
+    assert result["editing"]["final_point_fades_out"] is False
+    assert (output / "best_points_reel.mp4").is_file()
     assert (output / "analysis.json").is_file()

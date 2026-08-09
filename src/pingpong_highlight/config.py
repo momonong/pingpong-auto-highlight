@@ -27,7 +27,12 @@ class Settings:
     video_sample_fps: float = 8.0
     analysis_frame_size: int = 320
     audio_sample_rate: int = 16_000
-    max_highlights: int = 12
+    max_points: int = 6
+    reel_target_seconds: float = 55.0
+    reel_transition_seconds: float = 0.35
+    reel_width: int = 1080
+    reel_height: int = 1920
+    reel_fps: int = 30
     worker_count: int = 1
 
     @property
@@ -76,7 +81,15 @@ class Settings:
             video_sample_fps=_env_float("PINGPONG_VIDEO_SAMPLE_FPS", 8.0),
             analysis_frame_size=_env_int("PINGPONG_ANALYSIS_FRAME_SIZE", 320),
             audio_sample_rate=_env_int("PINGPONG_AUDIO_SAMPLE_RATE", 16_000),
-            max_highlights=_env_int("PINGPONG_MAX_HIGHLIGHTS", 12),
+            max_points=_env_int(
+                "PINGPONG_MAX_POINTS",
+                _env_int("PINGPONG_MAX_HIGHLIGHTS", 6),
+            ),
+            reel_target_seconds=_env_float("PINGPONG_REEL_TARGET_SECONDS", 55.0),
+            reel_transition_seconds=_env_float("PINGPONG_REEL_TRANSITION_SECONDS", 0.35),
+            reel_width=_env_int("PINGPONG_REEL_WIDTH", 1080),
+            reel_height=_env_int("PINGPONG_REEL_HEIGHT", 1920),
+            reel_fps=_env_int("PINGPONG_REEL_FPS", 30),
             worker_count=_env_int("PINGPONG_WORKERS", 1),
         )
         settings.ensure_directories()

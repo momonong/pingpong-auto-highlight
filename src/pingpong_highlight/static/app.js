@@ -37,8 +37,8 @@ const stageNames = {
   probing: "讀取影片時間軸",
   "audio-analysis": "分析擊球聲",
   "motion-analysis": "分析畫面動態",
-  "detecting-rallies": "組合精彩回合",
-  "building-reel": "合併精華影片",
+  "detecting-points": "切分每一個得分",
+  "editing-social-reel": "剪接直式集錦與轉場",
   completed: "完成",
   failed: "處理失敗",
 };
@@ -270,8 +270,8 @@ async function startUpload() {
 }
 
 function jobStage(job) {
-  if (job.stage.startsWith("exporting-highlight-")) {
-    return `輸出第 ${job.stage.split("-").at(-1)} 段精華`;
+  if (job.stage.startsWith("exporting-point-")) {
+    return `輸出第 ${job.stage.split("-").at(-1)} 個得分`;
   }
   return stageNames[job.stage] || job.stage;
 }
@@ -292,21 +292,26 @@ function renderJobs(jobs) {
               ? "分析中"
               : "排隊中";
       const summary = result?.summary;
+      const pointCount = summary?.point_count ?? summary?.highlight_count ?? 0;
       const details = job.error
         ? escapeHtml(job.error)
         : result
-          ? summary.highlight_count
-            ? `找到 ${summary.highlight_count} 段精華，偵測到 ${summary.impact_count} 個擊球瞬變。`
-            : "這次沒有足夠可靠的精彩回合；可下載分析報告檢查訊號。"
+          ? pointCount
+            ? `選出 ${pointCount} 個精彩得分，已剪成直式集錦。`
+            : "這次沒有足夠可靠的得分回合；可下載分析報告檢查訊號。"
           : escapeHtml(jobStage(job));
       const stats = result
-        ? `<div class="job-stats"><span><b>${summary.highlight_count}</b> 段精華</span><span><b>${formatDuration(result.media.duration)}</b> 原片</span><span><b>${summary.impact_count}</b> 擊球訊號</span></div>`
+        ? `<div class="job-stats"><span><b>${pointCount}</b> 個得分</span><span><b>${formatDuration(summary.reel_duration)}</b> 集錦</span><span><b>${formatDuration(result.media.duration)}</b> 原片</span></div>`
         : "";
       const downloads = result
         ? `<div class="downloads">${result.files
             .map((file) => {
               const label =
-                file.kind === "reel" ? "下載精華合輯" : file.kind === "analysis" ? "分析報告" : file.name.replace("highlight_", "片段 ");
+                file.kind === "reel"
+                  ? "下載直式得分集錦"
+                  : file.kind === "analysis"
+                    ? "分析報告"
+                    : file.name.replace("point_", "得分 ").replace("highlight_", "片段 ");
               const separator = file.url.includes("?") ? "&" : "?";
               return `<a href="${escapeHtml(file.url)}${separator}token=${encodeURIComponent(token)}" download>${escapeHtml(label)}</a>`;
             })

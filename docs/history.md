@@ -36,3 +36,14 @@ Version 0.2 replaced the experiment scripts with a package-oriented system:
 - an explicit labeled-data evaluation plan before adding trained models.
 
 The earlier work informed failure analysis, while the production path was intentionally rebuilt around measurable rally evidence and reliable mobile ingestion.
+
+## August 2026: point-based social reel editing
+
+Version 0.3 changed the product unit from a long activity interval to one scored point:
+
+- impact groups are split at point-sized gaps and are never merged into long rally blocks;
+- nearby points divide their quiet gap so exported clips do not duplicate serves or reactions;
+- ranking uses a maximum-point count and a target Reel duration;
+- selected points are rendered on a 9:16 blurred-background canvas;
+- video and audio cross-dissolve only between points, with no fade-out after the final point;
+- the real 10-minute Pixel recording produced a six-point, 44.2-second vertical Reel during validation.

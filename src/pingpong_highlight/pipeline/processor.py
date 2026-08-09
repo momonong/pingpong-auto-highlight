@@ -7,10 +7,10 @@ from typing import Any
 
 from pingpong_highlight.config import Settings
 from pingpong_highlight.pipeline.audio import analyze_audio
-from pingpong_highlight.pipeline.detect import DetectionConfig, detect_highlights
+from pingpong_highlight.pipeline.detect import DetectionConfig, detect_points
 from pingpong_highlight.pipeline.media import (
     MediaError,
-    concatenate_clips,
+    build_social_reel,
     export_clip,
     probe_media,
 )
@@ -53,54 +53,73 @@ class HighlightProcessor:
             progress=lambda value: report(0.35 + value * 0.38, "motion-analysis"),
         )
 
-        report(0.75, "detecting-rallies")
-        highlights = detect_highlights(
+        report(0.75, "detecting-points")
+        detection = detect_points(
             media.duration,
             audio,
             motion,
-            DetectionConfig(max_highlights=self.settings.max_highlights),
+            DetectionConfig(
+                max_points=self.settings.max_points,
+                target_reel_duration=self.settings.reel_target_seconds,
+                transition_duration=self.settings.reel_transition_seconds,
+            ),
         )
+        points = detection.points
 
         files: list[dict[str, str]] = []
         clip_paths: list[Path] = []
         warnings: list[str] = []
-        for index, highlight in enumerate(highlights, start=1):
+        for index, point in enumerate(points, start=1):
             report(
-                0.78 + 0.18 * ((index - 1) / max(1, len(highlights))),
-                f"exporting-highlight-{index}",
+                0.78 + 0.16 * ((index - 1) / max(1, len(points))),
+                f"exporting-point-{index}",
             )
-            filename = f"highlight_{index:03d}_rank_{highlight.rank:02d}.mp4"
+            filename = f"point_{index:03d}_rank_{point.rank:02d}.mp4"
             clip_path = output_dir / filename
-            export_clip(source, clip_path, highlight.start, highlight.end)
+            export_clip(source, clip_path, point.start, point.end)
             clip_paths.append(clip_path)
-            files.append({"name": filename, "kind": "clip"})
+            files.append({"name": filename, "kind": "point"})
 
+        reel_duration: float | None = None
         if clip_paths:
-            report(0.97, "building-reel")
-            reel_path = output_dir / "highlight_reel.mp4"
-            manifest = output_dir / ".concat.txt"
+            report(0.95, "editing-social-reel")
+            reel_path = output_dir / "best_points_reel.mp4"
             try:
-                concatenate_clips(clip_paths, reel_path, manifest)
+                build_social_reel(
+                    clip_paths,
+                    reel_path,
+                    transition_duration=self.settings.reel_transition_seconds,
+                    width=self.settings.reel_width,
+                    height=self.settings.reel_height,
+                    fps=self.settings.reel_fps,
+                )
             except MediaError as exc:
                 warnings.append(str(exc))
             else:
                 files.insert(0, {"name": reel_path.name, "kind": "reel"})
-            finally:
-                manifest.unlink(missing_ok=True)
+                reel_duration = probe_media(reel_path).duration
 
         result: dict[str, Any] = {
-            "algorithm_version": "signal-fusion-v1",
+            "algorithm_version": "point-reel-v1",
             "source_name": source_name,
             "media": media.to_dict() | {"path": source_name},
             "summary": {
-                "highlight_count": len(highlights),
+                "point_count": len(points),
+                "candidate_point_count": len(detection.candidates),
                 "impact_count": len(audio.events),
                 "motion_sample_count": int(motion.scores.size),
-                "used_motion_only_fallback": any(
-                    highlight.hit_count == 0 for highlight in highlights
-                ),
+                "reel_duration": round(reel_duration, 3) if reel_duration is not None else None,
+                "used_motion_only_fallback": any(point.impact_count == 0 for point in points),
             },
-            "highlights": [highlight.to_dict() for highlight in highlights],
+            "editing": {
+                "unit": "scored-point",
+                "layout": f"{self.settings.reel_width}x{self.settings.reel_height}",
+                "fps": self.settings.reel_fps,
+                "transition": "cross-dissolve",
+                "transition_seconds": self.settings.reel_transition_seconds,
+                "final_point_fades_out": False,
+            },
+            "points": [point.to_dict() for point in points],
             "warnings": warnings,
             "files": [*files, {"name": "analysis.json", "kind": "analysis"}],
         }

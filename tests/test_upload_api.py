@@ -25,7 +25,7 @@ class FakeProcessor:
         result = {
             "source_name": source_name,
             "media": {"duration": 1.0},
-            "summary": {"highlight_count": 0, "impact_count": 0},
+            "summary": {"point_count": 0, "impact_count": 0, "reel_duration": None},
             "files": [{"name": "analysis.json", "kind": "analysis"}],
         }
         (output_dir / "analysis.json").write_text(json.dumps(result), encoding="utf-8")

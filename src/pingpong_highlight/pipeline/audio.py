@@ -17,7 +17,7 @@ def pick_impact_events(
     scores: np.ndarray,
     *,
     minimum_score: float = 3.0,
-    minimum_spacing: float = 0.09,
+    minimum_spacing: float = 0.16,
 ) -> list[ImpactEvent]:
     if scores.size < 3:
         return []

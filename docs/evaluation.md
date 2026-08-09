@@ -4,7 +4,7 @@
 
 先收集 20–30 支你真的會拍的影片，刻意涵蓋直式／橫式、桌側／底線／斜角、遠近、安靜與吵雜球館。第一輪不用畫每一顆球的 bounding box，只需為每支影片標記：
 
-- 每個 rally 的第一拍與最後一拍時間；
+- 每一分的發球、最後一拍與得分結束時間；
 - 是否值得保留（yes / maybe / no）；
 - 失敗原因標籤，例如附近球桌、拍手、鏡頭晃動、球員被遮擋；
 - 若有偏好，再記 `long_rally`、`fast_exchange`、`winner_reaction`、`great_save`。
@@ -15,14 +15,15 @@
 
 每次演算法版本至少報告：
 
-1. Rally recall：真實精彩回合有多少與輸出片段重疊至少 50%。
-2. Clip precision：輸出片段有多少真的包含一個精彩回合。
+1. Point recall：真實精彩得分有多少與輸出片段重疊至少 50%。
+2. Point purity：輸出片段有多少只包含一分，沒有混入前後得分。
 3. Boundary error：預測開始／結束與真實時間的絕對誤差中位數。
 4. Compression ratio：輸出總長度 ÷ 原片長度。
-5. Top-k preference：排名前 5 段中，你願意保留幾段。
-6. Runtime factor：分析秒數 ÷ 影片秒數，以及 peak RAM／VRAM。
+5. Top-k preference：排名前 6 分中，你願意放進 Reel 的有幾分。
+6. Reel pacing：成品總長、每分平均長度與轉場後是否仍看得懂得分結果。
+7. Runtime factor：分析秒數 ÷ 影片秒數，以及 peak RAM／VRAM。
 
-產品初期應優先 recall，因為漏掉好球無法挽回；precision 可以先透過 review UI 讓人快速刪除。建議 baseline gate：精彩 rally recall ≥ 0.90、clip precision ≥ 0.65、開始邊界誤差中位數 ≤ 2.5 秒。
+產品初期應優先 point recall，因為漏掉好球無法挽回；ranking precision 可以先透過 review UI 讓人快速刪除。建議 baseline gate：精彩 point recall ≥ 0.90、point purity ≥ 0.85、開始邊界誤差中位數 ≤ 1.5 秒。
 
 ## Iteration order
 
@@ -42,9 +43,9 @@
 - 將 pose velocity、兩側球員同時活動、racket-side wrist acceleration 當 evidence，不直接當 rally state。
 - 若要偵測球，需以實際手機素材訓練 tiny-object detector，並保留高解析 crop；generic YOLO weight 不足以支撐這項假設。
 
-### 4. Learn personal highlight ranking
+### 4. Learn personal point ranking
 
-保留使用者「下載／刪除／調整邊界」行為，訓練 ranking model，而不是把精彩定義寫死。ranking 與 rally segmentation 分離：前者可以個人化，後者仍追求客觀 recall。
+保留使用者「加入 Reel／略過／調整邊界」行為，訓練 ranking model，而不是把精彩定義寫死。ranking 與 point segmentation 分離：前者可以個人化，後者仍追求客觀 recall。
 
 ## Reproducible experiment record
 
