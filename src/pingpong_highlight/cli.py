@@ -42,12 +42,16 @@ def _serve(args: argparse.Namespace) -> int:
     require_media_tools()
     address = _lan_address() if settings.host in {"0.0.0.0", "::"} else settings.host
     url = f"http://{address}:{settings.port}/?token={quote(settings.upload_token)}"
-    print("\n桌球精華服務已準備好。手機與電腦需在同一個區域網路。")
+    print("\n桌球剪輯服務已準備好。手機與電腦需在同一個區域網路。")
     print(f"手機網址：{url}\n")
     if not args.no_qr:
         _print_qr(url)
         print()
-    print(f"資料目錄：{settings.data_dir}")
+    print("1. 保持這個視窗與電腦開啟。")
+    print("2. 手機掃描 QR code，從相簿選擇原始影片。")
+    print("3. 上傳完成後可關閉手機頁面，電腦會繼續處理。")
+    print("4. 回到同一網址即可預覽、下載或分享完成的 MP4。")
+    print(f"\n資料目錄：{settings.data_dir}")
     print("按 Ctrl+C 停止服務。Windows 第一次執行時請允許私人網路存取。\n")
     uvicorn.run(
         create_app(settings),
@@ -77,7 +81,7 @@ def _analyze(args: argparse.Namespace) -> int:
 
     result = processor.run(source, output, progress)
     count = result["summary"]["point_count"]
-    print(f"完成：剪出 {count} 個精彩得分，直式集錦輸出於 {output}")
+    print(f"完成：剪出 {count} 個精彩得分，原尺寸集錦輸出於 {output}")
     return 0
 
 

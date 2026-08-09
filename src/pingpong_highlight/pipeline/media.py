@@ -304,6 +304,132 @@ def concatenate_clips(clips: list[Path], destination: Path, manifest: Path) -> N
         raise MediaError(f"Could not build highlight reel: {result.stderr.strip()}")
 
 
+def _point_reel_command(
+    clips: list[Path],
+    durations: list[float],
+    destination: Path,
+    *,
+    transition_duration: float,
+    width: int,
+    height: int,
+    fps: float,
+    with_audio: bool,
+    encoder: str,
+) -> list[str]:
+    command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
+    for clip in clips:
+        command.extend(["-i", str(clip)])
+
+    filters: list[str] = []
+    fps_value = f"{fps:.6f}"
+    for index in range(len(clips)):
+        filters.append(
+            f"[{index}:v:0]fps={fps_value},settb=AVTB,setpts=PTS-STARTPTS,"
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,"
+            f"setsar=1,format=yuv420p[v{index}]"
+        )
+        if with_audio:
+            filters.append(
+                f"[{index}:a:0]aresample=48000,"
+                "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
+                f"asetpts=PTS-STARTPTS[a{index}]"
+            )
+
+    video_label = "v0"
+    audio_label = "a0" if with_audio else None
+    cumulative_duration = durations[0]
+    for index in range(1, len(clips)):
+        dissolve = min(
+            transition_duration,
+            durations[index - 1] / 4,
+            durations[index] / 4,
+        )
+        offset = cumulative_duration - dissolve
+        next_video = f"vx{index}"
+        filters.append(
+            f"[{video_label}][v{index}]xfade=transition=fade:"
+            f"duration={dissolve:.6f}:offset={offset:.6f}[{next_video}]"
+        )
+        video_label = next_video
+        cumulative_duration += durations[index] - dissolve
+        if with_audio and audio_label is not None:
+            next_audio = f"ax{index}"
+            filters.append(
+                f"[{audio_label}][a{index}]acrossfade=d={dissolve:.6f}:"
+                f"c1=tri:c2=tri[{next_audio}]"
+            )
+            audio_label = next_audio
+
+    command.extend(["-filter_complex", ";".join(filters), "-map", f"[{video_label}]"])
+    if with_audio and audio_label is not None:
+        command.extend(["-map", f"[{audio_label}]"])
+    else:
+        command.append("-an")
+
+    if encoder == "h264_nvenc":
+        command.extend(["-c:v", encoder, "-preset", "p5", "-cq", "21", "-b:v", "0"])
+    else:
+        command.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "20"])
+    if with_audio:
+        command.extend(["-c:a", "aac", "-b:a", "192k"])
+    command.extend(
+        [
+            "-r",
+            fps_value,
+            "-movflags",
+            "+faststart",
+            "-shortest",
+            str(destination),
+        ]
+    )
+    return command
+
+
+def build_point_reel(
+    clips: list[Path],
+    destination: Path,
+    *,
+    transition_duration: float = 0.35,
+) -> None:
+    """Build a source-aspect point montage with cross-dissolves between points."""
+    if not clips:
+        return
+    if transition_duration < 0:
+        raise ValueError("Transition duration cannot be negative")
+
+    media = [probe_media(clip) for clip in clips]
+    durations = [item.duration for item in media]
+    first = media[0]
+    width = first.width - first.width % 2
+    height = first.height - first.height % 2
+    fps = first.fps if first.fps > 0 else 30.0
+    if width <= 0 or height <= 0:
+        raise MediaError("Point clips do not have valid output dimensions")
+    with_audio = all(item.has_audio for item in media)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    encoders = ["h264_nvenc", "libx264"] if has_nvenc() else ["libx264"]
+    errors: list[str] = []
+    for encoder in encoders:
+        command = _point_reel_command(
+            clips,
+            durations,
+            destination,
+            transition_duration=transition_duration,
+            width=width,
+            height=height,
+            fps=fps,
+            with_audio=with_audio,
+            encoder=encoder,
+        )
+        result = _run(command)
+        if result.returncode == 0:
+            return
+        destination.unlink(missing_ok=True)
+        errors.append(f"{encoder}: {result.stderr.strip()}")
+    raise MediaError("Could not build point reel. " + " | ".join(errors))
+
+
 def _social_reel_command(
     clips: list[Path],
     durations: list[float],

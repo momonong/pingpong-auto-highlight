@@ -5,15 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#101813" />
     <title>桌球精華剪輯</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.4.0-20260809-2" />
   </head>
   <body>
     <main class="shell">
       <header class="hero">
         <div class="eyebrow"><span></span> LOCAL COURT LAB</div>
-        <h1>把整場球，<br /><em>剪成得分集錦。</em></h1>
-        <p>手機選影片，電腦找出最精彩的幾分，剪成附有轉場的直式 Reel。原片不會上傳到雲端。</p>
+        <h1>手機傳原片，<br /><em>電腦剪好球。</em></h1>
+        <p>在同一個 Wi‑Fi 內把影片送到這台電腦，完成後直接預覽、下載或存回手機。原片不會上傳到雲端。</p>
       </header>
+
+      <section class="flow-strip" aria-label="使用流程">
+        <div><span>01</span><b>手機上傳</b><small>可暫停、可續傳</small></div>
+        <div><span>02</span><b>電腦剪輯</b><small>頁面可以關閉</small></div>
+        <div><span>03</span><b>預覽儲存</b><small>下載或分享 MP4</small></div>
+      </section>
+
+      <section class="notice info">
+        手機與電腦需連到同一個 Wi‑Fi；處理與下載期間請保持電腦上的服務開啟。
+      </section>
 
       <section id="tokenWarning" class="notice danger" hidden>
         這個網址沒有上傳權限。請在電腦重新執行服務，並用終端機顯示的 QR code 開啟。
@@ -23,7 +33,7 @@
         <div class="card-heading">
           <div>
             <span class="step">01</span>
-            <h2>選擇手機影片</h2>
+            <h2>上傳原始影片</h2>
           </div>
           <span class="privacy">同網路直傳</span>
         </div>
@@ -31,8 +41,8 @@
         <label class="drop-zone" for="videoInput">
           <input id="videoInput" type="file" accept="video/*,.mov,.mp4,.m4v,.mkv" />
           <span class="ball" aria-hidden="true"></span>
-          <strong id="filePrompt">從相簿或檔案中選擇</strong>
-          <small id="fileMeta">MOV、MP4、HEVC 都可以；傳到一半斷線可繼續</small>
+          <strong id="filePrompt">從相簿或檔案選擇原片</strong>
+          <small id="fileMeta">MOV、MP4、HEVC 都可以；只會傳到目前這台電腦</small>
         </label>
 
         <button id="uploadButton" class="primary" type="button" disabled>開始傳送與分析</button>
@@ -54,13 +64,13 @@
         <div class="card-heading">
           <div>
             <span class="step">02</span>
-            <h2>逐分分析與集錦</h2>
+            <h2>處理進度與成品</h2>
           </div>
           <button id="refreshButton" class="icon-button" type="button" aria-label="重新整理">↻</button>
         </div>
         <div id="emptyJobs" class="empty-state">
           <span>球還沒發。</span>
-          上傳完成後，進度、單分片段與直式集錦會出現在這裡。
+          上傳完成後，可以離開此頁；回來時會繼續顯示進度。完成後可先播放，再下載或存到相簿。
         </div>
         <div id="jobList" class="job-list"></div>
       </section>
@@ -68,9 +78,9 @@
       <section class="how-it-works">
         <p><b>逐分切點</b><span>從發球到得分各自成段</span></p>
         <p><b>精彩排序</b><span>挑出節奏與動態最好的幾分</span></p>
-        <p><b>Reel 剪接</b><span>9:16 畫面與短暫 dissolve</span></p>
+        <p><b>原尺寸剪接</b><span>保留原片比例與短暫 dissolve</span></p>
       </section>
     </main>
-    <script src="/static/app.js" defer></script>
+    <script src="/static/app.js?v=0.4.0-20260809-2" defer></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 # Ping-Pong Auto Highlight
 
-把一段完整桌球錄影，自動剪成「以得分為單位」的直式精彩集錦。
+把一段完整桌球錄影，自動剪成「以得分為單位」的精彩集錦。
 
 手機只負責錄影與上傳；電腦在本地完成影片解碼、逐分切點、精彩度排序與 Reel 剪接。原片不會送到雲端。
 
@@ -9,10 +9,11 @@
 - 預設選出最多 6 個精彩得分，而不是輸出一段長時間區間。
 - 每一分保留發球前與得分後的短暫脈絡。
 - 集錦預設控制在約 55 秒內。
-- 輸出 1080 × 1920、30 fps 的 9:16 MP4。
-- 橫向原片完整置中，使用模糊背景填滿直式畫布，不裁掉兩側球員。
+- 預設保留原片的寬高比例、方向與畫面內容。
 - 相鄰得分以 0.35 秒 cross-dissolve 連接；最後一分不做 fade-out。
 - 同時保留每一分的獨立 MP4，方便人工檢查或重新排序。
+
+直式、裁切、字幕等社群發佈格式屬於後續輸出，不會在分析階段綁死。
 
 ## 安裝與啟動
 
@@ -28,6 +29,16 @@ pingpong-highlight serve
 
 終端機會顯示手機網址與 QR code。手機和電腦連到同一個區域網路後，用手機開啟網址並選擇影片。上傳採用可續傳分塊；中斷後重新選擇同一檔案即可接續。
 
+完整操作流程：
+
+1. 電腦執行 `pingpong-highlight serve`，保持終端機與電腦開啟。
+2. 手機掃描 QR code，從相簿選擇原始影片並開始傳送。
+3. 上傳完成後，手機頁面可以關閉；電腦會繼續處理。
+4. 回到同一網址即可直接預覽成品。
+5. 使用「下載 MP4」，或在支援 Web Share 的手機使用「分享／存到相簿」。
+
+成品也會保留在電腦的 `data/outputs/<job-id>/`。目前採用同 Wi‑Fi 的 local-first 傳輸，不需要雲端帳號、訂閱或額外上傳一次。
+
 也可以直接分析電腦上的影片：
 
 ```powershell
@@ -36,7 +47,7 @@ pingpong-highlight analyze "D:\videos\match.mov"
 
 每次工作會輸出：
 
-- `best_points_reel.mp4`：直式得分集錦；
+- `best_points_reel.mp4`：保留原片比例的得分集錦；
 - `point_###_rank_##.mp4`：各個得分片段；
 - `analysis.json`：切點、排名、媒體資訊與剪接設定。
 
@@ -49,7 +60,7 @@ flowchart LR
     C --> D["逐分切點"]
     D --> E["精彩度排序與時長預算"]
     E --> F["單分精準重編碼"]
-    F --> G["9:16 版面與 cross-dissolve"]
+    F --> G["原片比例與 cross-dissolve"]
     G --> H["得分 Reel"]
 ```
 
@@ -67,9 +78,6 @@ flowchart LR
 | `PINGPONG_MAX_POINTS` | 6 | 集錦最多收錄幾分 |
 | `PINGPONG_REEL_TARGET_SECONDS` | 55 | 集錦目標長度 |
 | `PINGPONG_REEL_TRANSITION_SECONDS` | 0.35 | 得分間 dissolve 長度 |
-| `PINGPONG_REEL_WIDTH` | 1080 | 直式成品寬度 |
-| `PINGPONG_REEL_HEIGHT` | 1920 | 直式成品高度 |
-| `PINGPONG_REEL_FPS` | 30 | 直式成品幀率 |
 
 舊的 `PINGPONG_MAX_HIGHLIGHTS` 仍可作為 `PINGPONG_MAX_POINTS` 的備援值。
 
