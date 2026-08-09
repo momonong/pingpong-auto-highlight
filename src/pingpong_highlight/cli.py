@@ -76,8 +76,8 @@ def _analyze(args: argparse.Namespace) -> int:
             last_stage = stage
 
     result = processor.run(source, output, progress)
-    count = result["summary"]["highlight_count"]
-    print(f"完成：找到 {count} 段候選精華，輸出於 {output}")
+    count = result["summary"]["point_count"]
+    print(f"完成：剪出 {count} 個精彩得分，直式集錦輸出於 {output}")
     return 0
 
 

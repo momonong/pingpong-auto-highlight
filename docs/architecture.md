@@ -7,6 +7,7 @@
 3. 分析以時間戳而非 frame number 為真實來源，正常處理手機常見的 HEVC、VFR 與 rotation metadata。
 4. 第一個 baseline 不依賴固定鏡位、球桌方框或數 GB 模型權重。
 5. 每次結果留下可比較的 `analysis.json`，後續模型迭代能量化，而不是憑感覺調參數。
+6. 產品輸出以一個 scored point 為剪輯單位，再組成短 Reel；不把多分混成一個長候選段。
 
 ## Components
 
@@ -40,11 +41,15 @@ FFmpeg 預設會在 filter stage 套用 rotation metadata。固定 fps filter �
 
 畫面訊號計算相鄰 sample 的灰階差，切成 8 × 8 blocks。只聚合變化最大的八分之一區塊，並扣除全畫面背景變化，因此不必知道球桌在哪裡。曝光突變或 scene cut 影響大多數 blocks，會被抑制。
 
-相鄰 impact events 依合理回球間隔組成 rally candidate；hit count、tempo、span 與局部 motion 共同形成 ranking score。沒有可靠 audio candidate 時才使用 motion-only fallback。每段前後加 padding，重疊 candidate 會合併並限制最大長度。
+相鄰 impact events 依合理回球間隔組成 point candidate；impact count、tempo、節奏一致性、span 與局部 motion 共同形成 ranking score。沒有可靠 audio candidate 時才使用 motion-only fallback。
+
+point candidate 不會再彼此合併。相鄰兩分的 padding 若重疊，兩者會平分中間的安靜區域，避免下一次發球或上一分反應同時出現在兩個片段。排名後使用「最多分數 + Reel 目標秒數」雙重預算選片，再依原片時間排序播放。
 
 ### Export
 
-舊版的 `-c copy` 只能在 keyframe 附近切割。現在每個 candidate 都經 accurate seek 後重編碼成 H.264/AAC，加 `faststart` 方便手機播放。相同來源的片段再以 concat demuxer stream-copy 成 `highlight_reel.mp4`。
+舊版的 `-c copy` 只能在 keyframe 附近切割。現在每個 point 都經 accurate seek 後重編碼成 H.264/AAC，加 `faststart` 方便手機播放。
+
+`build_social_reel()` 將每分放進 9:16 畫布：原畫面等比例完整置中，背景放大、模糊並降低亮度。FFmpeg `xfade` 與 `acrossfade` 只建立在相鄰 point 的交界，因此 N 個 point 只有 N−1 個 dissolve，最後一分不會 fade-out。最終影片固定為 1080 × 1920、30 fps，並保留各分的獨立橫式片段。
 
 ## Failure and recovery model
 
@@ -56,6 +61,7 @@ FFmpeg 預設會在 filter stage 套用 rotation metadata。固定 fps filter �
 | 服務在上傳途中停止 | `.part` 大小與 SQLite offset 在啟動時 reconcile |
 | 服務在分析途中停止 | job 重新排隊並從頭分析；不會重傳原片 |
 | NVENC 不可用 | 同一 clip 自動改用 `libx264` |
+| Reel filter 或編碼失敗 | 保留已輸出的單分片段並在報告記錄 warning |
 | 無音軌 | motion-only fallback，報告會標記 |
 
 ## Intentional non-goals for this baseline

@@ -53,11 +53,11 @@ class MotionFeatures:
 
 
 @dataclass(frozen=True, slots=True)
-class Highlight:
+class Point:
     start: float
     end: float
     score: float
-    hit_count: int
+    impact_count: int
     motion_score: float
     rank: int = 0
     reason: str = ""
@@ -68,3 +68,9 @@ class Highlight:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self) | {"duration": round(self.duration, 3)}
+
+
+@dataclass(slots=True)
+class PointDetection:
+    candidates: list[Point]
+    points: list[Point]
