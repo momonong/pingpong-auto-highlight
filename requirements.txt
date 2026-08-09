@@ -1,5 +1,0 @@
-ultralytics
-opencv-python
-moviepy
-tqdm
-google-genai

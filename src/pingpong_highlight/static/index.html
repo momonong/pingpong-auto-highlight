@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#101813" />
+    <title>桌球精華剪輯</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div class="eyebrow"><span></span> LOCAL COURT LAB</div>
+        <h1>把整場球，<br /><em>收成幾個好球。</em></h1>
+        <p>手機選影片，電腦在本地完成分析與剪輯。原片不會上傳到雲端。</p>
+      </header>
+
+      <section id="tokenWarning" class="notice danger" hidden>
+        這個網址沒有上傳權限。請在電腦重新執行服務，並用終端機顯示的 QR code 開啟。
+      </section>
+
+      <section class="card upload-card">
+        <div class="card-heading">
+          <div>
+            <span class="step">01</span>
+            <h2>選擇手機影片</h2>
+          </div>
+          <span class="privacy">同網路直傳</span>
+        </div>
+
+        <label class="drop-zone" for="videoInput">
+          <input id="videoInput" type="file" accept="video/*,.mov,.mp4,.m4v,.mkv" />
+          <span class="ball" aria-hidden="true"></span>
+          <strong id="filePrompt">從相簿或檔案中選擇</strong>
+          <small id="fileMeta">MOV、MP4、HEVC 都可以；傳到一半斷線可繼續</small>
+        </label>
+
+        <button id="uploadButton" class="primary" type="button" disabled>開始傳送與分析</button>
+
+        <div id="transferPanel" class="transfer" hidden>
+          <div class="transfer-row">
+            <strong id="transferLabel">準備中</strong>
+            <span id="transferPercent">0%</span>
+          </div>
+          <div class="progress-track"><span id="transferBar"></span></div>
+          <div class="transfer-row muted">
+            <span id="transferDetail">正在建立續傳工作階段</span>
+            <button id="pauseButton" class="text-button" type="button">暫停</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card jobs-card">
+        <div class="card-heading">
+          <div>
+            <span class="step">02</span>
+            <h2>分析與精華</h2>
+          </div>
+          <button id="refreshButton" class="icon-button" type="button" aria-label="重新整理">↻</button>
+        </div>
+        <div id="emptyJobs" class="empty-state">
+          <span>球還沒發。</span>
+          上傳完成後，進度與可下載的精華會出現在這裡。
+        </div>
+        <div id="jobList" class="job-list"></div>
+      </section>
+
+      <section class="how-it-works">
+        <p><b>音訊瞬變</b><span>找連續擊球節奏</span></p>
+        <p><b>局部動態</b><span>確認球員持續活動</span></p>
+        <p><b>精準重編碼</b><span>保留好球前後脈絡</span></p>
+      </section>
+    </main>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
