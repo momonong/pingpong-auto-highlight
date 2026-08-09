@@ -20,6 +20,7 @@ def _env_float(name: str, default: float) -> float:
 class Settings:
     data_dir: Path
     upload_token: str
+    public_url: str | None = None
     host: str = "0.0.0.0"
     port: int = 8000
     max_upload_bytes: int = 100 * 1024**3
@@ -71,6 +72,7 @@ class Settings:
         settings = cls(
             data_dir=root,
             upload_token=token,
+            public_url=os.getenv("PINGPONG_PUBLIC_URL") or None,
             host=host or os.getenv("PINGPONG_HOST", "0.0.0.0"),
             port=port or _env_int("PINGPONG_PORT", 8000),
             max_upload_bytes=_env_int("PINGPONG_MAX_UPLOAD_BYTES", 100 * 1024**3),

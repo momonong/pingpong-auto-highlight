@@ -1,5 +1,6 @@
 const elements = {
   tokenWarning: document.querySelector("#tokenWarning"),
+  dropZone: document.querySelector("#dropZone"),
   videoInput: document.querySelector("#videoInput"),
   filePrompt: document.querySelector("#filePrompt"),
   fileMeta: document.querySelector("#fileMeta"),
@@ -12,6 +13,7 @@ const elements = {
   pauseButton: document.querySelector("#pauseButton"),
   refreshButton: document.querySelector("#refreshButton"),
   emptyJobs: document.querySelector("#emptyJobs"),
+  jobCount: document.querySelector("#jobCount"),
   jobList: document.querySelector("#jobList"),
 };
 
@@ -358,6 +360,7 @@ function renderResultPanel(result) {
     : "";
 
   return `<div class="result-panel">
+    <div class="reel-heading"><span>BEST POINTS REEL</span><b>${escapeHtml(reel.name)}</b></div>
     <video controls playsinline preload="metadata" aria-label="得分集錦預覽">
       <source src="${escapeHtml(previewUrl)}" type="video/mp4" />
     </video>
@@ -375,6 +378,9 @@ function renderResultPanel(result) {
 
 function renderJobs(jobs) {
   elements.emptyJobs.hidden = jobs.length > 0;
+  elements.jobCount.textContent = jobs.length
+    ? `${jobs.length} ${jobs.length > 1 ? "個項目" : "支影片"}`
+    : "等待第一支影片";
   elements.jobList.innerHTML = jobs
     .map((job) => {
       const result = job.result;
@@ -403,9 +409,9 @@ function renderJobs(jobs) {
       const resultPanel = result ? renderResultPanel(result) : "";
       const progressBar =
         job.status === "processing" || job.status === "queued"
-          ? `<div class="job-progress"><span style="width:${progress}%"></span></div>`
+          ? `<div class="job-progress-meta"><span>${escapeHtml(jobStage(job))}</span><b>${progress}%</b></div><div class="job-progress"><span style="width:${progress}%"></span></div>`
           : "";
-      return `<article class="job">
+      return `<article class="job ${escapeHtml(job.status)}">
         <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(job.status)}">${statusText}</span></div>
         <p class="job-detail">${details}</p>
         ${progressBar}${stats}${resultPanel}
@@ -432,12 +438,41 @@ async function loadJobs() {
   }
 }
 
-elements.videoInput.addEventListener("change", () => {
-  selectedFile = elements.videoInput.files?.[0] || null;
-  if (!selectedFile) return;
+function selectVideo(file) {
+  if (!file) return;
+  const extension = file.name.split(".").at(-1)?.toLowerCase();
+  if (!file.type.startsWith("video/") && !["mov", "mp4", "m4v", "mkv"].includes(extension)) {
+    elements.filePrompt.textContent = "這個檔案看起來不是影片";
+    elements.fileMeta.textContent = "請選擇 MOV、MP4、M4V 或 MKV 檔案";
+    return;
+  }
+  selectedFile = file;
+  elements.dropZone.classList.add("selected");
   elements.filePrompt.textContent = selectedFile.name;
   elements.fileMeta.textContent = `${formatBytes(selectedFile.size)} · 選好後可直接開始`;
+  elements.uploadButton.querySelector("span").textContent = "上傳這支影片";
   elements.uploadButton.disabled = !authReady;
+}
+
+elements.videoInput.addEventListener("change", () => {
+  selectVideo(elements.videoInput.files?.[0] || null);
+});
+
+for (const eventName of ["dragenter", "dragover"]) {
+  elements.dropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    elements.dropZone.classList.add("dragging");
+  });
+}
+
+elements.dropZone.addEventListener("dragleave", () => {
+  elements.dropZone.classList.remove("dragging");
+});
+
+elements.dropZone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  elements.dropZone.classList.remove("dragging");
+  selectVideo(event.dataTransfer?.files?.[0] || null);
 });
 
 elements.uploadButton.addEventListener("click", startUpload);

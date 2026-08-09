@@ -1,0 +1,23 @@
+name: pingpong-auto-highlight
+
+services:
+  pingpong-highlight:
+    build:
+      context: .
+    image: pingpong-auto-highlight:local
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${PINGPONG_PORT:-8000}:8000"
+    environment:
+      PINGPONG_DATA_DIR: /data
+      PINGPONG_HOST: 0.0.0.0
+      PINGPONG_PORT: 8000
+      PINGPONG_PUBLIC_URL: "${PINGPONG_PUBLIC_URL:-http://localhost:8000}"
+      PINGPONG_MAX_POINTS: "${PINGPONG_MAX_POINTS:-6}"
+      PINGPONG_REEL_TARGET_SECONDS: "${PINGPONG_REEL_TARGET_SECONDS:-55}"
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+    stop_grace_period: 2m

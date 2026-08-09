@@ -15,7 +15,43 @@
 
 直式、裁切、字幕等社群發佈格式屬於後續輸出，不會在分析階段綁死。
 
-## 安裝與啟動
+## Docker 常駐服務（建議）
+
+需要先安裝並啟動 Docker Desktop。第一次設定：
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+docker compose up -d --build
+docker compose logs -f pingpong-highlight
+```
+
+把 `.env` 裡的 `PINGPONG_PUBLIC_URL` 改成電腦目前的 Wi‑Fi IP，例如 `http://192.168.1.19:8000`。啟動後，log 會顯示完整手機網址與 QR code；`restart: unless-stopped` 會讓容器在 Docker 重新啟動後自動恢復。
+
+上傳原片、續傳資訊、工作狀態與成品都掛載在電腦的 `./data`，重新 build 或刪除容器不會遺失。要更新程式時再執行一次：
+
+```powershell
+docker compose up -d --build
+```
+
+這份預設配置使用 CPU，任何支援 Docker 的電腦都能啟動。有 NVIDIA GPU 且 Docker GPU runtime 可用時，可以改用：
+
+```powershell
+docker compose -f compose.yaml -f compose.gpu.yaml up -d --build
+```
+
+常用管理指令：
+
+```powershell
+docker compose ps                    # 查看服務與健康狀態
+docker compose logs -f pingpong-highlight
+docker compose restart               # 重新啟動
+docker compose down                  # 停止服務；保留 ./data
+```
+
+若希望登入 Windows 後一直可用，請同時開啟 Docker Desktop 的「Start Docker Desktop when you sign in」。
+
+## 本機 Python 開發
 
 需要 Python 3.11 以上、`ffmpeg` 與 `ffprobe`。
 
@@ -73,6 +109,7 @@ flowchart LR
 | `PINGPONG_DATA_DIR` | `./data` | 上傳、工作狀態與輸出資料夾 |
 | `PINGPONG_HOST` | `0.0.0.0` | LAN 服務位址 |
 | `PINGPONG_PORT` | `8000` | LAN 服務連接埠 |
+| `PINGPONG_PUBLIC_URL` | 自動偵測 | QR code 與手機要開啟的公開基底網址；Docker 建議明確設定 |
 | `PINGPONG_MAX_UPLOAD_BYTES` | 100 GiB | 單檔上限 |
 | `PINGPONG_VIDEO_SAMPLE_FPS` | 8 | 畫面分析取樣率 |
 | `PINGPONG_MAX_POINTS` | 6 | 集錦最多收錄幾分 |
