@@ -108,7 +108,7 @@ def create_app(
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="0.5.0",
+        version="0.6.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -117,6 +117,26 @@ def create_app(
     app.state.database = database
     app.state.uploads = uploads
     app.state.jobs = jobs
+
+    @app.middleware("http")
+    async def secure_responses(request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=()",
+        )
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; base-uri 'none'; connect-src 'self'; "
+            "img-src 'self' data:; media-src 'self' blob:; object-src 'none'; "
+            "script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
+        )
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "private, no-store"
+        return response
 
     async def authorize(request: Request) -> None:
         supplied = request.headers.get("X-Upload-Token") or request.query_params.get("token") or ""
