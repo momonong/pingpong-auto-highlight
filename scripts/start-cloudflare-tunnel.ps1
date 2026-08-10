@@ -21,13 +21,13 @@ function Get-LatestTunnelUrl {
     $logs = (& docker compose @composeFiles logs --no-color cloudflared 2>&1 | Out-String)
     $matches = [regex]::Matches(
         $logs,
-        "https://[a-z0-9-]+\.trycloudflare\.com",
+        "\|\s*(https://[a-z0-9-]+\.trycloudflare\.com)\s*\|",
         [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
     )
     if ($matches.Count -eq 0) {
         return $null
     }
-    return $matches[$matches.Count - 1].Value.TrimEnd("/")
+    return $matches[$matches.Count - 1].Groups[1].Value.TrimEnd("/")
 }
 
 function Get-CloudflaredHealth {
@@ -47,6 +47,8 @@ function Get-CloudflaredHealth {
 
 Push-Location $repoRoot
 try {
+    $previousTunnelUrl = Get-LatestTunnelUrl
+
     & docker compose @composeFiles up -d --build
     if ($LASTEXITCODE -ne 0) {
         if (-not $CpuOnly) {
@@ -58,7 +60,6 @@ try {
         throw "Docker Compose could not start the highlight service."
     }
 
-    $previousTunnelUrl = Get-LatestTunnelUrl
     $cloudflaredHealth = Get-CloudflaredHealth
     $requireFreshUrl = $false
     if ($cloudflaredHealth -eq "unhealthy") {
@@ -72,34 +73,35 @@ try {
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $tunnelUrl = $null
+    $lastCandidateUrl = $null
     while ((Get-Date) -lt $deadline -and -not $tunnelUrl) {
         $candidateUrl = Get-LatestTunnelUrl
         if ($candidateUrl -and (-not $requireFreshUrl -or $candidateUrl -ne $previousTunnelUrl)) {
-            $tunnelUrl = $candidateUrl
-            break
+            if ($candidateUrl -ne $lastCandidateUrl) {
+                Write-Host "Checking Cloudflare URL: $candidateUrl"
+                $lastCandidateUrl = $candidateUrl
+            }
+            try {
+                $health = Invoke-RestMethod -Uri "$candidateUrl/api/health" -TimeoutSec 10
+                if ($health.status -eq "ok") {
+                    $tunnelUrl = $candidateUrl
+                    break
+                }
+            }
+            catch {
+                # The hostname can appear in logs before Cloudflare starts routing it.
+            }
         }
         Start-Sleep -Seconds 2
     }
 
     if (-not $tunnelUrl) {
         & docker compose @composeFiles logs --no-color --tail 80 cloudflared
-        throw "Cloudflare did not return a Quick Tunnel URL within $TimeoutSeconds seconds."
-    }
-
-    $healthy = $false
-    while ((Get-Date) -lt $deadline -and -not $healthy) {
-        try {
-            $health = Invoke-RestMethod -Uri "$tunnelUrl/api/health" -TimeoutSec 10
-            $healthy = $health.status -eq "ok"
+        if (-not $lastCandidateUrl) {
+            throw "Cloudflare did not return a new Quick Tunnel URL within $TimeoutSeconds seconds."
         }
-        catch {
-            Start-Sleep -Seconds 2
-        }
-    }
-    if (-not $healthy) {
-        & docker compose @composeFiles logs --no-color --tail 80 cloudflared
         throw (
-            "The tunnel URL was created, but it could not connect to Cloudflare. " +
+            "Cloudflare created $lastCandidateUrl, but its public health check did not pass. " +
             "Check whether this network allows outbound TCP or UDP port 7844, " +
             "or switch networks and run this script again."
         )
@@ -130,3 +132,5 @@ try {
 finally {
     Pop-Location
 }
+
+exit 0

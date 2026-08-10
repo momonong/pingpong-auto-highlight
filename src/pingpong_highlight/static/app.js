@@ -152,14 +152,30 @@ async function inspectSession(location, file) {
 }
 
 async function findOrCreateSession(file) {
-  const saved = localStorage.getItem(fingerprint(file));
+  const fileFingerprint = fingerprint(file);
+  const saved = localStorage.getItem(fileFingerprint);
   if (saved) {
     try {
       return await inspectSession(saved, file);
     } catch (error) {
       if (!String(error.message).includes("404")) console.info("Starting a new upload:", error);
-      localStorage.removeItem(fingerprint(file));
+      localStorage.removeItem(fileFingerprint);
     }
+  }
+
+  const response = await apiFetch("/api/uploads");
+  const { uploads } = await response.json();
+  const matches = uploads.filter(
+    (upload) => upload.filename === file.name && upload.size === file.size,
+  );
+  if (matches.length > 1) {
+    throw new Error(`找到 ${matches.length} 筆相同影片的上傳紀錄，請先刪除重複項目`);
+  }
+  if (matches.length === 1) {
+    const location = `/api/uploads/${matches[0].id}`;
+    const session = await inspectSession(location, file);
+    localStorage.setItem(fileFingerprint, location);
+    return session;
   }
   return createSession(file);
 }
@@ -402,6 +418,20 @@ function hasLocalResumeSession(upload) {
   return false;
 }
 
+function forgetLocalResumeSession(uploadId) {
+  const expectedPath = `/api/uploads/${uploadId}`;
+  const matchingKeys = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key?.startsWith("pingpong-upload:")) continue;
+    const saved = localStorage.getItem(key);
+    if (saved && new URL(saved, window.location.origin).pathname === expectedPath) {
+      matchingKeys.push(key);
+    }
+  }
+  for (const key of matchingKeys) localStorage.removeItem(key);
+}
+
 function uploadProgress(upload) {
   const raw = upload.size ? Math.min(100, (upload.offset / upload.size) * 100) : 0;
   const value = upload.offset < upload.size ? Math.min(raw, 99.9) : 100;
@@ -433,7 +463,36 @@ function renderUpload(upload) {
     <p class="job-detail">${details}</p>
     <div class="job-progress-meta"><span>${escapeHtml(transferred)} · ${escapeHtml(uploadUpdatedLabel(upload.updated_at))}</span><b>${progress.label}</b></div>
     <div class="job-progress"><span style="width:${progress.value}%"></span></div>
+    <div class="upload-actions"><button class="delete-upload-button" type="button" data-upload-id="${escapeHtml(upload.id)}" data-filename="${escapeHtml(upload.filename)}" data-transferred="${escapeHtml(transferred)}">刪除這筆上傳</button></div>
   </article>`;
+}
+
+async function deleteUploadSession(button) {
+  const uploadId = button.dataset.uploadId;
+  if (!uploadId) return;
+  const filename = button.dataset.filename || "這支影片";
+  const transferred = button.dataset.transferred || "已上傳的資料";
+  const confirmed = window.confirm(
+    `確定刪除「${filename}」這筆未完成上傳？\n\n電腦上的 ${transferred} 會永久刪除，手機裡的原始影片不受影響。`,
+  );
+  if (!confirmed) return;
+
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "刪除中…";
+  try {
+    await apiFetch(`/api/uploads/${uploadId}`, {
+      method: "DELETE",
+      headers: { "Tus-Resumable": "1.0.0" },
+    });
+    forgetLocalResumeSession(uploadId);
+    lastUploadsSignature = "";
+    await loadActivity();
+  } catch (error) {
+    window.alert(`無法刪除這筆上傳：${error.message}`);
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
 }
 
 function renderJob(job) {
@@ -563,6 +622,10 @@ elements.pauseButton.addEventListener("click", () => {
 elements.jobList.addEventListener("click", (event) => {
   const button = event.target.closest(".share-button");
   if (button) shareOrSave(button);
+});
+elements.uploadList.addEventListener("click", (event) => {
+  const button = event.target.closest(".delete-upload-button");
+  if (button) deleteUploadSession(button);
 });
 elements.refreshButton.addEventListener("click", loadActivity);
 

@@ -20,30 +20,30 @@
 以下是電腦重新開機後的標準流程。Quick Tunnel 不需要 Cloudflare 帳號或網域。
 
 1. 開啟 Docker Desktop，等到左下角顯示 Docker Engine 正在執行。
-2. 開啟 PowerShell，進入專案目錄：
+2. 開啟 Git Bash，進入專案目錄：
 
-   ```powershell
-   Set-Location D:\projects\pingpong-auto-highlight
+   ```bash
+   cd /d/projects/pingpong-auto-highlight
    ```
 
    如果之後移動了專案資料夾，請把路徑換成新的位置。
 
 3. 啟動剪輯服務與手機外網入口：
 
-   ```powershell
-   .\scripts\start-cloudflare-tunnel.ps1
+   ```bash
+   ./scripts/start-cloudflare-tunnel.sh
    ```
 
    腳本預設會把影片解碼與編碼交給 NVIDIA GPU、啟動或更新 Docker 服務、保留仍健康的 tunnel，並只在舊 tunnel 已失效時建立新網址。若電腦暫時沒有可用的 NVIDIA Docker runtime，才改用：
 
-   ```powershell
-   .\scripts\start-cloudflare-tunnel.ps1 -CpuOnly
+   ```bash
+   ./scripts/start-cloudflare-tunnel.sh -CpuOnly
    ```
 
 4. 等終端機顯示 `Cloudflare Quick Tunnel is ready.`，把下一行完整 HTTPS 網址傳到自己的手機並開啟。最新網址也可以隨時從電腦讀取：
 
-   ```powershell
-   Get-Content .\data\remote-access-url.txt
+   ```bash
+   cat ./data/remote-access-url.txt
    ```
 
    完整網址含有私人存取權杖，拿到網址的人就能使用服務，請勿分享或貼在公開場所。
@@ -66,7 +66,7 @@
 
 使用期間請讓電腦保持喚醒，並維持 Docker Desktop 與網路連線。影片仍在上傳時，不要重啟 Docker、`cloudflared` 或電腦；上傳完成後，手機頁面可以關閉，電腦會繼續分析與剪輯。
 
-同一個 Quick Tunnel 網址下，即使頁面重新整理，電腦已收到的分塊也不會遺失；請回到原本持有影片的手機，重新選擇同一支影片便可續傳，其他裝置則可同步查看進度。若 Quick Tunnel 已失效並換成新網址，舊分塊仍保存在 `data`，但瀏覽器的續傳對應不會跟著搬到新網址，目前無法自動接回該次上傳。因此未完成上傳期間應保留同一個 tunnel；若需要跨重啟穩定續傳，應改用固定網址的 Cloudflare named tunnel。
+即使頁面重新整理或 Quick Tunnel 換成新網址，電腦已收到的分塊也不會遺失。請回到持有原始影片的手機，重新選擇同一支影片；只要伺服器上剛好有一筆檔名與大小相同的未完成紀錄，系統就會從保存的 offset 續傳。其他裝置可同步查看進度，但無法代替來源手機提供原始檔案。若同一影片不小心留下多筆紀錄，頁面會先要求刪除重複項目，避免再建立第四筆；「刪除這筆上傳」只會刪除電腦上的未完成分塊，不會影響手機原片。
 
 只關閉手機外網入口、保留本機服務與所有資料：
 
@@ -133,7 +133,13 @@ docker compose down                  # 停止服務；保留 ./data
 
 ## Cloudflare Quick Tunnel 細節
 
-不需要 Cloudflare 帳號或網域。Docker Desktop 啟動後，在專案目錄執行：
+不需要 Cloudflare 帳號或網域。Docker Desktop 啟動後，在專案目錄執行。Git Bash：
+
+```bash
+./scripts/start-cloudflare-tunnel.sh
+```
+
+PowerShell 也可以使用同一套流程：
 
 ```powershell
 .\scripts\start-cloudflare-tunnel.ps1
@@ -141,9 +147,15 @@ docker compose down                  # 停止服務；保留 ./data
 
 腳本會啟動本機服務、保留健康的既有 tunnel、在 tunnel 失效時自動建立新的臨時 HTTPS 網址、確認公開 health check，最後顯示一條可直接在手機開啟、含有存取權杖的專用網址。不要把完整網址轉傳給別人。網址裡的 upload token 放在 `#` 後方，不會隨第一次 HTTP 請求送到 Cloudflare；頁面讀取後也會立刻從網址列移除。
 
-這台電腦與 Docker Desktop 必須保持開啟。Quick Tunnel 是測試用途，沒有固定網址或 uptime SLA；`cloudflared` 容器重建後需重新執行腳本並使用新網址。最新網址也會保存在本機的 `data/remote-access-url.txt`。若之後要固定書籤、跨 tunnel 重啟續傳，再改用 Cloudflare named tunnel。
+這台電腦與 Docker Desktop 必須保持開啟。Quick Tunnel 是測試用途，沒有固定網址或 uptime SLA；`cloudflared` 容器重建後需重新執行腳本並使用新網址。最新網址也會保存在本機的 `data/remote-access-url.txt`。新網址仍可藉由檔名與檔案大小接回唯一一筆未完成上傳；若之後要固定書籤或避免網址變動，再改用 Cloudflare named tunnel。
 
 這台電腦沒有可用的 NVIDIA Docker runtime 時，才改用 CPU 模式：
+
+```bash
+./scripts/start-cloudflare-tunnel.sh -CpuOnly
+```
+
+PowerShell：
 
 ```powershell
 .\scripts\start-cloudflare-tunnel.ps1 -CpuOnly
@@ -169,7 +181,7 @@ pingpong-highlight serve
 
 終端機會顯示手機網址與 QR code。手機和電腦連到同一個區域網路後，用手機開啟網址並選擇影片。上傳採用可續傳分塊；中斷後重新選擇同一檔案即可接續。
 
-上傳百分比以電腦實際保存的分塊為準，同一個受 token 保護的網址可在手機或電腦跨裝置監看。重新整理不會遺失已傳資料，但瀏覽器基於安全限制不會自動恢復手機相簿裡的檔案；請在原來源裝置、同一個網站網址下重新選擇同一支影片，系統會從保存的 offset 繼續。其他裝置能監看，無法代替來源裝置送出它沒有的原始檔案。Quick Tunnel 換網址時的限制見上方「啟動系統」。
+上傳百分比以電腦實際保存的分塊為準，受 token 保護的網址可在手機或電腦跨裝置監看。重新整理不會遺失已傳資料，但瀏覽器基於安全限制不會自動恢復手機相簿裡的檔案；請在原來源裝置重新選擇同一支影片。系統會先使用該瀏覽器保存的工作階段；若網址已改變，則以完全相同的檔名與檔案大小接回伺服器上唯一的未完成紀錄。其他裝置能監看，無法代替來源裝置送出它沒有的原始檔案。
 
 完整操作流程：
 
