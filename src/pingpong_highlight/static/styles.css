@@ -1368,6 +1368,36 @@ h1 em {
   background: rgba(8, 11, 15, 0.78);
 }
 
+.open-annotation-workspace {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 12px;
+  padding: 10px 13px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(139, 216, 255, 0.24);
+  border-radius: 11px;
+  color: var(--sky);
+  background: rgba(139, 216, 255, 0.06);
+}
+
+.open-annotation-workspace span,
+.open-annotation-workspace small {
+  display: block;
+}
+
+.open-annotation-workspace span {
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.open-annotation-workspace small {
+  color: #778790;
+  font-size: 0.59rem;
+}
+
 .annotation-panel > summary {
   display: flex;
   gap: 12px;
@@ -1563,6 +1593,419 @@ h1 em {
   color: #ff9d8e;
 }
 
+body.annotation-workspace-open {
+  overflow: hidden;
+}
+
+.annotation-workspace {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  padding: 18px;
+  background: rgba(4, 6, 9, 0.94);
+  backdrop-filter: blur(18px);
+}
+
+.annotation-workspace-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(100%, 1560px);
+  height: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  background: #0b0f15;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+}
+
+.annotation-workspace-header {
+  display: flex;
+  min-height: 82px;
+  padding: 16px 20px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  background: rgba(17, 23, 31, 0.94);
+}
+
+.annotation-workspace-header h2,
+.annotation-workspace-header p {
+  margin: 0;
+}
+
+.annotation-workspace-header h2 {
+  margin-top: 3px;
+  font-size: 1.15rem;
+}
+
+.annotation-workspace-header p {
+  max-width: 60vw;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #7f8a93;
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.annotation-workspace-header-actions {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  color: #75808a;
+  font-size: 0.62rem;
+}
+
+.annotation-workspace-header-actions button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  cursor: pointer;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 1.35rem;
+}
+
+.annotation-workspace kbd {
+  display: inline-grid;
+  min-width: 24px;
+  min-height: 22px;
+  padding: 2px 6px;
+  place-items: center;
+  border: 1px solid rgba(242, 246, 235, 0.18);
+  border-bottom-color: rgba(242, 246, 235, 0.3);
+  border-radius: 6px;
+  color: #cfd6da;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.07);
+  font-family: ui-monospace, monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.annotation-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(350px, 410px);
+  min-height: 0;
+}
+
+.annotation-workspace-stage {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px;
+  align-items: stretch;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(139, 216, 255, 0.06), transparent 34rem),
+    #070a0e;
+}
+
+.annotation-workspace-stage video {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  outline: 0;
+  object-fit: contain;
+  background: #000;
+}
+
+.annotation-workspace-stage video:focus-visible {
+  border-color: rgba(200, 255, 77, 0.55);
+  box-shadow: 0 0 0 3px rgba(200, 255, 77, 0.11);
+}
+
+.annotation-workspace-transport {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(62px, 1fr)) minmax(110px, 1.4fr) repeat(2, minmax(62px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.annotation-workspace-transport button {
+  min-height: 40px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: #bac3c9;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.annotation-workspace-transport output {
+  display: grid;
+  place-items: center;
+  color: var(--paper);
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.annotation-shortcuts {
+  display: flex;
+  gap: 12px;
+  margin-top: 9px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  color: #68737c;
+  font-size: 0.59rem;
+}
+
+.annotation-shortcuts span {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.annotation-workspace-sidebar {
+  min-height: 0;
+  padding: 15px;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: #10161e;
+}
+
+.annotation-workspace-section {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(8, 11, 15, 0.58);
+}
+
+.annotation-workspace-section + .annotation-workspace-section {
+  margin-top: 11px;
+}
+
+.annotation-workspace-section-heading {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.annotation-workspace-section-heading > span {
+  color: var(--lime);
+  font-family: ui-monospace, monospace;
+  font-size: 0.58rem;
+}
+
+.annotation-workspace-section-heading div,
+.annotation-workspace-section-heading b,
+.annotation-workspace-section-heading small {
+  display: block;
+}
+
+.annotation-workspace-section-heading b {
+  font-size: 0.76rem;
+}
+
+.annotation-workspace-section-heading small {
+  margin-top: 3px;
+  color: #75808a;
+  font-size: 0.59rem;
+  font-weight: 600;
+}
+
+.annotation-workspace-boundaries {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.annotation-workspace-boundaries > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.annotation-workspace-boundaries span,
+.annotation-workspace-meta span {
+  color: #76818a;
+  font-size: 0.57rem;
+  font-weight: 700;
+}
+
+.annotation-workspace-boundaries output {
+  overflow: hidden;
+  color: var(--paper);
+  font-family: ui-monospace, monospace;
+  font-size: 0.77rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.annotation-workspace-boundaries button {
+  min-height: 38px;
+  cursor: pointer;
+  border: 1px solid rgba(200, 255, 77, 0.22);
+  border-radius: 9px;
+  color: var(--lime);
+  background: rgba(200, 255, 77, 0.055);
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.annotation-workspace-meta {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) minmax(0, 1.3fr);
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.annotation-workspace-meta label {
+  display: grid;
+  gap: 5px;
+}
+
+.annotation-workspace-meta input,
+.annotation-workspace-meta select {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--paper);
+  background: #0b1016;
+  font-size: 0.68rem;
+}
+
+.annotation-workspace-save {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 10px;
+  color: #151b0e;
+  background: var(--lime);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.annotation-workspace-save kbd {
+  margin-right: 5px;
+  border-color: rgba(21, 27, 14, 0.24);
+  color: #151b0e;
+  background: rgba(21, 27, 14, 0.08);
+  box-shadow: none;
+}
+
+.annotation-workspace-save:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.annotation-workspace-message {
+  margin: 9px 1px 0;
+  color: var(--lime-soft);
+  font-size: 0.61rem;
+  line-height: 1.5;
+}
+
+.annotation-workspace-message.error,
+.annotation-workspace-list > p.error {
+  color: #ff9d8e;
+}
+
+.annotation-workspace-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.annotation-workspace-list > p {
+  margin: 0;
+  color: #7b868f;
+  font-size: 0.62rem;
+  line-height: 1.55;
+}
+
+.annotation-workspace-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--lime);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.annotation-workspace-item.exclude {
+  border-left-color: var(--coral);
+}
+
+.annotation-workspace-preview {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 7px;
+  min-width: 0;
+  padding: 9px 4px 9px 9px;
+  cursor: pointer;
+  align-items: center;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+}
+
+.annotation-workspace-preview > span {
+  color: var(--lime);
+  font-family: ui-monospace, monospace;
+  font-size: 0.59rem;
+}
+
+.annotation-workspace-preview div,
+.annotation-workspace-preview b,
+.annotation-workspace-preview time,
+.annotation-workspace-preview small {
+  display: block;
+  min-width: 0;
+}
+
+.annotation-workspace-preview b {
+  color: var(--paper);
+  font-size: 0.64rem;
+}
+
+.annotation-workspace-preview time,
+.annotation-workspace-preview small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: #7d8991;
+  font-size: 0.57rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.annotation-workspace-delete {
+  margin: 5px 5px 5px 0;
+  cursor: pointer;
+  border: 0;
+  border-radius: 8px;
+  color: #ff9d8e;
+  background: rgba(255, 96, 71, 0.06);
+  font-size: 0.9rem;
+}
+
+.annotation-workspace-delete:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .notice {
   display: flex;
   gap: 12px;
@@ -1741,7 +2184,36 @@ h1 em {
   }
 }
 
+@media (max-width: 1100px) {
+  .annotation-workspace-grid {
+    grid-template-columns: minmax(0, 1fr) 350px;
+  }
+
+  .annotation-workspace {
+    padding: 10px;
+  }
+}
+
+@media (max-height: 700px) and (min-width: 901px) {
+  .annotation-workspace-header {
+    min-height: 66px;
+    padding-block: 9px;
+  }
+
+  .annotation-workspace-stage {
+    padding: 10px;
+  }
+
+  .annotation-shortcuts {
+    display: none;
+  }
+}
+
 @media (max-width: 900px) {
+  .open-annotation-workspace {
+    display: none;
+  }
+
   .hero {
     grid-template-columns: 1fr;
     min-height: auto;

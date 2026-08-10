@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0d12" />
     <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" />
     <title>RallyCut — 桌球精彩集錦</title>
-    <link rel="stylesheet" href="/static/styles.css?v=1.1.0-20260811" />
+    <link rel="stylesheet" href="/static/styles.css?v=1.2.0" />
   </head>
   <body>
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -175,6 +175,83 @@
       <span>PRIVATE BY DEFAULT · MADE FOR THE NEXT RALLY</span>
     </footer>
 
-    <script src="/static/app.js?v=1.1.0-20260811" defer></script>
+    <section
+      id="annotationWorkspace"
+      class="annotation-workspace"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="annotationWorkspaceTitle"
+      tabindex="-1"
+      hidden
+    >
+      <div class="annotation-workspace-shell">
+        <header class="annotation-workspace-header">
+          <div>
+            <span class="section-kicker">DESKTOP / POINT REVIEW</span>
+            <h2 id="annotationWorkspaceTitle">精彩球標記工作區</h2>
+            <p id="annotationWorkspaceFilename">尚未選擇影片</p>
+          </div>
+          <div class="annotation-workspace-header-actions">
+            <span><kbd>Esc</kbd> 關閉</span>
+            <button id="annotationWorkspaceClose" type="button" aria-label="關閉標記工作區">×</button>
+          </div>
+        </header>
+
+        <div class="annotation-workspace-grid">
+          <section class="annotation-workspace-stage">
+            <video
+              id="annotationWorkspaceVideo"
+              controls
+              playsinline
+              preload="none"
+              tabindex="0"
+              aria-label="桌面標記原始影片播放器"
+            ></video>
+            <div class="annotation-workspace-transport">
+              <button type="button" data-workspace-seek="-5">−5 秒</button>
+              <button type="button" data-workspace-seek="-1">−1 秒</button>
+              <output id="annotationWorkspaceCurrent">0:00.0</output>
+              <button type="button" data-workspace-seek="1">+1 秒</button>
+              <button type="button" data-workspace-seek="5">+5 秒</button>
+            </div>
+            <div class="annotation-shortcuts" aria-label="鍵盤快捷鍵">
+              <span><kbd>Space</kbd> 播放／暫停</span>
+              <span><kbd>←</kbd><kbd>→</kbd> 前後 1 秒</span>
+              <span><kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd> 前後 5 秒</span>
+              <span><kbd>I</kbd> 起點</span>
+              <span><kbd>O</kbd> 終點</span>
+              <span><kbd>Enter</kbd> 儲存</span>
+            </div>
+          </section>
+
+          <aside class="annotation-workspace-sidebar">
+            <section class="annotation-workspace-section">
+              <div class="annotation-workspace-section-heading">
+                <span>01</span><div><b>標出一個回合</b><small>直接用播放器目前時間，不必抄秒數</small></div>
+              </div>
+              <div class="annotation-workspace-boundaries">
+                <div><span>回合起點</span><output id="annotationWorkspaceStart">尚未設定</output><button id="annotationWorkspaceMarkStart" type="button"><kbd>I</kbd> 設為起點</button></div>
+                <div><span>回合終點</span><output id="annotationWorkspaceEnd">尚未設定</output><button id="annotationWorkspaceMarkEnd" type="button"><kbd>O</kbd> 設為終點</button></div>
+              </div>
+              <div class="annotation-workspace-meta">
+                <label><span>這一球</span><select id="annotationWorkspaceLabel"><option value="highlight">值得收錄</option><option value="exclude">不該收錄</option></select></label>
+                <label><span>備註（可不填）</span><input id="annotationWorkspaceNote" type="text" maxlength="300" placeholder="例如：反拉、長回合、關鍵分" /></label>
+              </div>
+              <button id="annotationWorkspaceSave" class="annotation-workspace-save" type="button"><kbd>Enter</kbd> 儲存這一球</button>
+              <p id="annotationWorkspaceMessage" class="annotation-workspace-message" hidden aria-live="polite"></p>
+            </section>
+
+            <section class="annotation-workspace-section annotation-workspace-saved">
+              <div class="annotation-workspace-section-heading">
+                <span>02</span><div><b>已儲存標記</b><small id="annotationWorkspaceCount">0 個回合</small></div>
+              </div>
+              <div id="annotationWorkspaceList" class="annotation-workspace-list" aria-live="polite"><p>開啟影片後讀取標記…</p></div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <script src="/static/app.js?v=1.2.0" defer></script>
   </body>
 </html>

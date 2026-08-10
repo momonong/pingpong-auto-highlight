@@ -85,12 +85,12 @@ Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟�
 
 ### 手動標記精彩球
 
-完成的工作下方有「手動標記精彩球」。展開後才會以 HTTP Range 載入原始影片，因此可以直接拖曳長影片，不必先下載整支檔案：
+完成的工作下方有「手動標記精彩球」。在電腦上展開後，按「在電腦開啟標記工作區」會進入大播放器與右側標記清單；原片到這時才會以 HTTP Range 載入，因此可以直接拖曳長影片，不必先下載整支檔案。手機上仍可使用原本的小型標記表單。
 
-1. 播放或拖曳原片，停在該回合實際開始的位置，按「用目前時間」設定回合起點。
-2. 移到該分結束的位置，設定回合終點。
+1. 播放或拖曳原片，在該回合實際開始的位置按 `I` 設起點。
+2. 到該分結束時按 `O` 設終點，再按 `Enter` 儲存；全程不需要抄寫或輸入時間碼。
 3. 選「值得收錄」；如果它是模型選到但你不喜歡的球，改選「不該收錄」。備註可填反拉、長回合等原因，也可留白。
-4. 按「儲存這一球」。標記會綁定原片與時間碼，存在 `data/state.sqlite3`，重新整理、更新容器或重跑模型都不會消失。
+4. `Space` 控制播放／暫停，方向鍵前後 1 秒，`Shift` 加方向鍵前後 5 秒，`Esc` 關閉工作區。標記會綁定原片與時間碼，存在 `data/state.sqlite3`，重新整理、更新容器或重跑模型都不會消失。
 
 第一輪建議選 2–3 支不同角度、距離或光線的影片，把其中所有你會放進集錦的球標完；另留 1 支完全不參與調整，最後才用來驗證是否真的改善。先累積約 15–30 個「值得收錄」的球就足以開始比較；不必一次標完整個影片裡所有普通球。
 
@@ -161,7 +161,7 @@ docker compose down                  # 停止服務；保留 ./data
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.1.0`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.2.0`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
 新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。取得這份 repository 後，在 Git Bash 執行：
 

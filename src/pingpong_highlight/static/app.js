@@ -24,6 +24,21 @@ const elements = {
   importList: document.querySelector("#importList"),
   uploadList: document.querySelector("#uploadList"),
   jobList: document.querySelector("#jobList"),
+  annotationWorkspace: document.querySelector("#annotationWorkspace"),
+  annotationWorkspaceClose: document.querySelector("#annotationWorkspaceClose"),
+  annotationWorkspaceFilename: document.querySelector("#annotationWorkspaceFilename"),
+  annotationWorkspaceVideo: document.querySelector("#annotationWorkspaceVideo"),
+  annotationWorkspaceCurrent: document.querySelector("#annotationWorkspaceCurrent"),
+  annotationWorkspaceStart: document.querySelector("#annotationWorkspaceStart"),
+  annotationWorkspaceEnd: document.querySelector("#annotationWorkspaceEnd"),
+  annotationWorkspaceMarkStart: document.querySelector("#annotationWorkspaceMarkStart"),
+  annotationWorkspaceMarkEnd: document.querySelector("#annotationWorkspaceMarkEnd"),
+  annotationWorkspaceLabel: document.querySelector("#annotationWorkspaceLabel"),
+  annotationWorkspaceNote: document.querySelector("#annotationWorkspaceNote"),
+  annotationWorkspaceSave: document.querySelector("#annotationWorkspaceSave"),
+  annotationWorkspaceMessage: document.querySelector("#annotationWorkspaceMessage"),
+  annotationWorkspaceCount: document.querySelector("#annotationWorkspaceCount"),
+  annotationWorkspaceList: document.querySelector("#annotationWorkspaceList"),
 };
 
 const searchParams = new URLSearchParams(window.location.search);
@@ -50,6 +65,10 @@ let driveSubmitting = false;
 let lastImportsSignature = "";
 let lastUploadsSignature = "";
 let lastJobsSignature = "";
+let annotationWorkspaceJobId = "";
+let annotationWorkspaceStart = null;
+let annotationWorkspaceEnd = null;
+let annotationWorkspaceReturnFocus = null;
 
 const uploadActiveWindowMs = 60 * 1000;
 
@@ -390,10 +409,11 @@ async function shareOrSave(button) {
   }
 }
 
-function renderAnnotationPanel(jobId) {
+function renderAnnotationPanel(jobId, sourceName) {
   return `<details class="annotation-panel" data-job-id="${escapeHtml(jobId)}" data-source-url="/api/jobs/${escapeHtml(jobId)}/source">
     <summary><span>手動標記精彩球</span><small>原片會在展開後才載入</small></summary>
     <div class="annotation-body">
+      <button class="open-annotation-workspace" type="button" data-job-id="${escapeHtml(jobId)}" data-source-name="${escapeHtml(sourceName || "原始影片")}"><span>在電腦開啟標記工作區</span><small>大播放器與鍵盤快捷鍵</small></button>
       <p class="annotation-help">播放原始影片，把值得收錄的「實際回合」起點與終點記下來；前後留白會由剪輯器另外加入。</p>
       <video class="annotation-video" controls playsinline preload="none" aria-label="原始影片標記播放器"></video>
       <div class="annotation-seek" aria-label="快速移動播放位置">
@@ -424,7 +444,7 @@ function renderResultPanel(result, jobId) {
   const reel = result.files.find((file) => file.kind === "reel");
   const pointFiles = result.files.filter((file) => file.kind === "point" || file.kind === "clip");
   const analysis = result.files.find((file) => file.kind === "analysis");
-  const annotationPanel = renderAnnotationPanel(jobId);
+  const annotationPanel = renderAnnotationPanel(jobId, result.source_name);
   if (!reel) {
     return `<div class="downloads">${result.files
       .map((file) => {
@@ -579,6 +599,187 @@ async function deleteAnnotation(panel, button) {
     await loadAnnotations(panel);
   } catch (error) {
     showAnnotationMessage(panel, error.message, true);
+    button.disabled = false;
+  }
+}
+
+function annotationWorkspaceIsOpen() {
+  return !elements.annotationWorkspace.hidden;
+}
+
+function showAnnotationWorkspaceMessage(message, isError = false) {
+  elements.annotationWorkspaceMessage.textContent = message;
+  elements.annotationWorkspaceMessage.hidden = !message;
+  elements.annotationWorkspaceMessage.classList.toggle("error", isError);
+}
+
+function renderAnnotationWorkspaceBoundaries() {
+  elements.annotationWorkspaceStart.textContent =
+    annotationWorkspaceStart === null ? "尚未設定" : formatTimestamp(annotationWorkspaceStart);
+  elements.annotationWorkspaceEnd.textContent =
+    annotationWorkspaceEnd === null ? "尚未設定" : formatTimestamp(annotationWorkspaceEnd);
+}
+
+function markAnnotationWorkspaceBoundary(boundary) {
+  const current = elements.annotationWorkspaceVideo.currentTime;
+  if (!Number.isFinite(current)) return;
+  const rounded = Math.round(current * 10) / 10;
+  if (boundary === "start") {
+    annotationWorkspaceStart = rounded;
+    if (annotationWorkspaceEnd !== null && annotationWorkspaceEnd <= rounded) {
+      annotationWorkspaceEnd = null;
+    }
+  } else {
+    annotationWorkspaceEnd = rounded;
+    elements.annotationWorkspaceVideo.pause();
+  }
+  renderAnnotationWorkspaceBoundaries();
+  showAnnotationWorkspaceMessage("");
+}
+
+function seekAnnotationWorkspace(seconds) {
+  const video = elements.annotationWorkspaceVideo;
+  const duration = Number.isFinite(video.duration) ? video.duration : Infinity;
+  delete video.dataset.stopAt;
+  video.currentTime = Math.max(0, Math.min(duration, video.currentTime + seconds));
+}
+
+function renderAnnotationWorkspaceList(annotations) {
+  elements.annotationWorkspaceCount.textContent = `${annotations.length} 個回合`;
+  if (!annotations.length) {
+    elements.annotationWorkspaceList.innerHTML =
+      "<p>還沒有標記。播放原片後按 I、O、Enter 就能存下第一球。</p>";
+    return;
+  }
+  elements.annotationWorkspaceList.innerHTML = annotations
+    .map((annotation, index) => {
+      const label = annotation.label === "highlight" ? "值得收錄" : "不該收錄";
+      const note = annotation.note ? `<small>${escapeHtml(annotation.note)}</small>` : "";
+      return `<article class="annotation-workspace-item ${escapeHtml(annotation.label)}">
+        <button class="annotation-workspace-preview" type="button" data-start="${annotation.start}" data-end="${annotation.end}" aria-label="播放第 ${index + 1} 個標記">
+          <span>${String(index + 1).padStart(2, "0")}</span>
+          <div><b>${label}</b><time>${formatTimestamp(annotation.start)}–${formatTimestamp(annotation.end)} · ${Number(annotation.duration).toFixed(1)} 秒</time>${note}</div>
+        </button>
+        <button class="annotation-workspace-delete" type="button" data-annotation-id="${escapeHtml(annotation.id)}" aria-label="刪除第 ${index + 1} 個標記">×</button>
+      </article>`;
+    })
+    .join("");
+}
+
+async function loadAnnotationWorkspaceList() {
+  if (!annotationWorkspaceJobId) return;
+  elements.annotationWorkspaceList.innerHTML = "<p>正在讀取標記…</p>";
+  try {
+    const response = await apiFetch(
+      `/api/jobs/${annotationWorkspaceJobId}/annotations`,
+    );
+    const payload = await response.json();
+    renderAnnotationWorkspaceList(payload.annotations || []);
+  } catch (error) {
+    elements.annotationWorkspaceList.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function openAnnotationWorkspace(button) {
+  annotationWorkspaceJobId = button.dataset.jobId || "";
+  if (!annotationWorkspaceJobId) return;
+  annotationWorkspaceReturnFocus = button;
+  annotationWorkspaceStart = null;
+  annotationWorkspaceEnd = null;
+  renderAnnotationWorkspaceBoundaries();
+  showAnnotationWorkspaceMessage("");
+  elements.annotationWorkspaceFilename.textContent =
+    button.dataset.sourceName || "原始影片";
+  elements.annotationWorkspaceLabel.value = "highlight";
+  elements.annotationWorkspaceNote.value = "";
+  elements.annotationWorkspaceCurrent.textContent = "0:00.0";
+  elements.annotationWorkspace.hidden = false;
+  document.body.classList.add("annotation-workspace-open");
+  for (const video of document.querySelectorAll(".annotation-video")) video.pause();
+  elements.annotationWorkspaceVideo.src = fileAccessUrl(
+    `/api/jobs/${annotationWorkspaceJobId}/source`,
+  );
+  elements.annotationWorkspaceVideo.preload = "metadata";
+  elements.annotationWorkspaceVideo.load();
+  loadAnnotationWorkspaceList();
+  elements.annotationWorkspace.focus({ preventScroll: true });
+}
+
+function closeAnnotationWorkspace() {
+  if (!annotationWorkspaceIsOpen()) return;
+  const returnFocus = annotationWorkspaceReturnFocus;
+  elements.annotationWorkspaceVideo.pause();
+  elements.annotationWorkspaceVideo.removeAttribute("src");
+  elements.annotationWorkspaceVideo.load();
+  elements.annotationWorkspace.hidden = true;
+  document.body.classList.remove("annotation-workspace-open");
+  annotationWorkspaceJobId = "";
+  annotationWorkspaceReturnFocus = null;
+  returnFocus?.focus();
+}
+
+function toggleAnnotationWorkspacePlayback() {
+  const video = elements.annotationWorkspaceVideo;
+  if (video.paused) {
+    video
+      .play()
+      .catch(() => showAnnotationWorkspaceMessage("瀏覽器無法播放這個原片編碼。", true));
+  } else {
+    video.pause();
+  }
+}
+
+async function saveAnnotationWorkspace() {
+  if (elements.annotationWorkspaceSave.disabled) return;
+  if (
+    annotationWorkspaceStart === null ||
+    annotationWorkspaceEnd === null ||
+    annotationWorkspaceEnd <= annotationWorkspaceStart
+  ) {
+    showAnnotationWorkspaceMessage("請先按 I 設起點，再按 O 設終點。", true);
+    return;
+  }
+  const button = elements.annotationWorkspaceSave;
+  const originalHtml = button.innerHTML;
+  button.disabled = true;
+  button.textContent = "儲存中…";
+  try {
+    await apiFetch(`/api/jobs/${annotationWorkspaceJobId}/annotations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        start: annotationWorkspaceStart,
+        end: annotationWorkspaceEnd,
+        label: elements.annotationWorkspaceLabel.value,
+        note: elements.annotationWorkspaceNote.value.trim(),
+      }),
+    });
+    annotationWorkspaceStart = null;
+    annotationWorkspaceEnd = null;
+    elements.annotationWorkspaceNote.value = "";
+    renderAnnotationWorkspaceBoundaries();
+    showAnnotationWorkspaceMessage("已儲存。可以直接繼續播放並標下一球。", false);
+    await loadAnnotationWorkspaceList();
+  } catch (error) {
+    showAnnotationWorkspaceMessage(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.innerHTML = originalHtml;
+  }
+}
+
+async function deleteAnnotationWorkspaceItem(button) {
+  if (!window.confirm("確定要刪除這個人工標記嗎？")) return;
+  button.disabled = true;
+  try {
+    await apiFetch(
+      `/api/jobs/${annotationWorkspaceJobId}/annotations/${button.dataset.annotationId}`,
+      { method: "DELETE" },
+    );
+    showAnnotationWorkspaceMessage("標記已刪除。", false);
+    await loadAnnotationWorkspaceList();
+  } catch (error) {
+    showAnnotationWorkspaceMessage(error.message, true);
     button.disabled = false;
   }
 }
@@ -934,6 +1135,11 @@ elements.jobList.addEventListener("click", (event) => {
     shareOrSave(shareButton);
     return;
   }
+  const workspaceButton = event.target.closest(".open-annotation-workspace");
+  if (workspaceButton) {
+    openAnnotationWorkspace(workspaceButton);
+    return;
+  }
   const panel = event.target.closest(".annotation-panel");
   if (!panel) return;
   const video = panel.querySelector(".annotation-video");
@@ -999,6 +1205,100 @@ elements.jobList.addEventListener(
     panel.querySelector(".annotation-end").max = String(video.duration);
   },
   true,
+);
+elements.annotationWorkspaceClose.addEventListener("click", closeAnnotationWorkspace);
+elements.annotationWorkspaceMarkStart.addEventListener("click", () => {
+  markAnnotationWorkspaceBoundary("start");
+});
+elements.annotationWorkspaceMarkEnd.addEventListener("click", () => {
+  markAnnotationWorkspaceBoundary("end");
+});
+elements.annotationWorkspaceSave.addEventListener("click", saveAnnotationWorkspace);
+elements.annotationWorkspace.addEventListener("click", (event) => {
+  const seekButton = event.target.closest("button[data-workspace-seek]");
+  if (seekButton) {
+    seekAnnotationWorkspace(Number(seekButton.dataset.workspaceSeek));
+    return;
+  }
+  const previewButton = event.target.closest(".annotation-workspace-preview");
+  if (previewButton) {
+    const video = elements.annotationWorkspaceVideo;
+    video.currentTime = Number(previewButton.dataset.start);
+    video.dataset.stopAt = previewButton.dataset.end;
+    video
+      .play()
+      .catch(() => showAnnotationWorkspaceMessage("瀏覽器無法播放這個原片編碼。", true));
+    return;
+  }
+  const deleteButton = event.target.closest(".annotation-workspace-delete");
+  if (deleteButton) deleteAnnotationWorkspaceItem(deleteButton);
+});
+elements.annotationWorkspaceVideo.addEventListener(
+  "pointerup",
+  () => {
+    window.setTimeout(() => {
+      if (annotationWorkspaceIsOpen()) {
+        elements.annotationWorkspace.focus({ preventScroll: true });
+      }
+    }, 0);
+  },
+  { capture: true },
+);
+elements.annotationWorkspaceVideo.addEventListener("timeupdate", () => {
+  const video = elements.annotationWorkspaceVideo;
+  elements.annotationWorkspaceCurrent.textContent = formatTimestamp(video.currentTime);
+  const stopAt = Number(video.dataset.stopAt);
+  if (Number.isFinite(stopAt) && video.currentTime >= stopAt) {
+    video.pause();
+    delete video.dataset.stopAt;
+  }
+});
+elements.annotationWorkspaceVideo.addEventListener("error", () => {
+  showAnnotationWorkspaceMessage("瀏覽器無法播放這個原片編碼。", true);
+});
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (!annotationWorkspaceIsOpen()) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeAnnotationWorkspace();
+      return;
+    }
+    if (event.target.matches("input, select, textarea")) return;
+    if (event.code === "Space") {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleAnnotationWorkspacePlayback();
+      return;
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      event.stopPropagation();
+      const direction = event.key === "ArrowLeft" ? -1 : 1;
+      seekAnnotationWorkspace(direction * (event.shiftKey ? 5 : 1));
+      return;
+    }
+    if (event.code === "KeyI") {
+      event.preventDefault();
+      event.stopPropagation();
+      markAnnotationWorkspaceBoundary("start");
+      return;
+    }
+    if (event.code === "KeyO") {
+      event.preventDefault();
+      event.stopPropagation();
+      markAnnotationWorkspaceBoundary("end");
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.stopPropagation();
+      saveAnnotationWorkspace();
+    }
+  },
+  { capture: true },
 );
 elements.uploadList.addEventListener("click", (event) => {
   const button = event.target.closest(".delete-upload-button");

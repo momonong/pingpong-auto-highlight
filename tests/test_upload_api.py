@@ -309,7 +309,15 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert "frame-ancestors 'none'" in index.headers["content-security-policy"]
         assert 'id="accessForm"' in index.text
         assert 'id="accessValue"' in index.text
+        assert 'id="annotationWorkspace"' in index.text
+        assert 'id="annotationWorkspaceVideo"' in index.text
         assert "處理 session 並沒有消失" in index.text
+
+        app_js = client.get("/static/app.js")
+        assert app_js.status_code == 200
+        assert "openAnnotationWorkspace" in app_js.text
+        assert 'event.code === "KeyI"' in app_js.text
+        assert 'event.code === "KeyO"' in app_js.text
 
         jobs = client.get("/api/jobs", headers={"X-Upload-Token": "test-secret"})
         assert jobs.status_code == 200
