@@ -11,7 +11,7 @@ import qrcode
 import uvicorn
 
 from pingpong_highlight.config import Settings
-from pingpong_highlight.pipeline.media import has_nvenc, probe_media, require_media_tools
+from pingpong_highlight.pipeline.media import has_nvdec, has_nvenc, probe_media, require_media_tools
 from pingpong_highlight.pipeline.processor import HighlightProcessor
 from pingpong_highlight.web import create_app
 
@@ -99,7 +99,8 @@ def _doctor(_args: argparse.Namespace) -> int:
         print(f"媒體工具：失敗（{exc}）")
         return 1
     print("FFmpeg / ffprobe：可用")
-    print(f"NVIDIA NVENC：{'可用' if has_nvenc() else '未偵測到，會使用 CPU'}")
+    print(f"NVIDIA NVDEC：{'可用' if has_nvdec() else '未偵測到，影片解碼會使用 CPU'}")
+    print(f"NVIDIA NVENC：{'可用' if has_nvenc() else '未偵測到，影片編碼會使用 CPU'}")
     return 0
 
 
@@ -134,7 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe.add_argument("video", type=Path)
     probe.set_defaults(handler=_probe)
 
-    doctor = subparsers.add_parser("doctor", help="檢查 FFmpeg 與 GPU 編碼能力")
+    doctor = subparsers.add_parser("doctor", help="檢查 FFmpeg 與 GPU 編解碼能力")
     doctor.set_defaults(handler=_doctor)
     return parser
 

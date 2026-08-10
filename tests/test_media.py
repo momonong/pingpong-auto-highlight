@@ -6,14 +6,60 @@ from pathlib import Path
 
 import pytest
 
+import pingpong_highlight.pipeline.media as media_module
 from pingpong_highlight.pipeline.media import (
+    _clip_command,
     _point_reel_command,
     _social_reel_command,
+    _video_decoder_command,
     build_point_reel,
     build_social_reel,
     export_clip,
     probe_media,
 )
+
+
+def test_gpu_commands_request_cuda_before_video_input(tmp_path: Path) -> None:
+    source = tmp_path / "source.mp4"
+    destination = tmp_path / "clip.mp4"
+
+    decoder = _video_decoder_command(source, 8.0, 320, use_nvdec=True)
+    clip = _clip_command(
+        source,
+        destination,
+        1.0,
+        2.0,
+        encoder="h264_nvenc",
+        use_nvdec=True,
+    )
+
+    assert decoder[decoder.index("-hwaccel") + 1] == "cuda"
+    assert decoder.index("-hwaccel") < decoder.index("-i")
+    assert clip[clip.index("-hwaccel") + 1] == "cuda"
+    assert clip.index("-hwaccel") < clip.index("-i")
+    assert "h264_nvenc" in clip
+
+
+def test_nvenc_detection_requires_a_successful_runtime_encode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def failed_runtime_probe(command: list[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 1, stdout="h264_nvenc", stderr="missing driver")
+
+    media_module.has_nvenc.cache_clear()
+    monkeypatch.setattr(media_module.shutil, "which", lambda _name: "nvidia-smi")
+    monkeypatch.setattr(media_module, "_run", failed_runtime_probe)
+    try:
+        assert not media_module.has_nvenc()
+    finally:
+        media_module.has_nvenc.cache_clear()
+
+    assert calls
+    assert "-frames:v" in calls[0]
+    assert "h264_nvenc" in calls[0]
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required")
