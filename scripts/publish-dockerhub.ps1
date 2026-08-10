@@ -32,7 +32,10 @@ function Invoke-NativeSilently {
 function Get-ProjectVersion {
     $pyprojectPath = Join-Path $repoRoot "pyproject.toml"
     $pyproject = Get-Content -Raw -LiteralPath $pyprojectPath
-    $versionMatch = [regex]::Match($pyproject, '(?m)^version = "(?<version>[0-9]+\.[0-9]+\.[0-9]+)"$')
+    $versionMatch = [regex]::Match(
+        $pyproject,
+        '(?m)^version[ \t]*=[ \t]*"(?<version>[0-9]+\.[0-9]+\.[0-9]+)"[ \t]*\r?$'
+    )
     if (-not $versionMatch.Success) {
         throw "Could not read a semantic project version from $pyprojectPath."
     }
