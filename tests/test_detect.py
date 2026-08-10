@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pingpong_highlight.pipeline.detect import detect_points
+from pingpong_highlight.pipeline.detect import DetectionConfig, detect_points
 from pingpong_highlight.pipeline.models import (
     AudioFeatures,
     ImpactEvent,
@@ -21,8 +21,12 @@ def test_audio_events_form_ranked_padded_point() -> None:
 
     assert len(detection.candidates) == 1
     assert len(detection.points) == 1
-    assert detection.points[0].start == 3.8
-    assert detection.points[0].end == 7.8
+    assert detection.points[0].start == 3.5
+    assert detection.points[0].end == 8.3
+    assert detection.points[0].rally_start == 5.0
+    assert detection.points[0].rally_end == 6.8
+    assert detection.points[0].to_dict()["pre_context_seconds"] == 1.5
+    assert detection.points[0].to_dict()["post_context_seconds"] == 1.5
     assert detection.points[0].impact_count == 5
     assert detection.points[0].rank == 1
 
@@ -73,3 +77,26 @@ def test_motion_only_fallback_works_without_audio() -> None:
     assert len(detection.points) == 1
     assert detection.points[0].impact_count == 0
     assert "audio fallback" in detection.points[0].reason
+
+
+def test_reel_budget_counts_padded_clip_duration() -> None:
+    events = [
+        *[ImpactEvent(time=time, strength=1.0) for time in (3.0, 3.4, 3.8)],
+        *[ImpactEvent(time=time, strength=0.9) for time in (12.0, 12.4, 12.8)],
+    ]
+    detection = detect_points(
+        20.0,
+        AudioFeatures(np.empty(0), np.empty(0), events),
+        MotionFeatures.empty(),
+        DetectionConfig(
+            max_points=2,
+            target_reel_duration=5.0,
+            minimum_points_before_budget=1,
+            pre_roll=1.5,
+            post_roll=1.5,
+        ),
+    )
+
+    assert len(detection.candidates) == 2
+    assert len(detection.points) == 1
+    assert detection.points[0].duration == 3.8

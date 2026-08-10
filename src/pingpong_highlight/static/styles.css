@@ -1360,6 +1360,209 @@ h1 em {
   cursor: pointer;
 }
 
+.annotation-panel {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(200, 255, 77, 0.2);
+  border-radius: 15px;
+  background: rgba(8, 11, 15, 0.78);
+}
+
+.annotation-panel > summary {
+  display: flex;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 14px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--lime);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.annotation-panel > summary small {
+  color: #75808a;
+  font-size: 0.59rem;
+  font-weight: 600;
+}
+
+.annotation-body {
+  padding: 0 12px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.annotation-help {
+  margin: 12px 1px;
+  color: #89949d;
+  font-size: 0.65rem;
+  line-height: 1.6;
+}
+
+.annotation-video {
+  display: block;
+  width: 100%;
+  max-height: min(58vh, 520px);
+  border-radius: 10px;
+  background: #000;
+}
+
+.annotation-seek {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(48px, 1fr)) minmax(70px, 1.4fr) repeat(2, minmax(48px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.annotation-seek button,
+.annotation-boundaries button,
+.annotation-item-actions button {
+  min-height: 36px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: #bbc4ca;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.65rem;
+  font-weight: 750;
+}
+
+.annotation-current {
+  color: var(--paper);
+  font-family: ui-monospace, monospace;
+  font-size: 0.73rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.annotation-boundaries {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: 7px;
+  margin-top: 10px;
+  align-items: end;
+}
+
+.annotation-meta {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.6fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.annotation-boundaries label,
+.annotation-meta label {
+  display: grid;
+  gap: 5px;
+  color: #7e8992;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.annotation-boundaries input,
+.annotation-meta input,
+.annotation-meta select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--paper);
+  background: #0c1015;
+  font-size: 0.7rem;
+}
+
+.annotation-save {
+  width: 100%;
+  min-height: 43px;
+  margin-top: 10px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 10px;
+  color: #151b0e;
+  background: var(--lime);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.annotation-save:disabled,
+.annotation-item-actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.annotation-message,
+.annotation-list > p {
+  margin: 9px 2px 0;
+  color: #8d989f;
+  font-size: 0.63rem;
+  line-height: 1.5;
+}
+
+.annotation-message.error,
+.annotation-list > p.error {
+  color: #ff9d8e;
+}
+
+.annotation-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.annotation-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--lime);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.annotation-item.exclude {
+  border-left-color: var(--coral);
+}
+
+.annotation-item > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.annotation-item b {
+  color: var(--paper);
+  font-size: 0.67rem;
+}
+
+.annotation-item span,
+.annotation-item small {
+  overflow: hidden;
+  color: #7e8992;
+  font-size: 0.6rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.annotation-item-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 5px;
+}
+
+.annotation-item-actions button {
+  min-height: 32px;
+  padding: 0 9px;
+}
+
+.annotation-item-actions .annotation-delete {
+  color: #ff9d8e;
+}
+
 .notice {
   display: flex;
   gap: 12px;
@@ -1675,6 +1878,37 @@ h1 em {
   .result-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .annotation-panel > summary small {
+    display: none;
+  }
+
+  .annotation-boundaries {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .annotation-seek {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .annotation-current {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    padding: 3px 0;
+  }
+
+  .annotation-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .annotation-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .annotation-item-actions button {
+    flex: 1;
   }
 
   .footer {

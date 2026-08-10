@@ -21,8 +21,8 @@ class DetectionConfig:
     maximum_impact_gap: float = 1.45
     minimum_point_span: float = 0.5
     maximum_point_span: float = 18.0
-    pre_roll: float = 1.2
-    post_roll: float = 1.0
+    pre_roll: float = 1.5
+    post_roll: float = 1.5
     max_points: int = 6
     target_reel_duration: float = 55.0
     transition_duration: float = 0.35
@@ -173,6 +173,8 @@ def _pad_candidates(
                 impact_count=candidate.impact_count,
                 motion_score=round(candidate.motion_score, 3),
                 reason=candidate.reason,
+                rally_start=round(candidate.start, 3),
+                rally_end=round(candidate.end, 3),
             )
         )
     return points

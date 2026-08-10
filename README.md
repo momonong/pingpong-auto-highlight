@@ -7,7 +7,7 @@
 ## 成品形式
 
 - 預設選出最多 6 個精彩得分，而不是輸出一段長時間區間。
-- 每一分保留發球前與得分後的短暫脈絡。
+- 每一分預設在實際回合前後各保留 1.5 秒脈絡。
 - 集錦預設控制在約 55 秒內。
 - 預設保留原片的寬高比例、方向與畫面內容。
 - 相鄰得分以 0.35 秒 cross-dissolve 連接；最後一分不做 fade-out。
@@ -83,6 +83,17 @@
 
 Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟時，會保留已下載部分並在下次啟動續傳；失敗項目也可以直接在頁面重試或刪除。Google 仍可能因下載次數、擁有者禁止下載或組織政策拒絕公開下載，這時頁面會保留進度並顯示權限提示。
 
+### 手動標記精彩球
+
+完成的工作下方有「手動標記精彩球」。展開後才會以 HTTP Range 載入原始影片，因此可以直接拖曳長影片，不必先下載整支檔案：
+
+1. 播放或拖曳原片，停在該回合實際開始的位置，按「用目前時間」設定回合起點。
+2. 移到該分結束的位置，設定回合終點。
+3. 選「值得收錄」；如果它是模型選到但你不喜歡的球，改選「不該收錄」。備註可填反拉、長回合等原因，也可留白。
+4. 按「儲存這一球」。標記會綁定原片與時間碼，存在 `data/state.sqlite3`，重新整理、更新容器或重跑模型都不會消失。
+
+第一輪建議選 2–3 支不同角度、距離或光線的影片，把其中所有你會放進集錦的球標完；另留 1 支完全不參與調整，最後才用來驗證是否真的改善。先累積約 15–30 個「值得收錄」的球就足以開始比較；不必一次標完整個影片裡所有普通球。
+
 即使頁面重新整理或公開網址改變，電腦已收到的分塊也不會遺失。請回到持有原始影片的手機，重新選擇同一支影片；只要伺服器上剛好有一筆檔名與大小相同的未完成紀錄，系統就會從保存的 offset 續傳。其他裝置可同步查看進度，但無法代替來源手機提供原始檔案。若同一影片不小心留下多筆紀錄，頁面會先要求刪除重複項目，避免再建立第四筆；「刪除這筆上傳」只會刪除電腦上的未完成分塊，不會影響手機原片。
 
 只關閉手機外網入口、保留本機服務與所有資料：
@@ -150,7 +161,7 @@ docker compose down                  # 停止服務；保留 ./data
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.0.0`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.1.0`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
 新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。取得這份 repository 後，在 Git Bash 執行：
 
@@ -320,6 +331,8 @@ flowchart LR
 | `PINGPONG_MAX_POINTS` | 6 | 集錦最多收錄幾分 |
 | `PINGPONG_REEL_TARGET_SECONDS` | 55 | 集錦目標長度 |
 | `PINGPONG_REEL_TRANSITION_SECONDS` | 0.35 | 得分間 dissolve 長度 |
+| `PINGPONG_CLIP_PRE_ROLL_SECONDS` | 1.5 | 每球在實際回合前保留的秒數 |
+| `PINGPONG_CLIP_POST_ROLL_SECONDS` | 1.5 | 每球在實際回合後保留的秒數 |
 
 舊的 `PINGPONG_MAX_HIGHLIGHTS` 仍可作為 `PINGPONG_MAX_POINTS` 的備援值。
 

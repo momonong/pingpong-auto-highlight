@@ -58,6 +58,18 @@ class DriveImportRecord:
     updated_at: str
 
 
+@dataclass(frozen=True, slots=True)
+class AnnotationRecord:
+    id: str
+    upload_id: str
+    label: str
+    start: float
+    end: float
+    note: str
+    created_at: str
+    updated_at: str
+
+
 class StateConflict(RuntimeError):
     pass
 
@@ -124,9 +136,22 @@ class Database:
                     updated_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS annotations (
+                    id TEXT PRIMARY KEY,
+                    upload_id TEXT NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
+                    label TEXT NOT NULL CHECK (label IN ('highlight', 'exclude')),
+                    start REAL NOT NULL CHECK (start >= 0),
+                    end REAL NOT NULL CHECK (end > start),
+                    note TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS jobs_status_idx ON jobs(status, created_at);
                 CREATE INDEX IF NOT EXISTS drive_imports_status_idx
                     ON drive_imports(status, created_at);
+                CREATE INDEX IF NOT EXISTS annotations_upload_time_idx
+                    ON annotations(upload_id, start, created_at);
                 """
             )
 
@@ -177,6 +202,21 @@ class Database:
             status=row["status"],
             error=row["error"],
             upload_id=row["upload_id"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    @staticmethod
+    def _annotation(row: sqlite3.Row | None) -> AnnotationRecord | None:
+        if row is None:
+            return None
+        return AnnotationRecord(
+            id=row["id"],
+            upload_id=row["upload_id"],
+            label=row["label"],
+            start=float(row["start"]),
+            end=float(row["end"]),
+            note=row["note"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -507,6 +547,53 @@ class Database:
                 "SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?", (limit,)
             ).fetchall()
         return [record for row in rows if (record := self._job(row)) is not None]
+
+    def create_annotation(
+        self,
+        upload_id: str,
+        *,
+        label: str,
+        start: float,
+        end: float,
+        note: str = "",
+    ) -> AnnotationRecord:
+        annotation_id = uuid.uuid4().hex
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO annotations
+                    (id, upload_id, label, start, end, note, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (annotation_id, upload_id, label, start, end, note, timestamp, timestamp),
+            )
+            row = connection.execute(
+                "SELECT * FROM annotations WHERE id = ?", (annotation_id,)
+            ).fetchone()
+        annotation = self._annotation(row)
+        assert annotation is not None
+        return annotation
+
+    def list_annotations(self, upload_id: str) -> list[AnnotationRecord]:
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM annotations
+                WHERE upload_id = ?
+                ORDER BY start, created_at
+                """,
+                (upload_id,),
+            ).fetchall()
+        return [record for row in rows if (record := self._annotation(row)) is not None]
+
+    def delete_annotation(self, upload_id: str, annotation_id: str) -> bool:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM annotations WHERE id = ? AND upload_id = ?",
+                (annotation_id, upload_id),
+            )
+        return cursor.rowcount == 1
 
     def list_queued_jobs(self) -> list[JobRecord]:
         with self._lock, self._connect() as connection:

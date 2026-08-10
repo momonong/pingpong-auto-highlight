@@ -62,6 +62,8 @@ class HighlightProcessor:
                 max_points=self.settings.max_points,
                 target_reel_duration=self.settings.reel_target_seconds,
                 transition_duration=self.settings.reel_transition_seconds,
+                pre_roll=self.settings.clip_pre_roll_seconds,
+                post_roll=self.settings.clip_post_roll_seconds,
             ),
         )
         points = detection.points
@@ -99,7 +101,7 @@ class HighlightProcessor:
                 reel_duration = reel_media.duration
 
         result: dict[str, Any] = {
-            "algorithm_version": "point-reel-v2",
+            "algorithm_version": "point-reel-v3",
             "source_name": source_name,
             "media": media.to_dict() | {"path": source_name},
             "summary": {
@@ -118,6 +120,9 @@ class HighlightProcessor:
                 "fps": round(reel_media.fps, 3) if reel_media is not None else round(media.fps, 3),
                 "transition": "cross-dissolve",
                 "transition_seconds": self.settings.reel_transition_seconds,
+                "clip_pre_roll_seconds": self.settings.clip_pre_roll_seconds,
+                "clip_post_roll_seconds": self.settings.clip_post_roll_seconds,
+                "target_reel_seconds": self.settings.reel_target_seconds,
                 "final_point_fades_out": False,
             },
             "points": [point.to_dict() for point in points],

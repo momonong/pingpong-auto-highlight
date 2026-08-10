@@ -63,13 +63,26 @@ class Point:
     motion_score: float
     rank: int = 0
     reason: str = ""
+    rally_start: float | None = None
+    rally_end: float | None = None
 
     @property
     def duration(self) -> float:
         return self.end - self.start
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self) | {"duration": round(self.duration, 3)}
+        rally_start = self.start if self.rally_start is None else self.rally_start
+        rally_end = self.end if self.rally_end is None else self.rally_end
+        return asdict(self) | {
+            "clip_start": self.start,
+            "clip_end": self.end,
+            "rally_start": rally_start,
+            "rally_end": rally_end,
+            "duration": round(self.duration, 3),
+            "rally_duration": round(rally_end - rally_start, 3),
+            "pre_context_seconds": round(rally_start - self.start, 3),
+            "post_context_seconds": round(self.end - rally_end, 3),
+        }
 
 
 @dataclass(slots=True)
