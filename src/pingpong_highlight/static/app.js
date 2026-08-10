@@ -17,12 +17,18 @@ const elements = {
   jobList: document.querySelector("#jobList"),
 };
 
-const queryToken = new URLSearchParams(window.location.search).get("token");
-if (queryToken) {
-  localStorage.setItem("pingpong-upload-token", queryToken);
-  history.replaceState({}, "", window.location.pathname);
+const searchParams = new URLSearchParams(window.location.search);
+const queryToken = searchParams.get("token");
+const fragmentParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+const fragmentToken = fragmentParams.get("token");
+const urlToken = fragmentToken || queryToken;
+if (urlToken) {
+  localStorage.setItem("pingpong-upload-token", urlToken);
+  searchParams.delete("token");
+  const cleanSearch = searchParams.toString();
+  history.replaceState({}, "", `${window.location.pathname}${cleanSearch ? `?${cleanSearch}` : ""}`);
 }
-const token = queryToken || localStorage.getItem("pingpong-upload-token") || "";
+const token = urlToken || localStorage.getItem("pingpong-upload-token") || "";
 
 let selectedFile = null;
 let chunkSize = 8 * 1024 * 1024;

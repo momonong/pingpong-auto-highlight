@@ -141,6 +141,7 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         )
         assert preview.status_code == 200
         assert preview.headers["content-type"] == "video/mp4"
+        assert preview.headers["cache-control"] == "private, no-store"
         assert "content-disposition" not in preview.headers
 
         attachment = client.get(
@@ -155,3 +156,18 @@ def test_api_rejects_missing_token(tmp_path: Path) -> None:
     app = create_app(_settings(tmp_path), processor=FakeProcessor(b"x"))
     with TestClient(app) as client:
         assert client.get("/api/jobs").status_code == 401
+
+
+def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> None:
+    app = create_app(_settings(tmp_path), processor=FakeProcessor(b"x"))
+    with TestClient(app) as client:
+        index = client.get("/")
+        assert index.status_code == 200
+        assert index.headers["referrer-policy"] == "no-referrer"
+        assert index.headers["x-content-type-options"] == "nosniff"
+        assert index.headers["x-frame-options"] == "DENY"
+        assert "frame-ancestors 'none'" in index.headers["content-security-policy"]
+
+        jobs = client.get("/api/jobs", headers={"X-Upload-Token": "test-secret"})
+        assert jobs.status_code == 200
+        assert jobs.headers["cache-control"] == "private, no-store"

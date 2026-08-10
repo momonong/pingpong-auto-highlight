@@ -2,7 +2,7 @@
 
 把一段完整桌球錄影，自動剪成「以得分為單位」的精彩集錦。
 
-手機只負責錄影與上傳；電腦在本地完成影片解碼、逐分切點、精彩度排序與 Reel 剪接。原片不會送到雲端。
+手機只負責錄影與上傳；電腦在本地完成影片解碼、逐分切點、精彩度排序與 Reel 剪接。原片與成品只持久儲存在這台電腦；使用 Cloudflare Tunnel 從外網上傳時，傳輸流量會經過 Cloudflare。
 
 ## 成品形式
 
@@ -51,6 +51,30 @@ docker compose down                  # 停止服務；保留 ./data
 
 若希望登入 Windows 後一直可用，請同時開啟 Docker Desktop 的「Start Docker Desktop when you sign in」。
 
+## 手機從外網使用（Cloudflare Quick Tunnel）
+
+不需要 Cloudflare 帳號或網域。Docker Desktop 啟動後，在專案目錄執行：
+
+```powershell
+.\scripts\start-cloudflare-tunnel.ps1
+```
+
+腳本會啟動本機服務、建立臨時 HTTPS tunnel、確認公開 health check，最後顯示一條可直接在手機開啟、含有存取權杖的專用網址。不要把完整網址轉傳給別人。網址裡的 upload token 放在 `#` 後方，不會隨第一次 HTTP 請求送到 Cloudflare；頁面讀取後也會立刻從網址列移除。
+
+這台電腦與 Docker Desktop 必須保持開啟。Quick Tunnel 是測試用途，沒有固定網址或 uptime SLA；`cloudflared` 容器重建後需重新執行腳本並使用新網址。最新網址也會保存在本機的 `data/remote-access-url.txt`。若之後要固定書籤、跨 tunnel 重啟續傳，再改用 Cloudflare named tunnel。
+
+這台電腦沒有可用的 NVIDIA Docker runtime 時，改用 CPU 模式：
+
+```powershell
+.\scripts\start-cloudflare-tunnel.ps1 -CpuOnly
+```
+
+只停止外網入口、保留本機剪輯服務與資料：
+
+```powershell
+docker compose -f compose.yaml -f compose.gpu.yaml -f compose.cloudflare.yaml stop cloudflared
+```
+
 ## 本機 Python 開發
 
 需要 Python 3.11 以上、`ffmpeg` 與 `ffprobe`。
@@ -73,7 +97,7 @@ pingpong-highlight serve
 4. 回到同一網址即可直接預覽成品。
 5. 使用「下載 MP4」，或在支援 Web Share 的手機使用「分享／存到相簿」。
 
-成品也會保留在電腦的 `data/outputs/<job-id>/`。目前採用同 Wi‑Fi 的 local-first 傳輸，不需要雲端帳號、訂閱或額外上傳一次。
+成品也會保留在電腦的 `data/outputs/<job-id>/`。LAN 模式不需要雲端帳號或訂閱；Quick Tunnel 模式的傳輸會經過 Cloudflare，但分析、剪輯與持久儲存仍只在這台電腦進行。
 
 也可以直接分析電腦上的影片：
 

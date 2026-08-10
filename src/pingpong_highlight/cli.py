@@ -41,7 +41,7 @@ def _service_url(settings: Settings, address: str) -> str:
     base_url = settings.public_url.rstrip("/") if settings.public_url else (
         f"http://{address}:{settings.port}"
     )
-    return f"{base_url}/?token={quote(settings.upload_token)}"
+    return f"{base_url}/#token={quote(settings.upload_token)}"
 
 
 def _serve(args: argparse.Namespace) -> int:

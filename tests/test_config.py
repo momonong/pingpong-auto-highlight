@@ -12,7 +12,7 @@ def test_public_url_overrides_container_address(tmp_path: Path) -> None:
     )
 
     assert _service_url(settings, "172.18.0.2") == (
-        "http://192.168.1.19:9000/?token=phone%20token"
+        "http://192.168.1.19:9000/#token=phone%20token"
     )
 
 
