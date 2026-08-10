@@ -12,8 +12,8 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $composeFiles = @(
     "-f", (Join-Path $repoRoot "compose.yaml")
 )
-if (-not $CpuOnly) {
-    $composeFiles += @("-f", (Join-Path $repoRoot "compose.gpu.yaml"))
+if ($CpuOnly) {
+    $composeFiles += @("-f", (Join-Path $repoRoot "compose.cpu.yaml"))
 }
 $composeFiles += @("-f", (Join-Path $repoRoot "compose.cloudflare.yaml"))
 
@@ -49,6 +49,12 @@ Push-Location $repoRoot
 try {
     & docker compose @composeFiles up -d --build
     if ($LASTEXITCODE -ne 0) {
+        if (-not $CpuOnly) {
+            throw (
+                "Docker Compose could not start the GPU highlight service. " +
+                "Confirm NVIDIA Container Toolkit is available, or run this script with -CpuOnly."
+            )
+        }
         throw "Docker Compose could not start the highlight service."
     }
 

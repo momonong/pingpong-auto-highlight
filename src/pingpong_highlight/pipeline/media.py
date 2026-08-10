@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import json
 import os
 import shutil
@@ -145,18 +146,23 @@ def open_audio_decoder(path: Path, sample_rate: int) -> subprocess.Popen[bytes]:
     )
 
 
-def open_video_decoder(path: Path, fps: float, frame_size: int) -> subprocess.Popen[bytes]:
+def _video_decoder_command(
+    path: Path,
+    fps: float,
+    frame_size: int,
+    *,
+    use_nvdec: bool,
+) -> list[str]:
     filter_graph = (
         f"fps={fps},"
         f"scale={frame_size}:{frame_size}:force_original_aspect_ratio=decrease,"
         f"pad={frame_size}:{frame_size}:(ow-iw)/2:(oh-ih)/2:color=black,format=gray"
     )
-    return _popen_stdout(
+    command = ["ffmpeg", "-hide_banner", "-loglevel", "error"]
+    if use_nvdec:
+        command.extend(["-hwaccel", "cuda"])
+    command.extend(
         [
-            "ffmpeg",
-            "-hide_banner",
-            "-loglevel",
-            "error",
             "-i",
             str(path),
             "-map",
@@ -172,6 +178,19 @@ def open_video_decoder(path: Path, fps: float, frame_size: int) -> subprocess.Po
             "rawvideo",
             "pipe:1",
         ]
+    )
+    return command
+
+
+def open_video_decoder(
+    path: Path,
+    fps: float,
+    frame_size: int,
+    *,
+    use_nvdec: bool = False,
+) -> subprocess.Popen[bytes]:
+    return _popen_stdout(
+        _video_decoder_command(path, fps, frame_size, use_nvdec=use_nvdec)
     )
 
 
@@ -205,8 +224,49 @@ def read_exact(stream: BinaryIO, size: int) -> bytes:
 def has_nvenc() -> bool:
     if shutil.which("nvidia-smi") is None:
         return False
-    result = _run(["ffmpeg", "-hide_banner", "-encoders"])
-    return result.returncode == 0 and "h264_nvenc" in result.stdout
+    result = _run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=320x320:d=0.04",
+            "-frames:v",
+            "1",
+            "-an",
+            "-c:v",
+            "h264_nvenc",
+            "-f",
+            "null",
+            "-",
+        ]
+    )
+    return result.returncode == 0
+
+
+def _nvidia_library_available(names: tuple[str, ...]) -> bool:
+    for name in names:
+        try:
+            ctypes.CDLL(name)
+        except OSError:
+            continue
+        return True
+    return False
+
+
+@lru_cache(maxsize=1)
+def has_nvdec() -> bool:
+    if shutil.which("nvidia-smi") is None:
+        return False
+    library_names = ("nvcuvid.dll",) if os.name == "nt" else ("libnvcuvid.so.1",)
+    if not _nvidia_library_available(library_names):
+        return False
+    result = _run(["ffmpeg", "-hide_banner", "-hwaccels"])
+    accelerators = {line.strip().lower() for line in result.stdout.splitlines()}
+    return result.returncode == 0 and "cuda" in accelerators
 
 
 def _clip_command(
@@ -216,6 +276,7 @@ def _clip_command(
     end: float,
     *,
     encoder: str,
+    use_nvdec: bool = False,
 ) -> list[str]:
     command = [
         "ffmpeg",
@@ -223,21 +284,27 @@ def _clip_command(
         "-loglevel",
         "error",
         "-y",
-        "-ss",
-        f"{start:.6f}",
-        "-i",
-        str(source),
-        "-t",
-        f"{end - start:.6f}",
-        "-map",
-        "0:v:0",
-        "-map",
-        "0:a:0?",
-        "-sn",
-        "-dn",
-        "-vf",
-        "format=yuv420p",
     ]
+    if use_nvdec:
+        command.extend(["-hwaccel", "cuda"])
+    command.extend(
+        [
+            "-ss",
+            f"{start:.6f}",
+            "-i",
+            str(source),
+            "-t",
+            f"{end - start:.6f}",
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0?",
+            "-sn",
+            "-dn",
+            "-vf",
+            "format=yuv420p",
+        ]
+    )
     if encoder == "h264_nvenc":
         command.extend(["-c:v", encoder, "-preset", "p5", "-cq", "21", "-b:v", "0"])
     else:
@@ -261,9 +328,19 @@ def _clip_command(
 def export_clip(source: Path, destination: Path, start: float, end: float) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     encoders = ["h264_nvenc", "libx264"] if has_nvenc() else ["libx264"]
+    nvdec_available = has_nvdec()
     errors: list[str] = []
     for encoder in encoders:
-        result = _run(_clip_command(source, destination, start, end, encoder=encoder))
+        result = _run(
+            _clip_command(
+                source,
+                destination,
+                start,
+                end,
+                encoder=encoder,
+                use_nvdec=encoder == "h264_nvenc" and nvdec_available,
+            )
+        )
         if result.returncode == 0:
             return
         destination.unlink(missing_ok=True)
@@ -315,9 +392,12 @@ def _point_reel_command(
     fps: float,
     with_audio: bool,
     encoder: str,
+    use_nvdec: bool = False,
 ) -> list[str]:
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
     for clip in clips:
+        if use_nvdec:
+            command.extend(["-hwaccel", "cuda"])
         command.extend(["-i", str(clip)])
 
     filters: list[str] = []
@@ -409,6 +489,7 @@ def build_point_reel(
     with_audio = all(item.has_audio for item in media)
     destination.parent.mkdir(parents=True, exist_ok=True)
     encoders = ["h264_nvenc", "libx264"] if has_nvenc() else ["libx264"]
+    nvdec_available = has_nvdec()
     errors: list[str] = []
     for encoder in encoders:
         command = _point_reel_command(
@@ -421,6 +502,7 @@ def build_point_reel(
             fps=fps,
             with_audio=with_audio,
             encoder=encoder,
+            use_nvdec=encoder == "h264_nvenc" and nvdec_available,
         )
         result = _run(command)
         if result.returncode == 0:
@@ -441,9 +523,12 @@ def _social_reel_command(
     fps: int,
     with_audio: bool,
     encoder: str,
+    use_nvdec: bool = False,
 ) -> list[str]:
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
     for clip in clips:
+        if use_nvdec:
+            command.extend(["-hwaccel", "cuda"])
         command.extend(["-i", str(clip)])
 
     filters: list[str] = []
@@ -557,6 +642,7 @@ def build_social_reel(
     with_audio = all(item.has_audio for item in media)
     destination.parent.mkdir(parents=True, exist_ok=True)
     encoders = ["h264_nvenc", "libx264"] if has_nvenc() else ["libx264"]
+    nvdec_available = has_nvdec()
     errors: list[str] = []
     for encoder in encoders:
         command = _social_reel_command(
@@ -569,6 +655,7 @@ def build_social_reel(
             fps=fps,
             with_audio=with_audio,
             encoder=encoder,
+            use_nvdec=encoder == "h264_nvenc" and nvdec_available,
         )
         result = _run(command)
         if result.returncode == 0:

@@ -34,7 +34,7 @@
    .\scripts\start-cloudflare-tunnel.ps1
    ```
 
-   腳本會啟動或更新 Docker 服務、保留仍健康的 tunnel，並只在舊 tunnel 已失效時建立新網址。若電腦沒有可用的 NVIDIA Docker runtime，請改用：
+   腳本預設會把影片解碼與編碼交給 NVIDIA GPU、啟動或更新 Docker 服務、保留仍健康的 tunnel，並只在舊 tunnel 已失效時建立新網址。若電腦暫時沒有可用的 NVIDIA Docker runtime，才改用：
 
    ```powershell
    .\scripts\start-cloudflare-tunnel.ps1 -CpuOnly
@@ -51,10 +51,18 @@
 5. 想確認系統是否正常，可執行：
 
    ```powershell
-   docker compose -f compose.yaml -f compose.gpu.yaml -f compose.cloudflare.yaml ps
+   docker compose -f compose.yaml -f compose.cloudflare.yaml ps
    ```
 
    `pingpong-highlight` 與 `cloudflared` 最後都應顯示 `healthy`。
+
+   想確認容器內的 GPU 編解碼真的可用，而不是只有看得到顯示卡，可再執行：
+
+   ```powershell
+   docker compose exec pingpong-highlight pingpong-highlight doctor
+   ```
+
+   `NVIDIA NVDEC` 與 `NVIDIA NVENC` 都應顯示 `可用`。
 
 使用期間請讓電腦保持喚醒，並維持 Docker Desktop 與網路連線。影片仍在上傳時，不要重啟 Docker、`cloudflared` 或電腦；上傳完成後，手機頁面可以關閉，電腦會繼續分析與剪輯。
 
@@ -63,20 +71,20 @@
 只關閉手機外網入口、保留本機服務與所有資料：
 
 ```powershell
-docker compose -f compose.yaml -f compose.gpu.yaml -f compose.cloudflare.yaml stop cloudflared
+docker compose -f compose.yaml -f compose.cloudflare.yaml stop cloudflared
 ```
 
 停止全部服務但保留 `data` 裡的原片、進度與成品：
 
 ```powershell
-docker compose -f compose.yaml -f compose.gpu.yaml -f compose.cloudflare.yaml stop
+docker compose -f compose.yaml -f compose.cloudflare.yaml stop
 ```
 
 下次使用時重新執行啟動腳本即可。如果啟動失敗，先查看兩個服務的狀態與最近紀錄：
 
 ```powershell
-docker compose -f compose.yaml -f compose.gpu.yaml -f compose.cloudflare.yaml ps
-docker compose -f compose.yaml -f compose.gpu.yaml -f compose.cloudflare.yaml logs --tail 100 pingpong-highlight cloudflared
+docker compose -f compose.yaml -f compose.cloudflare.yaml ps
+docker compose -f compose.yaml -f compose.cloudflare.yaml logs --tail 100 pingpong-highlight cloudflared
 ```
 
 如果紀錄出現 `CONNECTIVITY PRE-CHECKS`、`QUIC connection failed`，並同時顯示 TCP 與 UDP 失敗，代表目前網路封鎖 Cloudflare Tunnel 對外使用的 `7844` 連接埠；一直重啟不會解決。請讓電腦改連家中網路或手機熱點後，再執行啟動腳本。公司或學校網路則需要網路管理員允許對外 TCP 或 UDP `7844`。詳情見 [Cloudflare connectivity pre-checks](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/troubleshoot-tunnels/connectivity-prechecks/)。
@@ -100,10 +108,16 @@ docker compose logs -f pingpong-highlight
 docker compose up -d --build
 ```
 
-這份預設配置使用 CPU，任何支援 Docker 的電腦都能啟動。有 NVIDIA GPU 且 Docker GPU runtime 可用時，可以改用：
+這份預設配置使用 NVIDIA GPU，並掛入 FFmpeg 所需的 NVDEC／NVENC driver capability。這台電腦平常直接使用：
 
 ```powershell
-docker compose -f compose.yaml -f compose.gpu.yaml up -d --build
+docker compose up -d --build
+```
+
+只有在 NVIDIA Docker runtime 暫時不可用時，才使用 CPU override：
+
+```powershell
+docker compose -f compose.yaml -f compose.cpu.yaml up -d --build
 ```
 
 常用管理指令：
@@ -129,7 +143,7 @@ docker compose down                  # 停止服務；保留 ./data
 
 這台電腦與 Docker Desktop 必須保持開啟。Quick Tunnel 是測試用途，沒有固定網址或 uptime SLA；`cloudflared` 容器重建後需重新執行腳本並使用新網址。最新網址也會保存在本機的 `data/remote-access-url.txt`。若之後要固定書籤、跨 tunnel 重啟續傳，再改用 Cloudflare named tunnel。
 
-這台電腦沒有可用的 NVIDIA Docker runtime 時，改用 CPU 模式：
+這台電腦沒有可用的 NVIDIA Docker runtime 時，才改用 CPU 模式：
 
 ```powershell
 .\scripts\start-cloudflare-tunnel.ps1 -CpuOnly
@@ -138,7 +152,7 @@ docker compose down                  # 停止服務；保留 ./data
 只停止外網入口、保留本機剪輯服務與資料：
 
 ```powershell
-docker compose -f compose.yaml -f compose.gpu.yaml -f compose.cloudflare.yaml stop cloudflared
+docker compose -f compose.yaml -f compose.cloudflare.yaml stop cloudflared
 ```
 
 ## 本機 Python 開發
@@ -192,7 +206,7 @@ flowchart LR
     G --> H["得分 Reel"]
 ```
 
-音訊瞬變提供擊球節奏，局部畫面動態協助排除缺乏比賽活動的雜音。分析以 FFmpeg 時間戳為準，可處理手機常見的 HEVC、VFR 與 rotation metadata。輸出優先使用 NVIDIA NVENC，失敗時自動退回 `libx264`。
+音訊瞬變提供擊球節奏，局部畫面動態協助排除缺乏比賽活動的雜音。分析以 FFmpeg 時間戳為準，可處理手機常見的 HEVC、VFR 與 rotation metadata。預設容器使用 NVIDIA NVDEC 解碼、NVENC 編碼；不相容的影片或 GPU runtime 失效時會自動退回 CPU／`libx264`。音訊分析、NumPy 訊號計算與部分 FFmpeg filters 仍會使用 CPU，因此 CPU 用量不會完全歸零。
 
 ## 主要設定
 

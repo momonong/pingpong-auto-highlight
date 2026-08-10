@@ -5,7 +5,13 @@ from pathlib import Path
 
 import numpy as np
 
-from pingpong_highlight.pipeline.media import finish_decoder, open_video_decoder, read_exact
+from pingpong_highlight.pipeline.media import (
+    MediaError,
+    finish_decoder,
+    has_nvdec,
+    open_video_decoder,
+    read_exact,
+)
 from pingpong_highlight.pipeline.models import MediaInfo, MotionFeatures
 from pingpong_highlight.pipeline.normalize import contextual_robust_z, moving_average
 
@@ -32,15 +38,16 @@ def _localized_motion(previous: np.ndarray, current: np.ndarray, grid: int = 8) 
     return max(0.0, (local - 0.65 * background) / 255.0)
 
 
-def analyze_motion(
+def _analyze_motion_once(
     path: Path,
     media: MediaInfo,
     *,
     fps: float = 8.0,
     frame_size: int = 320,
     progress: ProgressCallback | None = None,
+    use_nvdec: bool,
 ) -> MotionFeatures:
-    process = open_video_decoder(path, fps, frame_size)
+    process = open_video_decoder(path, fps, frame_size, use_nvdec=use_nvdec)
     if process.stdout is None:
         raise RuntimeError("FFmpeg video pipe was not created")
 
@@ -79,3 +86,33 @@ def analyze_motion(
     if progress:
         progress(1.0)
     return MotionFeatures(times=time_array, scores=activity)
+
+
+def analyze_motion(
+    path: Path,
+    media: MediaInfo,
+    *,
+    fps: float = 8.0,
+    frame_size: int = 320,
+    progress: ProgressCallback | None = None,
+) -> MotionFeatures:
+    if has_nvdec():
+        try:
+            return _analyze_motion_once(
+                path,
+                media,
+                fps=fps,
+                frame_size=frame_size,
+                progress=progress,
+                use_nvdec=True,
+            )
+        except MediaError:
+            pass
+    return _analyze_motion_once(
+        path,
+        media,
+        fps=fps,
+        frame_size=frame_size,
+        progress=progress,
+        use_nvdec=False,
+    )

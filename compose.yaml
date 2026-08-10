@@ -5,6 +5,7 @@ services:
     build:
       context: .
     image: pingpong-auto-highlight:local
+    gpus: all
     restart: unless-stopped
     init: true
     ports:
@@ -16,6 +17,7 @@ services:
       PINGPONG_PUBLIC_URL: "${PINGPONG_PUBLIC_URL:-http://localhost:8000}"
       PINGPONG_MAX_POINTS: "${PINGPONG_MAX_POINTS:-6}"
       PINGPONG_REEL_TARGET_SECONDS: "${PINGPONG_REEL_TARGET_SECONDS:-55}"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,video
     volumes:
       - type: bind
         source: ./data

@@ -35,7 +35,7 @@
 - audio：16 kHz mono float PCM；
 - video：8 fps、320 × 320 letterboxed grayscale raw frames。
 
-FFmpeg 預設會在 filter stage 套用 rotation metadata。固定 fps filter 讓第 `n` 個分析畫面對應 `n / analysis_fps`，不會沿用不可靠的原片 frame count。固定尺寸只供訊號分析，最終輸出仍從原片重編碼。
+Docker 預設掛入 NVIDIA 的 `compute,utility,video` capabilities。NVDEC runtime 可用時，video pipe 以 CUDA 硬體解碼並把畫面傳回系統記憶體，再由 FFmpeg filters 縮小成分析尺寸；不支援的 codec／pixel format 或 GPU 錯誤會自動重新以軟體解碼。FFmpeg 預設會在 filter stage 套用 rotation metadata。固定 fps filter 讓第 `n` 個分析畫面對應 `n / analysis_fps`，不會沿用不可靠的原片 frame count。固定尺寸只供訊號分析，最終輸出仍從原片重編碼。縮放、灰階 motion 與 NumPy 訊號計算仍在 CPU 執行。
 
 ### Signal fusion baseline
 
@@ -49,7 +49,7 @@ point candidate 不會再彼此合併。相鄰兩分的 padding 若重疊，兩�
 
 ### Export
 
-舊版的 `-c copy` 只能在 keyframe 附近切割。現在每個 point 都經 accurate seek 後重編碼成 H.264/AAC，加 `faststart` 方便手機播放。
+舊版的 `-c copy` 只能在 keyframe 附近切割。現在每個 point 都經 accurate seek 後重編碼成 H.264/AAC，加 `faststart` 方便手機播放。GPU runtime 可用時，輸入優先經 NVDEC 解碼並以 NVENC 編碼；能力檢查會實際試編一個 frame，避免只因 FFmpeg 列出 `h264_nvenc` 就誤判。任何 GPU 編解碼失敗仍會用 CPU／`libx264` 重試。
 
 `build_point_reel()` 以第一個單分片段的解析度與畫面比例作為成品規格。FFmpeg `xfade` 與 `acrossfade` 只建立在相鄰 point 的交界，因此 N 個 point 只有 N−1 個 dissolve，最後一分不會 fade-out。直式、裁切與字幕屬於發佈衍生版本，不改變核心分析輸出；`build_social_reel()` 保留為後續 renderer，但不在預設流程使用。
 
@@ -64,6 +64,7 @@ point candidate 不會再彼此合併。相鄰兩分的 padding 若重疊，兩�
 | chunk 損毀 | checksum mismatch，不推進 offset |
 | 服務在上傳途中停止 | `.part` 大小與 SQLite offset 在啟動時 reconcile |
 | 服務在分析途中停止 | job 重新排隊並從頭分析；不會重傳原片 |
+| NVDEC 不可用或不支援來源格式 | 同一支影片自動改用 CPU 解碼 |
 | NVENC 不可用 | 同一 clip 自動改用 `libx264` |
 | Reel filter 或編碼失敗 | 保留已輸出的單分片段並在報告記錄 warning |
 | 無音軌 | motion-only fallback，報告會標記 |
