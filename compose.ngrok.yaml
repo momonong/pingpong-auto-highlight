@@ -1,0 +1,34 @@
+services:
+  pingpong-highlight:
+    ports: !override
+      - "127.0.0.1:${PINGPONG_PORT:-8000}:8000"
+
+  ngrok:
+    image: ngrok/ngrok:latest@sha256:14d80d083e5b53145f416bbbd36238336c9de4016c43fd950eb2eb845670583b
+    restart: unless-stopped
+    command:
+      - http
+      - http://pingpong-highlight:8000
+      - --log=stdout
+      - --log-format=json
+      - --inspect=false
+    environment:
+      NGROK_CONFIG: /run/secrets/ngrok.yml
+    depends_on:
+      pingpong-highlight:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${NGROK_INSPECT_PORT:-4040}:4040"
+    volumes:
+      - type: bind
+        source: ./data/.ngrok-agent.yml
+        target: /run/secrets/ngrok.yml
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 20s
