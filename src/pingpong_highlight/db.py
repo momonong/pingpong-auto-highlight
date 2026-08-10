@@ -43,6 +43,21 @@ class JobRecord:
     updated_at: str
 
 
+@dataclass(frozen=True, slots=True)
+class DriveImportRecord:
+    id: str
+    file_id: str
+    resource_key: str | None
+    filename: str | None
+    size: int | None
+    offset: int
+    status: str
+    error: str | None
+    upload_id: str | None
+    created_at: str
+    updated_at: str
+
+
 class StateConflict(RuntimeError):
     pass
 
@@ -95,7 +110,23 @@ class Database:
                     updated_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS drive_imports (
+                    id TEXT PRIMARY KEY,
+                    file_id TEXT NOT NULL,
+                    resource_key TEXT,
+                    filename TEXT,
+                    size INTEGER CHECK (size IS NULL OR size >= 0),
+                    offset INTEGER NOT NULL DEFAULT 0 CHECK (offset >= 0),
+                    status TEXT NOT NULL,
+                    error TEXT,
+                    upload_id TEXT REFERENCES uploads(id),
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS jobs_status_idx ON jobs(status, created_at);
+                CREATE INDEX IF NOT EXISTS drive_imports_status_idx
+                    ON drive_imports(status, created_at);
                 """
             )
 
@@ -132,6 +163,24 @@ class Database:
             updated_at=row["updated_at"],
         )
 
+    @staticmethod
+    def _drive_import(row: sqlite3.Row | None) -> DriveImportRecord | None:
+        if row is None:
+            return None
+        return DriveImportRecord(
+            id=row["id"],
+            file_id=row["file_id"],
+            resource_key=row["resource_key"],
+            filename=row["filename"],
+            size=int(row["size"]) if row["size"] is not None else None,
+            offset=int(row["offset"]),
+            status=row["status"],
+            error=row["error"],
+            upload_id=row["upload_id"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
     def create_upload(
         self,
         upload_id: str,
@@ -153,6 +202,219 @@ class Database:
         record = self.get_upload(upload_id)
         assert record is not None
         return record
+
+    def register_completed_upload(
+        self,
+        upload_id: str,
+        filename: str,
+        size: int,
+        content_type: str,
+        path: Path,
+        *,
+        drive_import_id: str | None = None,
+    ) -> tuple[UploadRecord, JobRecord]:
+        timestamp = _now()
+        job_id = uuid.uuid4().hex
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                """
+                INSERT INTO uploads
+                    (id, filename, size, offset, content_type, status, path, job_id,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)
+                """,
+                (
+                    upload_id,
+                    filename,
+                    size,
+                    size,
+                    content_type,
+                    str(path),
+                    job_id,
+                    timestamp,
+                    timestamp,
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO jobs
+                    (id, upload_id, status, progress, stage, created_at, updated_at)
+                VALUES (?, ?, 'queued', 0, 'queued', ?, ?)
+                """,
+                (job_id, upload_id, timestamp, timestamp),
+            )
+            if drive_import_id is not None:
+                cursor = connection.execute(
+                    """
+                    UPDATE drive_imports
+                    SET status = 'completed', upload_id = ?, offset = ?, size = ?,
+                        error = NULL, updated_at = ?
+                    WHERE id = ? AND status = 'downloading'
+                    """,
+                    (upload_id, size, size, timestamp, drive_import_id),
+                )
+                if cursor.rowcount != 1:
+                    raise StateConflict("Drive import state changed before completion")
+            upload_row = connection.execute(
+                "SELECT * FROM uploads WHERE id = ?", (upload_id,)
+            ).fetchone()
+            job_row = connection.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        upload = self._upload(upload_row)
+        job = self._job(job_row)
+        assert upload is not None and job is not None
+        return upload, job
+
+    def create_or_requeue_drive_import(
+        self,
+        file_id: str,
+        resource_key: str | None,
+    ) -> DriveImportRecord:
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT * FROM drive_imports
+                WHERE file_id = ? AND status != 'completed'
+                ORDER BY created_at DESC LIMIT 1
+                """,
+                (file_id,),
+            ).fetchone()
+            record = self._drive_import(row)
+            if record is None:
+                import_id = uuid.uuid4().hex
+                connection.execute(
+                    """
+                    INSERT INTO drive_imports
+                        (id, file_id, resource_key, status, created_at, updated_at)
+                    VALUES (?, ?, ?, 'queued', ?, ?)
+                    """,
+                    (import_id, file_id, resource_key, timestamp, timestamp),
+                )
+            else:
+                import_id = record.id
+                connection.execute(
+                    """
+                    UPDATE drive_imports
+                    SET resource_key = COALESCE(?, resource_key),
+                        status = CASE WHEN status = 'failed' THEN 'queued' ELSE status END,
+                        error = CASE WHEN status = 'failed' THEN NULL ELSE error END,
+                        updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (resource_key, timestamp, import_id),
+                )
+            updated = connection.execute(
+                "SELECT * FROM drive_imports WHERE id = ?", (import_id,)
+            ).fetchone()
+        result = self._drive_import(updated)
+        assert result is not None
+        return result
+
+    def get_drive_import(self, import_id: str) -> DriveImportRecord | None:
+        with self._lock, self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM drive_imports WHERE id = ?", (import_id,)
+            ).fetchone()
+        return self._drive_import(row)
+
+    def list_drive_imports(
+        self, *, include_completed: bool = False
+    ) -> list[DriveImportRecord]:
+        where = "" if include_completed else "WHERE status != 'completed'"
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                f"SELECT * FROM drive_imports {where} ORDER BY created_at DESC"
+            ).fetchall()
+        return [
+            record
+            for row in rows
+            if (record := self._drive_import(row)) is not None
+        ]
+
+    def requeue_interrupted_drive_imports(self) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE drive_imports
+                SET status = 'queued', error = NULL, updated_at = ?
+                WHERE status IN ('resolving', 'downloading')
+                """,
+                (_now(),),
+            )
+
+    def claim_drive_import(self, import_id: str) -> bool:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE drive_imports
+                SET status = 'resolving', error = NULL, updated_at = ?
+                WHERE id = ? AND status = 'queued'
+                """,
+                (_now(), import_id),
+            )
+        return cursor.rowcount == 1
+
+    def start_drive_import_download(self, import_id: str, filename: str) -> None:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE drive_imports
+                SET filename = ?, status = 'downloading', updated_at = ?
+                WHERE id = ? AND status = 'resolving'
+                """,
+                (filename, _now(), import_id),
+            )
+        if cursor.rowcount != 1:
+            raise StateConflict("Drive import state changed before download")
+
+    def update_drive_import_progress(
+        self,
+        import_id: str,
+        offset: int,
+        size: int | None,
+    ) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE drive_imports
+                SET offset = ?, size = COALESCE(?, size), updated_at = ?
+                WHERE id = ? AND status = 'downloading'
+                """,
+                (offset, size, _now(), import_id),
+            )
+
+    def fail_drive_import(self, import_id: str, error: str) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE drive_imports
+                SET status = 'failed', error = ?, updated_at = ?
+                WHERE id = ? AND status != 'completed'
+                """,
+                (error[:1000], _now(), import_id),
+            )
+
+    def retry_drive_import(self, import_id: str) -> bool:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE drive_imports
+                SET status = 'queued', error = NULL, updated_at = ?
+                WHERE id = ? AND status = 'failed'
+                """,
+                (_now(), import_id),
+            )
+        return cursor.rowcount == 1
+
+    def delete_drive_import(self, import_id: str) -> bool:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM drive_imports WHERE id = ? AND status IN ('queued', 'failed')",
+                (import_id,),
+            )
+        return cursor.rowcount == 1
 
     def get_upload(self, upload_id: str) -> UploadRecord | None:
         with self._lock, self._connect() as connection:

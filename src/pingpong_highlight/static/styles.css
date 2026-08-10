@@ -66,6 +66,17 @@ button {
   color: inherit;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .ambient {
   position: fixed;
   z-index: -2;
@@ -653,6 +664,171 @@ h1 em {
   opacity: 0.34;
 }
 
+.source-divider {
+  display: flex;
+  gap: 12px;
+  margin: 23px 0 15px;
+  align-items: center;
+  color: #68727b;
+  font-size: 0.61rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.source-divider::before,
+.source-divider::after {
+  height: 1px;
+  content: "";
+  flex: 1;
+  background: var(--line);
+}
+
+.drive-source {
+  padding: 17px;
+  border: 1px solid rgba(139, 216, 255, 0.18);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(139, 216, 255, 0.08), transparent 46%),
+    rgba(5, 8, 11, 0.27);
+}
+
+.drive-source-heading,
+.drive-source-heading > span:last-child,
+.drive-source-heading b,
+.drive-source-heading small {
+  display: flex;
+}
+
+.drive-source-heading {
+  gap: 11px;
+  margin-bottom: 13px;
+  align-items: center;
+}
+
+.drive-source-heading > span:last-child {
+  min-width: 0;
+  flex-direction: column;
+}
+
+.drive-source-heading b {
+  font-size: 0.8rem;
+}
+
+.drive-source-heading small {
+  margin-top: 2px;
+  color: #7e8992;
+  font-size: 0.64rem;
+}
+
+.drive-mark {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.drive-mark svg {
+  width: 20px;
+  height: 18px;
+}
+
+.drive-blue {
+  fill: #4285f4;
+}
+
+.drive-green {
+  fill: #0f9d58;
+}
+
+.drive-yellow {
+  fill: #f4b400;
+}
+
+.drive-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.drive-input-row input {
+  min-width: 0;
+  min-height: 45px;
+  padding: 0 13px;
+  flex: 1;
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  outline: 0;
+  color: var(--paper);
+  background: rgba(3, 6, 9, 0.52);
+  font-size: 0.72rem;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.drive-input-row input::placeholder {
+  color: #66717a;
+}
+
+.drive-input-row input:focus {
+  border-color: rgba(139, 216, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(139, 216, 255, 0.08);
+}
+
+.drive-input-row button {
+  min-height: 45px;
+  padding: 0 15px;
+  cursor: pointer;
+  border: 1px solid rgba(139, 216, 255, 0.28);
+  border-radius: 11px;
+  color: #bce8ff;
+  background: rgba(139, 216, 255, 0.09);
+  font-size: 0.7rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.drive-input-row button:hover:not(:disabled) {
+  border-color: rgba(139, 216, 255, 0.55);
+  background: rgba(139, 216, 255, 0.14);
+}
+
+.drive-input-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.drive-hint,
+.drive-message {
+  margin: 10px 1px 0;
+  font-size: 0.61rem;
+  line-height: 1.5;
+}
+
+.drive-hint {
+  color: #727e87;
+}
+
+.drive-hint i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--sky);
+}
+
+.drive-message {
+  color: var(--lime);
+}
+
+.drive-message.error {
+  color: #ffad9f;
+}
+
 .transfer {
   margin-top: 20px;
   padding: 18px;
@@ -869,6 +1045,10 @@ h1 em {
   margin-bottom: 12px;
 }
 
+.import-list:not(:empty) {
+  margin-bottom: 12px;
+}
+
 .job {
   padding: 19px;
   overflow: hidden;
@@ -883,6 +1063,11 @@ h1 em {
 
 .job.uploading {
   border-color: rgba(200, 255, 77, 0.22);
+}
+
+.job.downloading,
+.job.resolving {
+  border-color: rgba(139, 216, 255, 0.22);
 }
 
 .job.waiting {
@@ -934,8 +1119,16 @@ h1 em {
   background: rgba(200, 255, 77, 0.085);
 }
 
+.status.downloading,
+.status.resolving {
+  color: var(--sky);
+  background: rgba(139, 216, 255, 0.09);
+}
+
 .status.processing::before,
-.status.uploading::before {
+.status.uploading::before,
+.status.downloading::before,
+.status.resolving::before {
   box-shadow: 0 0 0 4px rgba(200, 255, 77, 0.09);
   animation: pulse 1.6s ease-in-out infinite;
 }
@@ -973,29 +1166,56 @@ h1 em {
   margin: 8px 0 0;
 }
 
-.upload-actions {
+.job-progress.indeterminate span {
+  width: 38%;
+  animation: indeterminate 1.4s ease-in-out infinite alternate;
+}
+
+.upload-actions,
+.import-actions {
   display: flex;
+  gap: 8px;
   margin-top: 14px;
   justify-content: flex-end;
 }
 
-.delete-upload-button {
+.delete-upload-button,
+.delete-import-button,
+.retry-import-button {
   padding: 8px 11px;
   cursor: pointer;
-  border: 1px solid rgba(255, 96, 71, 0.24);
   border-radius: 9px;
-  color: #ffad9f;
-  background: rgba(255, 96, 71, 0.07);
   font-size: 0.65rem;
   font-weight: 750;
 }
 
-.delete-upload-button:hover {
+.delete-upload-button,
+.delete-import-button {
+  border: 1px solid rgba(255, 96, 71, 0.24);
+  color: #ffad9f;
+  background: rgba(255, 96, 71, 0.07);
+}
+
+.delete-upload-button:hover,
+.delete-import-button:hover {
   border-color: rgba(255, 96, 71, 0.45);
   background: rgba(255, 96, 71, 0.12);
 }
 
-.delete-upload-button:disabled {
+.retry-import-button {
+  border: 1px solid rgba(200, 255, 77, 0.24);
+  color: var(--lime);
+  background: rgba(200, 255, 77, 0.07);
+}
+
+.retry-import-button:hover {
+  border-color: rgba(200, 255, 77, 0.46);
+  background: rgba(200, 255, 77, 0.12);
+}
+
+.delete-upload-button:disabled,
+.delete-import-button:disabled,
+.retry-import-button:disabled {
   cursor: wait;
   opacity: 0.55;
 }
@@ -1253,6 +1473,16 @@ h1 em {
   }
 }
 
+@keyframes indeterminate {
+  from {
+    transform: translateX(-15%);
+  }
+
+  to {
+    transform: translateX(180%);
+  }
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.45;
@@ -1365,6 +1595,14 @@ h1 em {
   .drop-zone {
     min-height: 230px;
     padding-inline: 16px;
+  }
+
+  .drive-input-row {
+    flex-direction: column;
+  }
+
+  .drive-input-row button {
+    width: 100%;
   }
 
   .empty-state {

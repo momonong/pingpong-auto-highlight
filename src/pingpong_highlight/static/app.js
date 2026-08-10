@@ -11,9 +11,14 @@ const elements = {
   transferBar: document.querySelector("#transferBar"),
   transferDetail: document.querySelector("#transferDetail"),
   pauseButton: document.querySelector("#pauseButton"),
+  driveForm: document.querySelector("#driveForm"),
+  driveUrl: document.querySelector("#driveUrl"),
+  driveButton: document.querySelector("#driveButton"),
+  driveMessage: document.querySelector("#driveMessage"),
   refreshButton: document.querySelector("#refreshButton"),
   emptyJobs: document.querySelector("#emptyJobs"),
   jobCount: document.querySelector("#jobCount"),
+  importList: document.querySelector("#importList"),
   uploadList: document.querySelector("#uploadList"),
   jobList: document.querySelector("#jobList"),
 };
@@ -38,6 +43,8 @@ let uploadRunning = false;
 let wakeLock = null;
 let activityLoading = false;
 let authReady = false;
+let driveSubmitting = false;
+let lastImportsSignature = "";
 let lastUploadsSignature = "";
 let lastJobsSignature = "";
 
@@ -445,6 +452,124 @@ function uploadUpdatedLabel(value) {
   return `最後更新 ${date.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
+function driveImportProgress(record) {
+  if (!record.size) return null;
+  const raw = Math.min(100, (record.offset / record.size) * 100);
+  const value = record.offset < record.size ? Math.min(raw, 99.9) : 100;
+  const decimals = value > 0 && value < 100 ? 1 : 0;
+  return { value, label: `${value.toFixed(decimals)}%` };
+}
+
+function renderDriveImport(record) {
+  const statusLabels = {
+    queued: "等待下載",
+    resolving: "檢查連結",
+    downloading: "Drive 下載中",
+    failed: "匯入失敗",
+  };
+  const details = record.error
+    ? escapeHtml(record.error)
+    : record.status === "queued"
+      ? "已交給電腦，輪到這支影片時會自動開始。"
+      : record.status === "resolving"
+        ? "正在確認公開權限、檔名與影片格式。"
+        : "影片會直接下載到這台電腦，完成後自動排入 GPU 剪輯。";
+  const progress = driveImportProgress(record);
+  const progressMeta = record.size
+    ? `${formatBytes(record.offset)} / ${formatBytes(record.size)}`
+    : record.offset
+      ? `已下載 ${formatBytes(record.offset)}`
+      : "準備連線至 Google Drive";
+  const progressBar =
+    record.status === "downloading" || record.status === "resolving"
+      ? `<div class="job-progress-meta"><span>${escapeHtml(progressMeta)} · ${escapeHtml(uploadUpdatedLabel(record.updated_at))}</span><b>${progress?.label || "下載中"}</b></div><div class="job-progress${progress ? "" : " indeterminate"}"><span${progress ? ` style="width:${progress.value}%"` : ""}></span></div>`
+      : "";
+  const actions =
+    record.status === "failed"
+      ? `<div class="import-actions"><button class="delete-import-button" type="button" data-import-id="${escapeHtml(record.id)}">刪除</button><button class="retry-import-button" type="button" data-import-id="${escapeHtml(record.id)}">從目前進度重試</button></div>`
+      : record.status === "queued"
+        ? `<div class="import-actions"><button class="delete-import-button" type="button" data-import-id="${escapeHtml(record.id)}">取消這筆匯入</button></div>`
+        : "";
+  const filename = record.filename || "Google Drive 影片";
+  const status = statusLabels[record.status] || record.status;
+
+  return `<article class="job ${escapeHtml(record.status)}">
+    <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(record.status)}">${escapeHtml(status)}</span></div>
+    <p class="job-detail">${details}</p>
+    ${progressBar}${actions}
+  </article>`;
+}
+
+async function retryDriveImport(button) {
+  const importId = button.dataset.importId;
+  if (!importId) return;
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "重新排入中…";
+  try {
+    await apiFetch(`/api/drive-imports/${importId}/retry`, { method: "POST" });
+    lastImportsSignature = "";
+    await loadActivity();
+  } catch (error) {
+    window.alert(`無法重試：${error.message}`);
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+async function deleteDriveImport(button) {
+  const importId = button.dataset.importId;
+  if (!importId || !window.confirm("確定移除這筆 Google Drive 匯入與電腦上的暫存進度？\n\nGoogle Drive 裡的原始影片不受影響。")) return;
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "移除中…";
+  try {
+    await apiFetch(`/api/drive-imports/${importId}`, { method: "DELETE" });
+    lastImportsSignature = "";
+    await loadActivity();
+  } catch (error) {
+    window.alert(`無法移除：${error.message}`);
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+function updateDriveButton() {
+  elements.driveButton.disabled =
+    !authReady || driveSubmitting || !elements.driveUrl.value.trim();
+}
+
+function showDriveMessage(message, isError = false) {
+  elements.driveMessage.textContent = message;
+  elements.driveMessage.classList.toggle("error", isError);
+  elements.driveMessage.hidden = !message;
+}
+
+async function submitDriveLink(event) {
+  event.preventDefault();
+  const url = elements.driveUrl.value.trim();
+  if (!url || driveSubmitting) return;
+  driveSubmitting = true;
+  updateDriveButton();
+  showDriveMessage("正在把連結交給這台電腦…");
+  try {
+    await apiFetch("/api/drive-imports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+    elements.driveUrl.value = "";
+    lastImportsSignature = "";
+    showDriveMessage("已開始背景匯入。現在可以關閉此頁，稍後再回來看進度。");
+    await loadActivity();
+  } catch (error) {
+    showDriveMessage(error.message, true);
+  } finally {
+    driveSubmitting = false;
+    updateDriveButton();
+  }
+}
+
 function renderUpload(upload) {
   const progress = uploadProgress(upload);
   const active = upload.transfer_active;
@@ -531,17 +656,23 @@ function renderJob(job) {
   </article>`;
 }
 
-function renderActivity(uploads, jobs) {
+function renderActivity(imports, uploads, jobs) {
   const uploadViews = uploads.map((upload) => ({
     ...upload,
     transfer_active: uploadIsActive(upload),
     local_resume: hasLocalResumeSession(upload),
   }));
-  const total = uploadViews.length + jobs.length;
+  const total = imports.length + uploadViews.length + jobs.length;
   elements.emptyJobs.hidden = total > 0;
   elements.jobCount.textContent = total
     ? `${total} ${total > 1 ? "個項目" : "支影片"}`
     : "等待第一支影片";
+
+  const importsSignature = JSON.stringify(imports);
+  if (importsSignature !== lastImportsSignature) {
+    lastImportsSignature = importsSignature;
+    elements.importList.innerHTML = imports.map(renderDriveImport).join("");
+  }
 
   const uploadsSignature = JSON.stringify(uploadViews);
   if (uploadsSignature !== lastUploadsSignature) {
@@ -560,15 +691,17 @@ async function loadActivity() {
   if (!token || activityLoading) return;
   activityLoading = true;
   try {
-    const [uploadsResponse, jobsResponse] = await Promise.all([
+    const [importsResponse, uploadsResponse, jobsResponse] = await Promise.all([
+      apiFetch("/api/drive-imports"),
       apiFetch("/api/uploads"),
       apiFetch("/api/jobs"),
     ]);
-    const [{ uploads }, { jobs }] = await Promise.all([
+    const [{ imports }, { uploads }, { jobs }] = await Promise.all([
+      importsResponse.json(),
       uploadsResponse.json(),
       jobsResponse.json(),
     ]);
-    renderActivity(uploads, jobs);
+    renderActivity(imports, uploads, jobs);
   } catch (error) {
     if (String(error.message).includes("401")) elements.tokenWarning.hidden = false;
   } finally {
@@ -614,6 +747,8 @@ elements.dropZone.addEventListener("drop", (event) => {
 });
 
 elements.uploadButton.addEventListener("click", startUpload);
+elements.driveForm.addEventListener("submit", submitDriveLink);
+elements.driveUrl.addEventListener("input", updateDriveButton);
 elements.pauseButton.addEventListener("click", () => {
   paused = !paused;
   elements.pauseButton.textContent = paused ? "繼續" : "暫停";
@@ -626,6 +761,15 @@ elements.jobList.addEventListener("click", (event) => {
 elements.uploadList.addEventListener("click", (event) => {
   const button = event.target.closest(".delete-upload-button");
   if (button) deleteUploadSession(button);
+});
+elements.importList.addEventListener("click", (event) => {
+  const retryButton = event.target.closest(".retry-import-button");
+  if (retryButton) {
+    retryDriveImport(retryButton);
+    return;
+  }
+  const deleteButton = event.target.closest(".delete-import-button");
+  if (deleteButton) deleteDriveImport(deleteButton);
 });
 elements.refreshButton.addEventListener("click", loadActivity);
 
@@ -646,6 +790,7 @@ async function initialize() {
     chunkSize = config.chunk_size || chunkSize;
     authReady = true;
     elements.uploadButton.disabled = !selectedFile;
+    updateDriveButton();
   } catch (error) {
     elements.tokenWarning.hidden = false;
   }

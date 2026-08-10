@@ -4,12 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pingpong-auto-highlight"
-version = "0.9.0"
+version = "0.10.0"
 description = "Local-first, resumable table-tennis point-reel editing"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.125,<1",
+    "gdown>=6.1,<7",
     "numpy>=2.3,<3",
     "qrcode>=8.2,<9",
     "uvicorn[standard]>=0.38,<1",

@@ -25,6 +25,7 @@ class Settings:
     port: int = 8000
     max_upload_bytes: int = 100 * 1024**3
     max_chunk_bytes: int = 32 * 1024**2
+    download_min_free_bytes: int = 2 * 1024**3
     video_sample_fps: float = 8.0
     analysis_frame_size: int = 320
     audio_sample_rate: int = 16_000
@@ -46,11 +47,21 @@ class Settings:
         return self.data_dir / "work"
 
     @property
+    def drive_imports_dir(self) -> Path:
+        return self.data_dir / "drive-imports"
+
+    @property
     def database_path(self) -> Path:
         return self.data_dir / "state.sqlite3"
 
     def ensure_directories(self) -> None:
-        for path in (self.data_dir, self.uploads_dir, self.outputs_dir, self.work_dir):
+        for path in (
+            self.data_dir,
+            self.uploads_dir,
+            self.outputs_dir,
+            self.work_dir,
+            self.drive_imports_dir,
+        ):
             path.mkdir(parents=True, exist_ok=True)
 
     @classmethod
@@ -77,6 +88,9 @@ class Settings:
             port=port or _env_int("PINGPONG_PORT", 8000),
             max_upload_bytes=_env_int("PINGPONG_MAX_UPLOAD_BYTES", 100 * 1024**3),
             max_chunk_bytes=_env_int("PINGPONG_MAX_CHUNK_BYTES", 32 * 1024**2),
+            download_min_free_bytes=_env_int(
+                "PINGPONG_DOWNLOAD_MIN_FREE_BYTES", 2 * 1024**3
+            ),
             video_sample_fps=_env_float("PINGPONG_VIDEO_SAMPLE_FPS", 8.0),
             analysis_frame_size=_env_int("PINGPONG_ANALYSIS_FRAME_SIZE", 320),
             audio_sample_rate=_env_int("PINGPONG_AUDIO_SAMPLE_RATE", 16_000),

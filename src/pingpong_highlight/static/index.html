@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0d12" />
     <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" />
     <title>RallyCut — 桌球精彩集錦</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.9.0-20260811" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.10.0-20260811" />
   </head>
   <body>
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -60,8 +60,8 @@
           <div class="panel-heading">
             <div>
               <span class="section-kicker">01 / ADD FOOTAGE</span>
-              <h2>選一段比賽影片</h2>
-              <p>大檔案會分段傳送，中斷後可從原處繼續。</p>
+              <h2>加入一段比賽影片</h2>
+              <p>從手機直傳，或貼上 Google Drive 公開連結。</p>
             </div>
             <span class="privacy"><i></i> 本機剪輯</span>
           </div>
@@ -94,6 +94,35 @@
             </div>
           </div>
 
+          <div class="source-divider"><span>或交給電腦從雲端下載</span></div>
+
+          <form id="driveForm" class="drive-source">
+            <div class="drive-source-heading">
+              <span class="drive-mark" aria-hidden="true">
+                <svg viewBox="0 0 32 28" role="presentation">
+                  <path class="drive-blue" d="M11.1 0h9.8l11.1 19.2h-9.8z" />
+                  <path class="drive-green" d="M11.1 0 0 19.2l4.9 8.5L16 8.5z" />
+                  <path class="drive-yellow" d="M4.9 27.7h22.2l4.9-8.5H9.8z" />
+                </svg>
+              </span>
+              <span><b>Google Drive</b><small>背景下載，關閉此頁也會繼續</small></span>
+            </div>
+            <div class="drive-input-row">
+              <label class="sr-only" for="driveUrl">Google Drive 影片共用連結</label>
+              <input
+                id="driveUrl"
+                type="url"
+                inputmode="url"
+                autocomplete="url"
+                maxlength="2048"
+                placeholder="貼上 drive.google.com 影片連結"
+              />
+              <button id="driveButton" type="submit" disabled>開始匯入</button>
+            </div>
+            <p class="drive-hint"><i aria-hidden="true"></i>共用設定請選「知道連結的任何人」且權限為「檢視者」</p>
+            <p id="driveMessage" class="drive-message" hidden aria-live="polite"></p>
+          </form>
+
           <div class="upload-note">
             <span class="network-icon" aria-hidden="true"><i></i><i></i><i></i></span>
             <p><b>上傳時請保持這台電腦在線</b><small>開始處理後可以關閉此頁，電腦會繼續工作。</small></p>
@@ -119,6 +148,7 @@
             <strong>上傳進度與第一支集錦會出現在這裡</strong>
             <p>傳送中可跨裝置監看；完成後可直接預覽、下載，或用手機分享。</p>
           </div>
+          <div id="importList" class="job-list import-list" aria-live="polite"></div>
           <div id="uploadList" class="job-list upload-list" aria-live="polite"></div>
           <div id="jobList" class="job-list" aria-live="polite"></div>
         </article>
@@ -136,6 +166,6 @@
       <span>PRIVATE BY DEFAULT · MADE FOR THE NEXT RALLY</span>
     </footer>
 
-    <script src="/static/app.js?v=0.9.0-20260811" defer></script>
+    <script src="/static/app.js?v=0.10.0-20260811" defer></script>
   </body>
 </html>
