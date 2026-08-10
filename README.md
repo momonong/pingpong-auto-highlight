@@ -148,6 +148,40 @@ docker compose down                  # 停止服務；保留 ./data
 
 若希望登入 Windows 後一直可用，請同時開啟 Docker Desktop 的「Start Docker Desktop when you sign in」。
 
+## 在 4090／其他 NVIDIA 電腦使用已發佈 image
+
+Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:0.11.1`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+
+新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。取得這份 repository 後，在 Git Bash 執行：
+
+```bash
+cd /d/projects/pingpong-auto-highlight
+./scripts/start-ngrok-tunnel.sh -UsePublishedImage
+```
+
+這個選項會直接 pull 版本固定的 public image，不會在新電腦重新 build。只在 GPU runtime 暫時不可用、確定願意接受較慢速度時，才同時加上 `-CpuOnly`。
+
+若只需要區域網路、不啟動 ngrok：
+
+```powershell
+docker compose -f compose.yaml -f compose.release.yaml up -d
+docker compose -f compose.yaml -f compose.release.yaml exec pingpong-highlight pingpong-highlight doctor
+```
+
+`doctor` 的 `NVIDIA NVDEC` 與 `NVIDIA NVENC` 都必須顯示 `可用`。目前 5090 Laptop 已實測通過；4090 移機後仍應用同一支測試影片做一次驗收，比較選出的得分時間點、成品長度與是否可播放，不要比較 MP4 檔案 hash，因為不同 GPU／driver 的硬體編碼結果不保證逐 bit 相同。
+
+正式使用請固定版本 tag 或 `data/published-image.txt` 記錄的 digest；`latest` 只供方便查看最新版本，不應作為長期部署鎖定值。所有原片、續傳與成品仍在該電腦的 `./data`，不會存進 Docker Hub image。
+
+### 發佈新版本到 Docker Hub
+
+只有在變更已提交、合併到乾淨的 `main`，且 Docker Desktop 已登入 `momonong` 時才執行：
+
+```bash
+./scripts/publish-dockerhub.sh
+```
+
+發佈器固定產生 `linux/amd64`，使用 `pyproject.toml` 的版本建立 immutable version tag 與 `latest`，附加 SBOM／provenance，確認 repository 是 public，再從 Docker Hub pull 回來檢查版本與 NVIDIA NVDEC／NVENC。Python base image、production dependencies 與 build dependencies 都以 digest 或 hashes 固定；`data`、`.env`、影片及 token 由 `.dockerignore` 排除。
+
 ## ngrok Tunnel 細節
 
 Git Bash 的標準啟動指令：

@@ -1,0 +1,5 @@
+services:
+  pingpong-highlight:
+    build: !reset null
+    image: "${PINGPONG_IMAGE:-docker.io/momonong/pingpong-auto-highlight:0.11.1}"
+    platform: linux/amd64
