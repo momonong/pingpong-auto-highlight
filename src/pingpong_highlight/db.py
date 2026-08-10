@@ -166,6 +166,14 @@ class Database:
             ).fetchall()
         return [record for row in rows if (record := self._upload(row)) is not None]
 
+    def delete_incomplete_upload(self, upload_id: str) -> bool:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM uploads WHERE id = ? AND status = 'uploading'",
+                (upload_id,),
+            )
+        return cursor.rowcount == 1
+
     def force_upload_offset(self, upload_id: str, offset: int) -> None:
         with self._lock, self._connect() as connection:
             connection.execute(

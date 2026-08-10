@@ -180,6 +180,79 @@ def test_api_rejects_missing_token(tmp_path: Path) -> None:
         assert client.get("/api/uploads").status_code == 401
 
 
+def test_incomplete_upload_can_be_deleted_with_its_partial_file(tmp_path: Path) -> None:
+    app = create_app(_settings(tmp_path), processor=FakeProcessor(b"x"))
+    with TestClient(app) as client:
+        filename = base64.b64encode(b"duplicate.mp4").decode()
+        created = client.post(
+            "/api/uploads",
+            headers=_headers(
+                **{
+                    "Upload-Length": "12",
+                    "Upload-Metadata": f"filename {filename}",
+                }
+            ),
+        )
+        location = created.headers["location"]
+        appended = client.patch(
+            location,
+            headers=_headers(
+                **{
+                    "Upload-Offset": "0",
+                    "Content-Type": "application/offset+octet-stream",
+                }
+            ),
+            content=b"partial",
+        )
+        assert appended.status_code == 204
+        upload_id = location.rsplit("/", 1)[-1]
+        record = app.state.database.get_upload(upload_id)
+        assert record is not None
+        part_path = app.state.uploads.part_path(record)
+        assert part_path.read_bytes() == b"partial"
+
+        deleted = client.delete(location, headers=_headers())
+
+        assert deleted.status_code == 204
+        assert deleted.headers["tus-extension"] == "creation,checksum,termination"
+        assert app.state.database.get_upload(upload_id) is None
+        assert not part_path.exists()
+        assert client.get(location, headers=_headers()).status_code == 404
+        assert client.get("/api/uploads", headers=_headers()).json() == {"uploads": []}
+
+
+def test_completed_upload_session_cannot_be_deleted(tmp_path: Path) -> None:
+    app = create_app(_settings(tmp_path), processor=FakeProcessor(b"done"))
+    with TestClient(app) as client:
+        filename = base64.b64encode(b"done.mp4").decode()
+        created = client.post(
+            "/api/uploads",
+            headers=_headers(
+                **{
+                    "Upload-Length": "4",
+                    "Upload-Metadata": f"filename {filename}",
+                }
+            ),
+        )
+        location = created.headers["location"]
+        completed = client.patch(
+            location,
+            headers=_headers(
+                **{
+                    "Upload-Offset": "0",
+                    "Content-Type": "application/offset+octet-stream",
+                }
+            ),
+            content=b"done",
+        )
+        assert completed.status_code == 204
+
+        rejected = client.delete(location, headers=_headers())
+
+        assert rejected.status_code == 409
+        assert client.get(location, headers=_headers()).status_code == 200
+
+
 def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> None:
     app = create_app(_settings(tmp_path), processor=FakeProcessor(b"x"))
     with TestClient(app) as client:

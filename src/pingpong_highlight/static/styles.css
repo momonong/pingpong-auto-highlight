@@ -973,6 +973,33 @@ h1 em {
   margin: 8px 0 0;
 }
 
+.upload-actions {
+  display: flex;
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+
+.delete-upload-button {
+  padding: 8px 11px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 96, 71, 0.24);
+  border-radius: 9px;
+  color: #ffad9f;
+  background: rgba(255, 96, 71, 0.07);
+  font-size: 0.65rem;
+  font-weight: 750;
+}
+
+.delete-upload-button:hover {
+  border-color: rgba(255, 96, 71, 0.45);
+  background: rgba(255, 96, 71, 0.12);
+}
+
+.delete-upload-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .job-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -25,7 +25,7 @@ def _tus_headers(settings: Settings) -> dict[str, str]:
     return {
         "Tus-Resumable": TUS_VERSION,
         "Tus-Version": TUS_VERSION,
-        "Tus-Extension": "creation,checksum",
+        "Tus-Extension": "creation,checksum,termination",
         "Tus-Checksum-Algorithm": "sha1,sha256",
         "Tus-Max-Size": str(settings.max_upload_bytes),
         "Cache-Control": "no-store",
@@ -108,7 +108,7 @@ def create_app(
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="0.8.0",
+        version="0.9.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -221,6 +221,12 @@ def create_app(
     @app.get("/api/uploads/{upload_id}", dependencies=[Depends(authorize)])
     async def get_upload(upload_id: str) -> dict[str, Any]:
         return _upload_payload(uploads.get(upload_id))
+
+    @app.delete("/api/uploads/{upload_id}", dependencies=[Depends(authorize)])
+    async def delete_upload(upload_id: str, request: Request) -> Response:
+        require_tus(request)
+        await uploads.delete(upload_id)
+        return Response(status_code=204, headers=_tus_headers(settings))
 
     @app.patch("/api/uploads/{upload_id}", dependencies=[Depends(authorize)])
     async def append_upload(upload_id: str, request: Request) -> Response:

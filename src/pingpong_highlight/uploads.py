@@ -112,6 +112,21 @@ class UploadStore:
                 assert record is not None
         return record
 
+    async def delete(self, upload_id: str) -> UploadRecord:
+        lock = await self._lock_for(upload_id)
+        async with lock:
+            record = self.get(upload_id)
+            if record.status != "uploading":
+                raise UploadError(409, "Only an incomplete upload can be deleted")
+            if not self.database.delete_incomplete_upload(upload_id):
+                raise UploadError(409, "Upload state changed before it could be deleted")
+
+            self.part_path(record).unlink(missing_ok=True)
+            record.path.unlink(missing_ok=True)
+            for temporary in self.settings.uploads_dir.glob(f".{upload_id}.*.chunk"):
+                temporary.unlink(missing_ok=True)
+            return record
+
     async def append(
         self,
         upload_id: str,
