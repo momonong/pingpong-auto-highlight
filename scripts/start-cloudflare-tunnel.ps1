@@ -17,6 +17,34 @@ if (-not $CpuOnly) {
 }
 $composeFiles += @("-f", (Join-Path $repoRoot "compose.cloudflare.yaml"))
 
+function Get-LatestTunnelUrl {
+    $logs = (& docker compose @composeFiles logs --no-color cloudflared 2>&1 | Out-String)
+    $matches = [regex]::Matches(
+        $logs,
+        "https://[a-z0-9-]+\.trycloudflare\.com",
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    )
+    if ($matches.Count -eq 0) {
+        return $null
+    }
+    return $matches[$matches.Count - 1].Value.TrimEnd("/")
+}
+
+function Get-CloudflaredHealth {
+    $containerId = (& docker compose @composeFiles ps -q cloudflared 2>$null | Out-String).Trim()
+    if (-not $containerId) {
+        return "missing"
+    }
+
+    $health = (& docker inspect `
+        --format "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}" `
+        $containerId 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $health) {
+        return "unknown"
+    }
+    return $health
+}
+
 Push-Location $repoRoot
 try {
     & docker compose @composeFiles up -d --build
@@ -24,17 +52,24 @@ try {
         throw "Docker Compose could not start the highlight service."
     }
 
+    $previousTunnelUrl = Get-LatestTunnelUrl
+    $cloudflaredHealth = Get-CloudflaredHealth
+    $requireFreshUrl = $false
+    if ($cloudflaredHealth -eq "unhealthy") {
+        Write-Warning "The existing Quick Tunnel is unhealthy. Creating a fresh tunnel URL."
+        & docker compose @composeFiles restart cloudflared
+        if ($LASTEXITCODE -ne 0) {
+            throw "Cloudflare could not be restarted."
+        }
+        $requireFreshUrl = [bool]$previousTunnelUrl
+    }
+
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $tunnelUrl = $null
     while ((Get-Date) -lt $deadline -and -not $tunnelUrl) {
-        $logs = (& docker compose @composeFiles logs --no-color cloudflared 2>&1 | Out-String)
-        $matches = [regex]::Matches(
-            $logs,
-            "https://[a-z0-9-]+\.trycloudflare\.com",
-            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
-        )
-        if ($matches.Count -gt 0) {
-            $tunnelUrl = $matches[$matches.Count - 1].Value.TrimEnd("/")
+        $candidateUrl = Get-LatestTunnelUrl
+        if ($candidateUrl -and (-not $requireFreshUrl -or $candidateUrl -ne $previousTunnelUrl)) {
+            $tunnelUrl = $candidateUrl
             break
         }
         Start-Sleep -Seconds 2
@@ -56,7 +91,12 @@ try {
         }
     }
     if (-not $healthy) {
-        throw "The tunnel URL was created, but its health check did not become ready."
+        & docker compose @composeFiles logs --no-color --tail 80 cloudflared
+        throw (
+            "The tunnel URL was created, but it could not connect to Cloudflare. " +
+            "Check whether this network allows outbound TCP or UDP port 7844, " +
+            "or switch networks and run this script again."
+        )
     }
 
     $tokenPath = Join-Path $repoRoot "data\.upload-token"
