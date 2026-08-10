@@ -172,12 +172,57 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         assert attachment.status_code == 200
         assert attachment.headers["content-disposition"].startswith("attachment;")
 
+        source = client.get(
+            f"/api/jobs/{job_id}/source",
+            headers={"X-Upload-Token": "test-secret", "Range": "bytes=0-3"},
+        )
+        assert source.status_code == 206
+        assert source.content == payload[:4]
+        assert source.headers["content-range"].startswith("bytes 0-3/")
+        assert source.headers["cache-control"] == "private, no-store"
+
+        annotations_url = f"/api/jobs/{job_id}/annotations"
+        assert client.get(annotations_url, headers=_headers()).json()["annotations"] == []
+        annotated = client.post(
+            annotations_url,
+            headers=_headers(**{"Content-Type": "application/json"}),
+            json={
+                "label": "highlight",
+                "start": 0.1,
+                "end": 0.8,
+                "note": "  backhand counter  ",
+            },
+        )
+        assert annotated.status_code == 201
+        annotation = annotated.json()
+        assert annotation["label"] == "highlight"
+        assert annotation["duration"] == 0.7
+        assert annotation["note"] == "backhand counter"
+        assert client.get(annotations_url, headers=_headers()).json()["annotations"] == [
+            annotation
+        ]
+
+        invalid = client.post(
+            annotations_url,
+            headers=_headers(**{"Content-Type": "application/json"}),
+            json={"label": "highlight", "start": 0.5, "end": 1.1},
+        )
+        assert invalid.status_code == 422
+
+        deleted = client.delete(
+            f"{annotations_url}/{annotation['id']}", headers=_headers()
+        )
+        assert deleted.status_code == 204
+        assert client.get(annotations_url, headers=_headers()).json()["annotations"] == []
+
 
 def test_api_rejects_missing_token(tmp_path: Path) -> None:
     app = create_app(_settings(tmp_path), processor=FakeProcessor(b"x"))
     with TestClient(app) as client:
         assert client.get("/api/jobs").status_code == 401
         assert client.get("/api/uploads").status_code == 401
+        assert client.get("/api/jobs/missing/source").status_code == 401
+        assert client.get("/api/jobs/missing/annotations").status_code == 401
 
 
 def test_incomplete_upload_can_be_deleted_with_its_partial_file(tmp_path: Path) -> None:

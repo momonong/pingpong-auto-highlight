@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import base64
+import math
+import mimetypes
 import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -14,7 +16,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from pingpong_highlight.config import Settings
-from pingpong_highlight.db import Database, DriveImportRecord, JobRecord, UploadRecord
+from pingpong_highlight.db import (
+    AnnotationRecord,
+    Database,
+    DriveImportRecord,
+    JobRecord,
+    UploadRecord,
+)
 from pingpong_highlight.drive import (
     DriveDownloader,
     DriveImportError,
@@ -29,6 +37,13 @@ TUS_VERSION = "1.0.0"
 
 class DriveImportRequest(BaseModel):
     url: str = Field(min_length=1, max_length=2048)
+
+
+class AnnotationRequest(BaseModel):
+    label: Literal["highlight", "exclude"] = "highlight"
+    start: float = Field(ge=0)
+    end: float = Field(gt=0)
+    note: str = Field(default="", max_length=300)
 
 
 def _tus_headers(settings: Settings) -> dict[str, str]:
@@ -111,6 +126,19 @@ def _drive_import_payload(record: DriveImportRecord) -> dict[str, Any]:
     }
 
 
+def _annotation_payload(record: AnnotationRecord) -> dict[str, Any]:
+    return {
+        "id": record.id,
+        "label": record.label,
+        "start": record.start,
+        "end": record.end,
+        "duration": round(record.end - record.start, 3),
+        "note": record.note,
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
+    }
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -141,7 +169,7 @@ def create_app(
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="1.0.0",
+        version="1.1.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -207,6 +235,8 @@ def create_app(
             "video_sample_fps": settings.video_sample_fps,
             "max_points": settings.max_points,
             "reel_target_seconds": settings.reel_target_seconds,
+            "clip_pre_roll_seconds": settings.clip_pre_roll_seconds,
+            "clip_post_roll_seconds": settings.clip_post_roll_seconds,
         }
 
     @app.get("/api/uploads", dependencies=[Depends(authorize)])
@@ -346,6 +376,81 @@ def create_app(
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found")
         return _job_payload(job)
+
+    def job_and_upload(job_id: str) -> tuple[JobRecord, UploadRecord]:
+        job = database.get_job(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        upload = database.get_upload(job.upload_id)
+        if upload is None:
+            raise HTTPException(status_code=404, detail="Source video not found")
+        return job, upload
+
+    @app.get("/api/jobs/{job_id}/source", dependencies=[Depends(authorize)])
+    async def stream_source(job_id: str) -> FileResponse:
+        _job, upload = job_and_upload(job_id)
+        source = upload.path.resolve()
+        if not source.is_file():
+            raise HTTPException(status_code=404, detail="Source video not found")
+        guessed_type = mimetypes.guess_type(upload.filename)[0]
+        media_type = (
+            upload.content_type
+            if upload.content_type.startswith("video/")
+            else guessed_type or "application/octet-stream"
+        )
+        return FileResponse(
+            source,
+            media_type=media_type,
+            headers={"Accept-Ranges": "bytes"},
+        )
+
+    @app.get("/api/jobs/{job_id}/annotations", dependencies=[Depends(authorize)])
+    async def list_annotations(job_id: str) -> dict[str, Any]:
+        job, _upload = job_and_upload(job_id)
+        return {
+            "job_id": job.id,
+            "upload_id": job.upload_id,
+            "annotations": [
+                _annotation_payload(record)
+                for record in database.list_annotations(job.upload_id)
+            ],
+        }
+
+    @app.post(
+        "/api/jobs/{job_id}/annotations",
+        dependencies=[Depends(authorize)],
+        status_code=201,
+    )
+    async def create_annotation(job_id: str, payload: AnnotationRequest) -> dict[str, Any]:
+        job, _upload = job_and_upload(job_id)
+        if not math.isfinite(payload.start) or not math.isfinite(payload.end):
+            raise HTTPException(status_code=422, detail="Annotation times must be finite")
+        if payload.end <= payload.start:
+            raise HTTPException(status_code=422, detail="Annotation end must follow start")
+        duration = (job.result or {}).get("media", {}).get("duration")
+        if not isinstance(duration, (int, float)) or not math.isfinite(duration):
+            raise HTTPException(status_code=409, detail="Source duration is not available yet")
+        if payload.start >= duration or payload.end > duration:
+            raise HTTPException(status_code=422, detail="Annotation exceeds source duration")
+        record = database.create_annotation(
+            job.upload_id,
+            label=payload.label,
+            start=round(payload.start, 3),
+            end=round(payload.end, 3),
+            note=payload.note.strip(),
+        )
+        return _annotation_payload(record)
+
+    @app.delete(
+        "/api/jobs/{job_id}/annotations/{annotation_id}",
+        dependencies=[Depends(authorize)],
+        status_code=204,
+    )
+    async def delete_annotation(job_id: str, annotation_id: str) -> Response:
+        job, _upload = job_and_upload(job_id)
+        if not database.delete_annotation(job.upload_id, annotation_id):
+            raise HTTPException(status_code=404, detail="Annotation not found")
+        return Response(status_code=204)
 
     @app.get("/api/jobs/{job_id}/files/{filename}", dependencies=[Depends(authorize)])
     async def download_file(job_id: str, filename: str, download: bool = False) -> FileResponse:

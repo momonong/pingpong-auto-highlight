@@ -23,3 +23,14 @@ def test_public_url_reads_from_environment(tmp_path: Path, monkeypatch) -> None:
     settings = Settings.from_env(data_dir=tmp_path)
 
     assert settings.public_url == "https://clips.example.test"
+
+
+def test_clip_context_reads_from_environment(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PINGPONG_UPLOAD_TOKEN", "fixed-token")
+    monkeypatch.setenv("PINGPONG_CLIP_PRE_ROLL_SECONDS", "1.75")
+    monkeypatch.setenv("PINGPONG_CLIP_POST_ROLL_SECONDS", "2.0")
+
+    settings = Settings.from_env(data_dir=tmp_path)
+
+    assert settings.clip_pre_roll_seconds == 1.75
+    assert settings.clip_post_roll_seconds == 2.0

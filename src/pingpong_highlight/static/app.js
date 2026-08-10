@@ -109,6 +109,13 @@ function formatDuration(seconds) {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
+function formatTimestamp(seconds) {
+  const value = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(value / 60);
+  const remainder = (value % 60).toFixed(1).padStart(4, "0");
+  return `${minutes}:${remainder}`;
+}
+
 function authHeaders(extra = {}) {
   return { "X-Upload-Token": token, ...extra };
 }
@@ -383,17 +390,48 @@ async function shareOrSave(button) {
   }
 }
 
-function renderResultPanel(result) {
+function renderAnnotationPanel(jobId) {
+  return `<details class="annotation-panel" data-job-id="${escapeHtml(jobId)}" data-source-url="/api/jobs/${escapeHtml(jobId)}/source">
+    <summary><span>手動標記精彩球</span><small>原片會在展開後才載入</small></summary>
+    <div class="annotation-body">
+      <p class="annotation-help">播放原始影片，把值得收錄的「實際回合」起點與終點記下來；前後留白會由剪輯器另外加入。</p>
+      <video class="annotation-video" controls playsinline preload="none" aria-label="原始影片標記播放器"></video>
+      <div class="annotation-seek" aria-label="快速移動播放位置">
+        <button type="button" data-seek="-10">−10 秒</button>
+        <button type="button" data-seek="-1">−1 秒</button>
+        <span class="annotation-current">0:00.0</span>
+        <button type="button" data-seek="1">+1 秒</button>
+        <button type="button" data-seek="10">+10 秒</button>
+      </div>
+      <div class="annotation-boundaries">
+        <label><span>回合起點</span><input class="annotation-start" type="number" min="0" step="0.1" inputmode="decimal" placeholder="秒" /></label>
+        <button class="annotation-mark-start" type="button">用目前時間</button>
+        <label><span>回合終點</span><input class="annotation-end" type="number" min="0" step="0.1" inputmode="decimal" placeholder="秒" /></label>
+        <button class="annotation-mark-end" type="button">用目前時間</button>
+      </div>
+      <div class="annotation-meta">
+        <label><span>這一球</span><select class="annotation-label"><option value="highlight">值得收錄</option><option value="exclude">不該收錄</option></select></label>
+        <label><span>備註（可不填）</span><input class="annotation-note" type="text" maxlength="300" placeholder="例如：反拉、長回合、關鍵分" /></label>
+      </div>
+      <button class="annotation-save" type="button">儲存這一球</button>
+      <p class="annotation-message" hidden aria-live="polite"></p>
+      <div class="annotation-list" aria-live="polite"><p>展開後讀取標記…</p></div>
+    </div>
+  </details>`;
+}
+
+function renderResultPanel(result, jobId) {
   const reel = result.files.find((file) => file.kind === "reel");
   const pointFiles = result.files.filter((file) => file.kind === "point" || file.kind === "clip");
   const analysis = result.files.find((file) => file.kind === "analysis");
+  const annotationPanel = renderAnnotationPanel(jobId);
   if (!reel) {
     return `<div class="downloads">${result.files
       .map((file) => {
         const url = fileAccessUrl(file.url, { download: true });
         return `<a href="${escapeHtml(url)}" download>${escapeHtml(file.name)}</a>`;
       })
-      .join("")}</div>`;
+      .join("")}</div>${annotationPanel}`;
   }
 
   const previewUrl = fileAccessUrl(reel.url);
@@ -429,7 +467,120 @@ function renderResultPanel(result) {
       <summary>單分片段與分析檔</summary>
       <div class="downloads">${pointLinks}${analysisLink}</div>
     </details>
-  </div>`;
+  </div>${annotationPanel}`;
+}
+
+function showAnnotationMessage(panel, message, isError = false) {
+  const element = panel.querySelector(".annotation-message");
+  element.textContent = message;
+  element.hidden = !message;
+  element.classList.toggle("error", isError);
+}
+
+function renderAnnotations(panel, annotations) {
+  const list = panel.querySelector(".annotation-list");
+  if (!annotations.length) {
+    list.innerHTML = "<p>還沒有人工標記。找到精彩球後，記下回合起點與終點即可。</p>";
+    return;
+  }
+  list.innerHTML = annotations
+    .map((annotation, index) => {
+      const label = annotation.label === "highlight" ? "值得收錄" : "不該收錄";
+      const note = annotation.note ? `<small>${escapeHtml(annotation.note)}</small>` : "";
+      return `<article class="annotation-item ${escapeHtml(annotation.label)}">
+        <div><b>${index + 1}. ${label}</b><span>${formatTimestamp(annotation.start)}–${formatTimestamp(annotation.end)} · ${Number(annotation.duration).toFixed(1)} 秒</span>${note}</div>
+        <div class="annotation-item-actions">
+          <button class="annotation-preview" type="button" data-start="${annotation.start}" data-end="${annotation.end}">播放</button>
+          <button class="annotation-delete" type="button" data-annotation-id="${escapeHtml(annotation.id)}">刪除</button>
+        </div>
+      </article>`;
+    })
+    .join("");
+}
+
+async function loadAnnotations(panel) {
+  const list = panel.querySelector(".annotation-list");
+  list.innerHTML = "<p>正在讀取標記…</p>";
+  try {
+    const response = await apiFetch(`/api/jobs/${panel.dataset.jobId}/annotations`);
+    const payload = await response.json();
+    renderAnnotations(panel, payload.annotations || []);
+  } catch (error) {
+    list.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+async function activateAnnotationPanel(panel) {
+  const video = panel.querySelector(".annotation-video");
+  if (!video.dataset.loaded) {
+    video.src = fileAccessUrl(panel.dataset.sourceUrl);
+    video.preload = "metadata";
+    video.dataset.loaded = "true";
+    video.load();
+  }
+  await loadAnnotations(panel);
+}
+
+function markAnnotationBoundary(panel, boundary) {
+  const video = panel.querySelector(".annotation-video");
+  if (!Number.isFinite(video.currentTime)) return;
+  const input = panel.querySelector(`.annotation-${boundary}`);
+  input.value = video.currentTime.toFixed(1);
+  if (boundary === "start") {
+    const end = panel.querySelector(".annotation-end");
+    if (!end.value || Number(end.value) <= video.currentTime) {
+      end.value = Math.min(video.duration || Infinity, video.currentTime + 3).toFixed(1);
+    }
+  }
+  showAnnotationMessage(panel, "");
+}
+
+async function saveAnnotation(panel, button) {
+  const start = Number(panel.querySelector(".annotation-start").value);
+  const end = Number(panel.querySelector(".annotation-end").value);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+    showAnnotationMessage(panel, "請先設定有效的回合起點與終點。", true);
+    return;
+  }
+  button.disabled = true;
+  const originalLabel = button.textContent;
+  button.textContent = "儲存中…";
+  try {
+    await apiFetch(`/api/jobs/${panel.dataset.jobId}/annotations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        start,
+        end,
+        label: panel.querySelector(".annotation-label").value,
+        note: panel.querySelector(".annotation-note").value.trim(),
+      }),
+    });
+    panel.querySelector(".annotation-note").value = "";
+    showAnnotationMessage(panel, "已儲存；這個標記之後重跑模型也會保留。", false);
+    await loadAnnotations(panel);
+  } catch (error) {
+    showAnnotationMessage(panel, error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+async function deleteAnnotation(panel, button) {
+  if (!window.confirm("確定要刪除這個人工標記嗎？")) return;
+  button.disabled = true;
+  try {
+    await apiFetch(
+      `/api/jobs/${panel.dataset.jobId}/annotations/${button.dataset.annotationId}`,
+      { method: "DELETE" },
+    );
+    showAnnotationMessage(panel, "標記已刪除。", false);
+    await loadAnnotations(panel);
+  } catch (error) {
+    showAnnotationMessage(panel, error.message, true);
+    button.disabled = false;
+  }
 }
 
 function uploadIsActive(upload) {
@@ -667,7 +818,7 @@ function renderJob(job) {
   const stats = result
     ? `<div class="job-stats"><span><b>${pointCount}</b> 個得分</span>${summary.reel_duration ? `<span><b>${formatDuration(summary.reel_duration)}</b> 集錦</span>` : ""}<span><b>${formatDuration(result.media.duration)}</b> 原片</span></div>`
     : "";
-  const resultPanel = result ? renderResultPanel(result) : "";
+  const resultPanel = result ? renderResultPanel(result, job.id) : "";
   const progressBar =
     job.status === "processing" || job.status === "queued"
       ? `<div class="job-progress-meta"><span>${escapeHtml(jobStage(job))}</span><b>${progress}%</b></div><div class="job-progress"><span style="width:${progress}%"></span></div>`
@@ -778,9 +929,77 @@ elements.pauseButton.addEventListener("click", () => {
   elements.transferLabel.textContent = paused ? "已暫停（已傳部分會保留）" : "正在傳送影片";
 });
 elements.jobList.addEventListener("click", (event) => {
-  const button = event.target.closest(".share-button");
-  if (button) shareOrSave(button);
+  const shareButton = event.target.closest(".share-button");
+  if (shareButton) {
+    shareOrSave(shareButton);
+    return;
+  }
+  const panel = event.target.closest(".annotation-panel");
+  if (!panel) return;
+  const video = panel.querySelector(".annotation-video");
+  const seekButton = event.target.closest("button[data-seek]");
+  if (seekButton) {
+    const duration = Number.isFinite(video.duration) ? video.duration : Infinity;
+    video.currentTime = Math.max(0, Math.min(duration, video.currentTime + Number(seekButton.dataset.seek)));
+    return;
+  }
+  if (event.target.closest(".annotation-mark-start")) {
+    markAnnotationBoundary(panel, "start");
+    return;
+  }
+  if (event.target.closest(".annotation-mark-end")) {
+    markAnnotationBoundary(panel, "end");
+    return;
+  }
+  const saveButton = event.target.closest(".annotation-save");
+  if (saveButton) {
+    saveAnnotation(panel, saveButton);
+    return;
+  }
+  const previewButton = event.target.closest(".annotation-preview");
+  if (previewButton) {
+    video.currentTime = Number(previewButton.dataset.start);
+    video.dataset.stopAt = previewButton.dataset.end;
+    video.play().catch(() => showAnnotationMessage(panel, "瀏覽器無法播放這個原片編碼。", true));
+    return;
+  }
+  const deleteButton = event.target.closest(".annotation-delete");
+  if (deleteButton) deleteAnnotation(panel, deleteButton);
 });
+elements.jobList.addEventListener(
+  "toggle",
+  (event) => {
+    const panel = event.target.closest(".annotation-panel");
+    if (panel?.open) activateAnnotationPanel(panel);
+  },
+  true,
+);
+elements.jobList.addEventListener(
+  "timeupdate",
+  (event) => {
+    const video = event.target.closest(".annotation-video");
+    if (!video) return;
+    const panel = video.closest(".annotation-panel");
+    panel.querySelector(".annotation-current").textContent = formatTimestamp(video.currentTime);
+    const stopAt = Number(video.dataset.stopAt);
+    if (Number.isFinite(stopAt) && video.currentTime >= stopAt) {
+      video.pause();
+      delete video.dataset.stopAt;
+    }
+  },
+  true,
+);
+elements.jobList.addEventListener(
+  "durationchange",
+  (event) => {
+    const video = event.target.closest(".annotation-video");
+    if (!video || !Number.isFinite(video.duration)) return;
+    const panel = video.closest(".annotation-panel");
+    panel.querySelector(".annotation-start").max = String(video.duration);
+    panel.querySelector(".annotation-end").max = String(video.duration);
+  },
+  true,
+);
 elements.uploadList.addEventListener("click", (event) => {
   const button = event.target.closest(".delete-upload-button");
   if (button) deleteUploadSession(button);
