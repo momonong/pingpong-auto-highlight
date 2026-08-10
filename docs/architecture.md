@@ -28,6 +28,12 @@
 
 目前內建 store 以單一 uvicorn process 為假設。若公開部署或多機擴充，API contract 可保留，傳輸層改接官方 `tusd`，輸入放 S3-compatible object storage，工作佇列改用 Redis／Postgres。
 
+### Google Drive import
+
+`drive.py` 只接受明確的 HTTPS Google Drive 單檔網址，解析並保存 file ID，不會把使用者輸入當作任意下載網址，以避免 SSRF。公開影片由獨立的單 worker 背景下載器寫入 `data/drive-imports`；SQLite 保存 queued、resolving、downloading、failed 與 completed 狀態。下載完成後，檔案以 atomic rename 移入 upload store，並在同一個資料庫 transaction 建立既有 job，因此後續一律走相同的 GPU 優先分析與輸出流程。
+
+下載器會保留 `.part`、回報電腦端 offset、限制單檔大小並預留磁碟空間。服務重啟會把中斷中的匯入重新排隊，再從磁碟上的部分檔案續傳。這條公開連結模式不需要 OAuth，但可讀權限由 Google Drive 連結本身承擔；多人或敏感資料版本應改成 OAuth service account／使用者授權，而不是擴大這個 bearer-link 模式。
+
 ### Timestamp-based media layer
 
 `pipeline/media.py` 用 `ffprobe` 取得 duration、codec、audio stream 與 rotation，再啟動兩條 FFmpeg decode pipe：
@@ -63,6 +69,8 @@ point candidate 不會再彼此合併。相鄰兩分的 padding 若重疊，兩�
 | 手機關頁 | 重新選同一檔案後續傳 |
 | chunk 損毀 | checksum mismatch，不推進 offset |
 | 服務在上傳途中停止 | `.part` 大小與 SQLite offset 在啟動時 reconcile |
+| Drive 下載中斷或服務停止 | 保留 `.part`，頁面重試或下次啟動後續傳 |
+| Drive 權限或下載政策拒絕 | 匯入標記失敗，修正共用權限後從頁面重試 |
 | 服務在分析途中停止 | job 重新排隊並從頭分析；不會重傳原片 |
 | NVDEC 不可用或不支援來源格式 | 同一支影片自動改用 CPU 解碼 |
 | NVENC 不可用 | 同一 clip 自動改用 `libx264` |

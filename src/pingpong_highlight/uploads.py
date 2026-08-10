@@ -81,6 +81,44 @@ class UploadStore:
         self.part_path(record).touch(exist_ok=False)
         return record
 
+    def import_completed_file(
+        self,
+        filename: str,
+        content_type: str,
+        source: Path,
+        *,
+        drive_import_id: str,
+    ) -> tuple[UploadRecord, JobRecord]:
+        filename = clean_filename(filename)
+        suffix = Path(filename).suffix.lower()
+        if suffix not in ALLOWED_SUFFIXES:
+            raise UploadError(415, "Google Drive file must use a supported video extension")
+
+        try:
+            size = source.stat().st_size
+        except FileNotFoundError as exc:
+            raise UploadError(500, "Downloaded Google Drive file is missing") from exc
+        if size <= 0:
+            raise UploadError(400, "Downloaded Google Drive file is empty")
+        if size > self.settings.max_upload_bytes:
+            raise UploadError(413, "Video exceeds the configured upload size limit")
+
+        upload_id = uuid.uuid4().hex
+        destination = self.settings.uploads_dir / f"{upload_id}{suffix}"
+        os.replace(source, destination)
+        try:
+            return self.database.register_completed_upload(
+                upload_id,
+                filename,
+                size,
+                content_type or "application/octet-stream",
+                destination,
+                drive_import_id=drive_import_id,
+            )
+        except Exception:
+            os.replace(destination, source)
+            raise
+
     def reconcile(self) -> None:
         for record in self.database.list_incomplete_uploads():
             if record.path.exists():

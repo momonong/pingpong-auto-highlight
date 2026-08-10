@@ -11,14 +11,24 @@ from urllib.parse import quote
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from pingpong_highlight.config import Settings
-from pingpong_highlight.db import Database, JobRecord, UploadRecord
+from pingpong_highlight.db import Database, DriveImportRecord, JobRecord, UploadRecord
+from pingpong_highlight.drive import (
+    DriveDownloader,
+    DriveImportError,
+    DriveImportManager,
+)
 from pingpong_highlight.jobs import JobManager
 from pingpong_highlight.pipeline.processor import HighlightProcessor
 from pingpong_highlight.uploads import UploadError, UploadStore
 
 TUS_VERSION = "1.0.0"
+
+
+class DriveImportRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
 
 
 def _tus_headers(settings: Settings) -> dict[str, str]:
@@ -88,27 +98,50 @@ def _job_payload(record: JobRecord) -> dict[str, Any]:
     }
 
 
+def _drive_import_payload(record: DriveImportRecord) -> dict[str, Any]:
+    return {
+        "id": record.id,
+        "filename": record.filename,
+        "size": record.size,
+        "offset": record.offset,
+        "status": record.status,
+        "error": record.error,
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
+    }
+
+
 def create_app(
     settings: Settings | None = None,
     *,
     processor: HighlightProcessor | None = None,
+    drive_downloader: DriveDownloader | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     database = Database(settings.database_path)
     uploads = UploadStore(settings, database)
     jobs = JobManager(settings, database, processor)
+    drive_imports = DriveImportManager(
+        settings,
+        database,
+        uploads,
+        jobs.enqueue,
+        drive_downloader,
+    )
     static_dir = Path(__file__).parent / "static"
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         uploads.reconcile()
         jobs.start()
+        drive_imports.start()
         yield
+        drive_imports.shutdown()
         jobs.shutdown()
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="0.9.0",
+        version="0.10.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -117,6 +150,7 @@ def create_app(
     app.state.database = database
     app.state.uploads = uploads
     app.state.jobs = jobs
+    app.state.drive_imports = drive_imports
 
     @app.middleware("http")
     async def secure_responses(request: Request, call_next):
@@ -155,6 +189,12 @@ def create_app(
             headers=_tus_headers(settings) | exc.headers,
         )
 
+    @app.exception_handler(DriveImportError)
+    async def handle_drive_import_error(
+        _request: Request, exc: DriveImportError
+    ) -> JSONResponse:
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
     @app.get("/api/health")
     async def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -176,6 +216,40 @@ def create_app(
                 _upload_payload(upload) for upload in database.list_incomplete_uploads()
             ]
         }
+
+    @app.get("/api/drive-imports", dependencies=[Depends(authorize)])
+    async def list_drive_imports() -> dict[str, list[dict[str, Any]]]:
+        return {
+            "imports": [
+                _drive_import_payload(record)
+                for record in database.list_drive_imports()
+            ]
+        }
+
+    @app.post(
+        "/api/drive-imports",
+        dependencies=[Depends(authorize)],
+        status_code=202,
+    )
+    async def create_drive_import(payload: DriveImportRequest) -> dict[str, Any]:
+        return _drive_import_payload(drive_imports.submit(payload.url))
+
+    @app.post(
+        "/api/drive-imports/{import_id}/retry",
+        dependencies=[Depends(authorize)],
+        status_code=202,
+    )
+    async def retry_drive_import(import_id: str) -> dict[str, Any]:
+        return _drive_import_payload(drive_imports.retry(import_id))
+
+    @app.delete(
+        "/api/drive-imports/{import_id}",
+        dependencies=[Depends(authorize)],
+        status_code=204,
+    )
+    async def delete_drive_import(import_id: str) -> Response:
+        drive_imports.delete(import_id)
+        return Response(status_code=204)
 
     @app.options("/api/uploads")
     async def upload_options() -> Response:

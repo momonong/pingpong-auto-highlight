@@ -55,7 +55,7 @@ def _serve(args: argparse.Namespace) -> int:
         _print_qr(url)
         print()
     print("1. 保持這個視窗與電腦開啟。")
-    print("2. 手機掃描 QR code，從相簿選擇原始影片。")
+    print("2. 手機掃描 QR code，從相簿選片或貼上公開 Google Drive 連結。")
     print("3. 上傳完成後可關閉手機頁面，電腦會繼續處理。")
     print("4. 回到同一網址即可預覽、下載或分享完成的 MP4。")
     print(f"\n資料目錄：{settings.data_dir}")

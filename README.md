@@ -2,7 +2,7 @@
 
 把一段完整桌球錄影，自動剪成「以得分為單位」的精彩集錦。
 
-手機只負責錄影與上傳；電腦在本地完成影片解碼、逐分切點、精彩度排序與 Reel 剪接。原片與成品只持久儲存在這台電腦；使用 Cloudflare Tunnel 從外網上傳時，傳輸流量會經過 Cloudflare。
+手機只負責錄影與提供影片；可以直接續傳，也可以先放上 Google Drive 再貼公開連結。電腦在本地完成下載、影片解碼、逐分切點、精彩度排序與 Reel 剪接。匯入後的原片副本與成品持久儲存在這台電腦；使用 Cloudflare Tunnel 時，網頁流量會經過 Cloudflare，而 Drive 原片由電腦直接向 Google 下載。
 
 ## 成品形式
 
@@ -66,6 +66,20 @@
 
 使用期間請讓電腦保持喚醒，並維持 Docker Desktop 與網路連線。影片仍在上傳時，不要重啟 Docker、`cloudflared` 或電腦；上傳完成後，手機頁面可以關閉，電腦會繼續分析與剪輯。
 
+### 用 Google Drive 加入影片（大檔案建議）
+
+這條路徑通常比手機透過網頁把大檔案傳到 Cloudflare Tunnel 更穩定，而且貼完連結後可以立刻關閉手機頁面：
+
+1. 在手機的 Google Drive 上傳原始影片，等 Drive 顯示上傳完成。
+2. 開啟該影片的「管理存取權」或「共用」，把一般存取權改成「知道連結的任何人」，角色選「檢視者」。只要允許下載，不需要給編輯權限。
+3. 複製的是單一影片連結，不是資料夾連結。
+4. 在 RallyCut 的 Google Drive 區塊貼上連結，按「開始匯入」。
+5. 「Drive 下載中」會顯示電腦端實際收到的進度；完成後會自動消失並變成 GPU 剪輯工作，不需要再按一次開始。
+
+系統端不需要 Google 帳號、OAuth、API key 或額外設定。公開連結等同任何拿到連結的人都能讀取，因此不要用在敏感影片。等 RallyCut 狀態已從 Drive 下載切換成「排隊中／分析中」後，就可以把 Google Drive 共用權限改回「受限制」；電腦已下載的本機副本不受影響。
+
+Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟時，會保留已下載部分並在下次啟動續傳；失敗項目也可以直接在頁面重試或刪除。Google 仍可能因下載次數、擁有者禁止下載或組織政策拒絕公開下載，這時頁面會保留進度並顯示權限提示。
+
 即使頁面重新整理或 Quick Tunnel 換成新網址，電腦已收到的分塊也不會遺失。請回到持有原始影片的手機，重新選擇同一支影片；只要伺服器上剛好有一筆檔名與大小相同的未完成紀錄，系統就會從保存的 offset 續傳。其他裝置可同步查看進度，但無法代替來源手機提供原始檔案。若同一影片不小心留下多筆紀錄，頁面會先要求刪除重複項目，避免再建立第四筆；「刪除這筆上傳」只會刪除電腦上的未完成分塊，不會影響手機原片。
 
 只關閉手機外網入口、保留本機服務與所有資料：
@@ -102,7 +116,7 @@ docker compose logs -f pingpong-highlight
 
 把 `.env` 裡的 `PINGPONG_PUBLIC_URL` 改成電腦目前的 Wi‑Fi IP，例如 `http://192.168.1.19:8000`。啟動後，log 會顯示完整手機網址與 QR code；`restart: unless-stopped` 會讓容器在 Docker 重新啟動後自動恢復。
 
-上傳原片、續傳資訊、工作狀態與成品都掛載在電腦的 `./data`，重新 build 或刪除容器不會遺失。要更新程式時再執行一次：
+上傳原片、Drive 下載暫存、續傳資訊、工作狀態與成品都掛載在電腦的 `./data`，重新 build 或刪除容器不會遺失。要更新程式時再執行一次：
 
 ```powershell
 docker compose up -d --build
@@ -186,8 +200,8 @@ pingpong-highlight serve
 完整操作流程：
 
 1. 電腦執行 `pingpong-highlight serve`，保持終端機與電腦開啟。
-2. 手機掃描 QR code，從相簿選擇原始影片並開始傳送。
-3. 上傳完成後，手機頁面可以關閉；電腦會繼續處理。
+2. 手機掃描 QR code，從相簿選擇原始影片，或貼上公開 Google Drive 影片連結。
+3. 手機直傳需等上傳完成才能關頁；Drive 連結送出後即可關頁，電腦會在背景下載並處理。
 4. 回到同一網址即可直接預覽成品。
 5. 使用「下載 MP4」，或在支援 Web Share 的手機使用「分享／存到相簿」。
 
@@ -210,6 +224,7 @@ pingpong-highlight analyze "D:\videos\match.mov"
 ```mermaid
 flowchart LR
     A["手機影片"] -->|"可續傳分塊上傳"| B["電腦本地儲存"]
+    D["Google Drive 公開影片"] -->|"電腦背景續傳"| B
     B --> C["時間戳式音訊與畫面分析"]
     C --> D["逐分切點"]
     D --> E["精彩度排序與時長預算"]
@@ -229,6 +244,7 @@ flowchart LR
 | `PINGPONG_PORT` | `8000` | LAN 服務連接埠 |
 | `PINGPONG_PUBLIC_URL` | 自動偵測 | QR code 與手機要開啟的公開基底網址；Docker 建議明確設定 |
 | `PINGPONG_MAX_UPLOAD_BYTES` | 100 GiB | 單檔上限 |
+| `PINGPONG_DOWNLOAD_MIN_FREE_BYTES` | 2 GiB | Drive 匯入時保留的最低可用空間 |
 | `PINGPONG_VIDEO_SAMPLE_FPS` | 8 | 畫面分析取樣率 |
 | `PINGPONG_MAX_POINTS` | 6 | 集錦最多收錄幾分 |
 | `PINGPONG_REEL_TARGET_SECONDS` | 55 | 集錦目標長度 |
