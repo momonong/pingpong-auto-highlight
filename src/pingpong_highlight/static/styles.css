@@ -865,6 +865,10 @@ h1 em {
   gap: 12px;
 }
 
+.upload-list:not(:empty) {
+  margin-bottom: 12px;
+}
+
 .job {
   padding: 19px;
   overflow: hidden;
@@ -875,6 +879,14 @@ h1 em {
 
 .job.completed {
   border-color: rgba(200, 255, 77, 0.19);
+}
+
+.job.uploading {
+  border-color: rgba(200, 255, 77, 0.22);
+}
+
+.job.waiting {
+  border-color: rgba(255, 201, 92, 0.2);
 }
 
 .job.failed {
@@ -916,14 +928,21 @@ h1 em {
 
 .status.processing,
 .status.queued,
+.status.uploading,
 .status.completed {
   color: var(--lime);
   background: rgba(200, 255, 77, 0.085);
 }
 
-.status.processing::before {
+.status.processing::before,
+.status.uploading::before {
   box-shadow: 0 0 0 4px rgba(200, 255, 77, 0.09);
   animation: pulse 1.6s ease-in-out infinite;
+}
+
+.status.waiting {
+  color: #ffd074;
+  background: rgba(255, 201, 92, 0.09);
 }
 
 .status.failed {

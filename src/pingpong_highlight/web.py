@@ -108,7 +108,7 @@ def create_app(
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="0.6.0",
+        version="0.7.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -167,6 +167,14 @@ def create_app(
             "video_sample_fps": settings.video_sample_fps,
             "max_points": settings.max_points,
             "reel_target_seconds": settings.reel_target_seconds,
+        }
+
+    @app.get("/api/uploads", dependencies=[Depends(authorize)])
+    async def list_uploads() -> dict[str, list[dict[str, Any]]]:
+        return {
+            "uploads": [
+                _upload_payload(upload) for upload in database.list_incomplete_uploads()
+            ]
         }
 
     @app.options("/api/uploads")
