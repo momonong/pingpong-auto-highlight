@@ -15,15 +15,6 @@ RUN python -m pip wheel --no-cache-dir --no-deps --no-build-isolation --wheel-di
 
 FROM python:3.12-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
 
-ARG APP_VERSION=1.1.0
-ARG VCS_REF=unknown
-
-LABEL org.opencontainers.image.title="Ping-Pong Auto Highlight" \
-      org.opencontainers.image.description="Local-first table-tennis point highlight reels with NVIDIA NVDEC/NVENC support" \
-      org.opencontainers.image.source="https://github.com/momonong/pingpong-auto-highlight" \
-      org.opencontainers.image.version="${APP_VERSION}" \
-      org.opencontainers.image.revision="${VCS_REF}"
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -47,6 +38,15 @@ RUN python -m pip install --no-cache-dir --no-deps /tmp/wheels/*.whl \
     && useradd --uid 10001 --gid 10001 --system --no-create-home pingpong \
     && mkdir -p /data \
     && chown pingpong:pingpong /data
+
+ARG APP_VERSION=1.2.0
+ARG VCS_REF=unknown
+
+LABEL org.opencontainers.image.title="Ping-Pong Auto Highlight" \
+      org.opencontainers.image.description="Local-first table-tennis point highlight reels with NVIDIA NVDEC/NVENC support" \
+      org.opencontainers.image.source="https://github.com/momonong/pingpong-auto-highlight" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${VCS_REF}"
 
 USER pingpong
 
