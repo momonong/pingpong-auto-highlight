@@ -68,6 +68,18 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         assert created.status_code == 201
         location = created.headers["location"]
 
+        active = client.get("/api/uploads", headers={"X-Upload-Token": "test-secret"})
+        assert active.status_code == 200
+        active_upload = active.json()["uploads"][0]
+        assert active_upload["id"] == location.rsplit("/", 1)[-1]
+        assert active_upload["filename"] == "phone.mov"
+        assert active_upload["size"] == len(payload)
+        assert active_upload["offset"] == 0
+        assert active_upload["status"] == "uploading"
+        assert active_upload["job_id"] is None
+        assert active_upload["created_at"]
+        assert active_upload["updated_at"]
+
         first = payload[:8]
         digest = base64.b64encode(hashlib.sha256(first).digest()).decode()
         response = client.patch(
@@ -83,6 +95,12 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         )
         assert response.status_code == 204
         assert response.headers["upload-offset"] == "8"
+
+        active_upload = client.get(
+            "/api/uploads", headers={"X-Upload-Token": "test-secret"}
+        ).json()["uploads"][0]
+        assert active_upload["offset"] == 8
+        assert active_upload["size"] == len(payload)
 
         head = client.head(location, headers=_headers())
         assert head.headers["upload-offset"] == "8"
@@ -122,6 +140,9 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
             job_id = response.headers.get("upload-job-id") or job_id
 
         assert job_id
+        assert client.get(
+            "/api/uploads", headers={"X-Upload-Token": "test-secret"}
+        ).json() == {"uploads": []}
         for _ in range(100):
             job = client.get(f"/api/jobs/{job_id}", headers=_headers()).json()
             if job["status"] == "completed":
@@ -156,6 +177,7 @@ def test_api_rejects_missing_token(tmp_path: Path) -> None:
     app = create_app(_settings(tmp_path), processor=FakeProcessor(b"x"))
     with TestClient(app) as client:
         assert client.get("/api/jobs").status_code == 401
+        assert client.get("/api/uploads").status_code == 401
 
 
 def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> None:

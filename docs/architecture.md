@@ -17,6 +17,8 @@
 
 瀏覽器不允許頁面在背景永久執行，因此 iOS 把 Safari 完全關掉時上傳仍會停下；但 partial file 和 offset 會保留。重新開頁、再選同一個原檔即可續傳。
 
+`GET /api/uploads` 會回傳尚未完成的 upload offset、總大小與最後更新時間。前端把它和 `/api/jobs` 組成一致的活動視圖，因此重新整理或換到另一台已授權裝置仍能監看伺服器實際收到的百分比。另一台裝置沒有手機相簿裡的 `File` bytes，只能監看；續傳仍由來源裝置重新選擇同一原檔後執行。
+
 ### Upload store and state
 
 - `uploads.py` 只用隨機 ID 當磁碟檔名，原始 filename 僅作 metadata，避免 path traversal。
@@ -70,4 +72,4 @@ point candidate 不會再彼此合併。相鄰兩分的 padding 若重疊，兩�
 
 - 不追蹤 3 px 寬且常 motion-blur 的球；沒有專用訓練資料時，generic object detector 對此不可靠。
 - 不把 generic pose ID 當 rally state；人站在畫面裡不代表正在打球。
-- 不建立雲端帳號、付款或公網 tunnel。這是單人 side project 的 local-first 路徑。
+- 不建立雲端物件儲存、付款流程或多人帳號系統。Quick Tunnel 只負責傳輸，影片分析與持久儲存仍是單機 local-first。

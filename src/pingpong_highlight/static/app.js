@@ -14,6 +14,7 @@ const elements = {
   refreshButton: document.querySelector("#refreshButton"),
   emptyJobs: document.querySelector("#emptyJobs"),
   jobCount: document.querySelector("#jobCount"),
+  uploadList: document.querySelector("#uploadList"),
   jobList: document.querySelector("#jobList"),
 };
 
@@ -35,9 +36,12 @@ let chunkSize = 8 * 1024 * 1024;
 let paused = false;
 let uploadRunning = false;
 let wakeLock = null;
-let jobsLoading = false;
+let activityLoading = false;
 let authReady = false;
+let lastUploadsSignature = "";
 let lastJobsSignature = "";
+
+const uploadActiveWindowMs = 60 * 1000;
 
 const stageNames = {
   queued: "等待電腦處理",
@@ -273,7 +277,7 @@ async function startUpload() {
     elements.transferLabel.textContent = "影片已送達電腦";
     elements.transferDetail.textContent = "分析已排入佇列；現在可以關閉這個頁面";
     elements.pauseButton.hidden = true;
-    await loadJobs();
+    await loadActivity();
   } catch (error) {
     elements.transferLabel.textContent = "傳送暫停";
     elements.transferDetail.textContent = `${error.message}。重新按開始會從已完成的位置繼續。`;
@@ -382,65 +386,134 @@ function renderResultPanel(result) {
   </div>`;
 }
 
-function renderJobs(jobs) {
-  elements.emptyJobs.hidden = jobs.length > 0;
-  elements.jobCount.textContent = jobs.length
-    ? `${jobs.length} ${jobs.length > 1 ? "個項目" : "支影片"}`
-    : "等待第一支影片";
-  elements.jobList.innerHTML = jobs
-    .map((job) => {
-      const result = job.result;
-      const filename = result?.source_name || `影片 ${job.upload_id.slice(0, 8)}`;
-      const progress = Math.round(job.progress * 100);
-      const statusText =
-        job.status === "completed"
-          ? "完成"
-          : job.status === "failed"
-            ? "失敗"
-            : job.status === "processing"
-              ? "分析中"
-              : "排隊中";
-      const summary = result?.summary;
-      const pointCount = summary?.point_count ?? summary?.highlight_count ?? 0;
-      const details = job.error
-        ? escapeHtml(job.error)
-        : result
-          ? pointCount
-            ? `選出 ${pointCount} 個精彩得分，已剪成得分集錦。`
-            : "這次沒有足夠可靠的得分回合；可下載分析報告檢查訊號。"
-          : escapeHtml(jobStage(job));
-      const stats = result
-        ? `<div class="job-stats"><span><b>${pointCount}</b> 個得分</span>${summary.reel_duration ? `<span><b>${formatDuration(summary.reel_duration)}</b> 集錦</span>` : ""}<span><b>${formatDuration(result.media.duration)}</b> 原片</span></div>`
-        : "";
-      const resultPanel = result ? renderResultPanel(result) : "";
-      const progressBar =
-        job.status === "processing" || job.status === "queued"
-          ? `<div class="job-progress-meta"><span>${escapeHtml(jobStage(job))}</span><b>${progress}%</b></div><div class="job-progress"><span style="width:${progress}%"></span></div>`
-          : "";
-      return `<article class="job ${escapeHtml(job.status)}">
-        <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(job.status)}">${statusText}</span></div>
-        <p class="job-detail">${details}</p>
-        ${progressBar}${stats}${resultPanel}
-      </article>`;
-    })
-    .join("");
+function uploadIsActive(upload) {
+  const updatedAt = Date.parse(upload.updated_at);
+  return Number.isFinite(updatedAt) && Date.now() - updatedAt <= uploadActiveWindowMs;
 }
 
-async function loadJobs() {
-  if (!token || jobsLoading) return;
-  jobsLoading = true;
+function hasLocalResumeSession(upload) {
+  const expectedPath = `/api/uploads/${upload.id}`;
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key?.startsWith("pingpong-upload:")) continue;
+    const saved = localStorage.getItem(key);
+    if (saved && new URL(saved, window.location.origin).pathname === expectedPath) return true;
+  }
+  return false;
+}
+
+function uploadProgress(upload) {
+  const raw = upload.size ? Math.min(100, (upload.offset / upload.size) * 100) : 0;
+  const value = upload.offset < upload.size ? Math.min(raw, 99.9) : 100;
+  const decimals = value > 0 && value < 100 ? 1 : 0;
+  return { value, label: `${value.toFixed(decimals)}%` };
+}
+
+function uploadUpdatedLabel(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "最近更新";
+  return `最後更新 ${date.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function renderUpload(upload) {
+  const progress = uploadProgress(upload);
+  const active = upload.transfer_active;
+  const resumableHere = upload.local_resume;
+  const statusClass = active ? "uploading" : "waiting";
+  const statusText = active ? "上傳中" : "等待續傳";
+  const details = resumableHere
+    ? "這台裝置保留了續傳位置；若曾重新整理，請在上方重新選擇同一支影片。"
+    : active
+      ? "來源裝置正在傳送；此頁會自動更新電腦已收到的進度。"
+      : "目前沒有收到新分塊；請回來源裝置重新選擇同一支影片續傳。";
+  const transferred = `${formatBytes(upload.offset)} / ${formatBytes(upload.size)}`;
+
+  return `<article class="job ${statusClass}">
+    <div class="job-title"><strong title="${escapeHtml(upload.filename)}">${escapeHtml(upload.filename)}</strong><span class="status ${statusClass}">${statusText}</span></div>
+    <p class="job-detail">${details}</p>
+    <div class="job-progress-meta"><span>${escapeHtml(transferred)} · ${escapeHtml(uploadUpdatedLabel(upload.updated_at))}</span><b>${progress.label}</b></div>
+    <div class="job-progress"><span style="width:${progress.value}%"></span></div>
+  </article>`;
+}
+
+function renderJob(job) {
+  const result = job.result;
+  const filename = result?.source_name || `影片 ${job.upload_id.slice(0, 8)}`;
+  const progress = Math.round(job.progress * 100);
+  const statusText =
+    job.status === "completed"
+      ? "完成"
+      : job.status === "failed"
+        ? "失敗"
+        : job.status === "processing"
+          ? "分析中"
+          : "排隊中";
+  const summary = result?.summary;
+  const pointCount = summary?.point_count ?? summary?.highlight_count ?? 0;
+  const details = job.error
+    ? escapeHtml(job.error)
+    : result
+      ? pointCount
+        ? `選出 ${pointCount} 個精彩得分，已剪成得分集錦。`
+        : "這次沒有足夠可靠的得分回合；可下載分析報告檢查訊號。"
+      : escapeHtml(jobStage(job));
+  const stats = result
+    ? `<div class="job-stats"><span><b>${pointCount}</b> 個得分</span>${summary.reel_duration ? `<span><b>${formatDuration(summary.reel_duration)}</b> 集錦</span>` : ""}<span><b>${formatDuration(result.media.duration)}</b> 原片</span></div>`
+    : "";
+  const resultPanel = result ? renderResultPanel(result) : "";
+  const progressBar =
+    job.status === "processing" || job.status === "queued"
+      ? `<div class="job-progress-meta"><span>${escapeHtml(jobStage(job))}</span><b>${progress}%</b></div><div class="job-progress"><span style="width:${progress}%"></span></div>`
+      : "";
+  return `<article class="job ${escapeHtml(job.status)}">
+    <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(job.status)}">${statusText}</span></div>
+    <p class="job-detail">${details}</p>
+    ${progressBar}${stats}${resultPanel}
+  </article>`;
+}
+
+function renderActivity(uploads, jobs) {
+  const uploadViews = uploads.map((upload) => ({
+    ...upload,
+    transfer_active: uploadIsActive(upload),
+    local_resume: hasLocalResumeSession(upload),
+  }));
+  const total = uploadViews.length + jobs.length;
+  elements.emptyJobs.hidden = total > 0;
+  elements.jobCount.textContent = total
+    ? `${total} ${total > 1 ? "個項目" : "支影片"}`
+    : "等待第一支影片";
+
+  const uploadsSignature = JSON.stringify(uploadViews);
+  if (uploadsSignature !== lastUploadsSignature) {
+    lastUploadsSignature = uploadsSignature;
+    elements.uploadList.innerHTML = uploadViews.map(renderUpload).join("");
+  }
+
+  const jobsSignature = JSON.stringify(jobs);
+  if (jobsSignature !== lastJobsSignature) {
+    lastJobsSignature = jobsSignature;
+    elements.jobList.innerHTML = jobs.map(renderJob).join("");
+  }
+}
+
+async function loadActivity() {
+  if (!token || activityLoading) return;
+  activityLoading = true;
   try {
-    const response = await apiFetch("/api/jobs");
-    const jobs = (await response.json()).jobs;
-    const signature = JSON.stringify(jobs);
-    if (signature !== lastJobsSignature) {
-      lastJobsSignature = signature;
-      renderJobs(jobs);
-    }
+    const [uploadsResponse, jobsResponse] = await Promise.all([
+      apiFetch("/api/uploads"),
+      apiFetch("/api/jobs"),
+    ]);
+    const [{ uploads }, { jobs }] = await Promise.all([
+      uploadsResponse.json(),
+      jobsResponse.json(),
+    ]);
+    renderActivity(uploads, jobs);
   } catch (error) {
     if (String(error.message).includes("401")) elements.tokenWarning.hidden = false;
   } finally {
-    jobsLoading = false;
+    activityLoading = false;
   }
 }
 
@@ -491,7 +564,7 @@ elements.jobList.addEventListener("click", (event) => {
   const button = event.target.closest(".share-button");
   if (button) shareOrSave(button);
 });
-elements.refreshButton.addEventListener("click", loadJobs);
+elements.refreshButton.addEventListener("click", loadActivity);
 
 window.addEventListener("beforeunload", (event) => {
   if (!uploadRunning) return;
@@ -505,7 +578,7 @@ async function initialize() {
     return;
   }
   try {
-    const [configResponse] = await Promise.all([apiFetch("/api/config"), loadJobs()]);
+    const [configResponse] = await Promise.all([apiFetch("/api/config"), loadActivity()]);
     const config = await configResponse.json();
     chunkSize = config.chunk_size || chunkSize;
     authReady = true;
@@ -513,7 +586,7 @@ async function initialize() {
   } catch (error) {
     elements.tokenWarning.hidden = false;
   }
-  setInterval(loadJobs, 2500);
+  setInterval(loadActivity, 2500);
 }
 
 initialize();
