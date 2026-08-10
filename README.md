@@ -2,7 +2,7 @@
 
 把一段完整桌球錄影，自動剪成「以得分為單位」的精彩集錦。
 
-手機只負責錄影與提供影片；可以直接續傳，也可以先放上 Google Drive 再貼公開連結。電腦在本地完成下載、影片解碼、逐分切點、精彩度排序與 Reel 剪接。匯入後的原片副本與成品持久儲存在這台電腦；使用 Cloudflare Tunnel 時，網頁流量會經過 Cloudflare，而 Drive 原片由電腦直接向 Google 下載。
+手機只負責錄影與提供影片；可以直接續傳，也可以先放上 Google Drive 再貼公開連結。電腦在本地完成下載、影片解碼、逐分切點、精彩度排序與 Reel 剪接。匯入後的原片副本與成品持久儲存在這台電腦；使用 ngrok 或 Cloudflare Tunnel 時，網頁流量會經過該入口服務，而 Drive 原片由電腦直接向 Google 下載。
 
 ## 成品形式
 
@@ -17,7 +17,7 @@
 
 ## 啟動系統（平常從手機使用）
 
-以下是電腦重新開機後的標準流程。Quick Tunnel 不需要 Cloudflare 帳號或網域。
+以下是電腦重新開機後的標準流程。預設使用 ngrok，因為它的主要 tunnel 連線走 TLS 443，不像 Cloudflare Tunnel 需要目前被學校網路封鎖的 7844 連接埠。第一次使用需要免費 ngrok 帳號與 authtoken。
 
 1. 開啟 Docker Desktop，等到左下角顯示 Docker Engine 正在執行。
 2. 開啟 Git Bash，進入專案目錄：
@@ -28,33 +28,36 @@
 
    如果之後移動了專案資料夾，請把路徑換成新的位置。
 
-3. 啟動剪輯服務與手機外網入口：
+3. 第一次使用時，先在 [ngrok Dashboard](https://dashboard.ngrok.com/get-started/your-authtoken) 建立帳號並複製 authtoken。它相當於 ngrok 帳號密碼，請只貼進下一步的本機隱藏提示，不要貼到聊天、README 或公開場所。
+4. 啟動剪輯服務與手機外網入口：
 
    ```bash
-   ./scripts/start-cloudflare-tunnel.sh
+   ./scripts/start-ngrok-tunnel.sh
    ```
 
-   腳本預設會把影片解碼與編碼交給 NVIDIA GPU、啟動或更新 Docker 服務、保留仍健康的 tunnel，並只在舊 tunnel 已失效時建立新網址。若電腦暫時沒有可用的 NVIDIA Docker runtime，才改用：
+   第一次執行會顯示 `Paste the ngrok authtoken`；輸入內容不會顯示在畫面上，按 Enter 後會存入 Git 已忽略的 `data/.ngrok-authtoken`，之後不必重貼。腳本預設會把影片解碼與編碼交給 NVIDIA GPU，並啟動或更新 Docker 服務。若電腦暫時沒有可用的 NVIDIA Docker runtime，才改用：
 
    ```bash
-   ./scripts/start-cloudflare-tunnel.sh -CpuOnly
+   ./scripts/start-ngrok-tunnel.sh -CpuOnly
    ```
 
-4. 等終端機顯示 `Cloudflare Quick Tunnel is ready.`，把下一行完整 HTTPS 網址傳到自己的手機並開啟。最新網址也可以隨時從電腦讀取：
+5. 等終端機顯示 `ngrok tunnel is ready.`，把下一行完整 HTTPS 網址傳到自己的手機並開啟。最新網址也可以隨時從電腦讀取：
 
    ```bash
    cat ./data/remote-access-url.txt
    ```
 
+   免費方案第一次以瀏覽器開啟該網域時，ngrok 會先顯示防濫用提示；確認網址是自己剛產生的，再按一次 `Visit`。ngrok 會為該網域保存 cookie，通常七天內不再顯示。
+
    完整網址含有私人存取權杖，拿到網址的人就能使用服務，請勿分享或貼在公開場所。
 
-5. 想確認系統是否正常，可執行：
+6. 想確認系統是否正常，可執行：
 
    ```powershell
-   docker compose -f compose.yaml -f compose.cloudflare.yaml ps
+   docker compose -f compose.yaml -f compose.ngrok.yaml ps
    ```
 
-   `pingpong-highlight` 與 `cloudflared` 最後都應顯示 `healthy`。
+   `pingpong-highlight` 應顯示 `healthy`，`ngrok` 應顯示 `Up`。
 
    想確認容器內的 GPU 編解碼真的可用，而不是只有看得到顯示卡，可再執行：
 
@@ -64,11 +67,11 @@
 
    `NVIDIA NVDEC` 與 `NVIDIA NVENC` 都應顯示 `可用`。
 
-使用期間請讓電腦保持喚醒，並維持 Docker Desktop 與網路連線。影片仍在上傳時，不要重啟 Docker、`cloudflared` 或電腦；上傳完成後，手機頁面可以關閉，電腦會繼續分析與剪輯。
+使用期間請讓電腦保持喚醒，並維持 Docker Desktop 與網路連線。影片仍在上傳時，不要重啟 Docker、`ngrok` 或電腦；上傳完成後，手機頁面可以關閉，電腦會繼續分析與剪輯。
 
 ### 用 Google Drive 加入影片（大檔案建議）
 
-這條路徑通常比手機透過網頁把大檔案傳到 Cloudflare Tunnel 更穩定，而且貼完連結後可以立刻關閉手機頁面：
+這條路徑通常比手機透過公開 tunnel 把大檔案直接傳到電腦更穩定，而且貼完連結後可以立刻關閉手機頁面：
 
 1. 在手機的 Google Drive 上傳原始影片，等 Drive 顯示上傳完成。
 2. 開啟該影片的「管理存取權」或「共用」，把一般存取權改成「知道連結的任何人」，角色選「檢視者」。只要允許下載，不需要給編輯權限。
@@ -80,28 +83,28 @@
 
 Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟時，會保留已下載部分並在下次啟動續傳；失敗項目也可以直接在頁面重試或刪除。Google 仍可能因下載次數、擁有者禁止下載或組織政策拒絕公開下載，這時頁面會保留進度並顯示權限提示。
 
-即使頁面重新整理或 Quick Tunnel 換成新網址，電腦已收到的分塊也不會遺失。請回到持有原始影片的手機，重新選擇同一支影片；只要伺服器上剛好有一筆檔名與大小相同的未完成紀錄，系統就會從保存的 offset 續傳。其他裝置可同步查看進度，但無法代替來源手機提供原始檔案。若同一影片不小心留下多筆紀錄，頁面會先要求刪除重複項目，避免再建立第四筆；「刪除這筆上傳」只會刪除電腦上的未完成分塊，不會影響手機原片。
+即使頁面重新整理或公開網址改變，電腦已收到的分塊也不會遺失。請回到持有原始影片的手機，重新選擇同一支影片；只要伺服器上剛好有一筆檔名與大小相同的未完成紀錄，系統就會從保存的 offset 續傳。其他裝置可同步查看進度，但無法代替來源手機提供原始檔案。若同一影片不小心留下多筆紀錄，頁面會先要求刪除重複項目，避免再建立第四筆；「刪除這筆上傳」只會刪除電腦上的未完成分塊，不會影響手機原片。
 
 只關閉手機外網入口、保留本機服務與所有資料：
 
 ```powershell
-docker compose -f compose.yaml -f compose.cloudflare.yaml stop cloudflared
+docker compose -f compose.yaml -f compose.ngrok.yaml stop ngrok
 ```
 
 停止全部服務但保留 `data` 裡的原片、進度與成品：
 
 ```powershell
-docker compose -f compose.yaml -f compose.cloudflare.yaml stop
+docker compose -f compose.yaml -f compose.ngrok.yaml stop
 ```
 
 下次使用時重新執行啟動腳本即可。如果啟動失敗，先查看兩個服務的狀態與最近紀錄：
 
 ```powershell
-docker compose -f compose.yaml -f compose.cloudflare.yaml ps
-docker compose -f compose.yaml -f compose.cloudflare.yaml logs --tail 100 pingpong-highlight cloudflared
+docker compose -f compose.yaml -f compose.ngrok.yaml ps
+docker compose -f compose.yaml -f compose.ngrok.yaml logs --tail 100 pingpong-highlight ngrok
 ```
 
-如果紀錄出現 `CONNECTIVITY PRE-CHECKS`、`QUIC connection failed`，並同時顯示 TCP 與 UDP 失敗，代表目前網路封鎖 Cloudflare Tunnel 對外使用的 `7844` 連接埠；一直重啟不會解決。請讓電腦改連家中網路或手機熱點後，再執行啟動腳本。公司或學校網路則需要網路管理員允許對外 TCP 或 UDP `7844`。詳情見 [Cloudflare connectivity pre-checks](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/troubleshoot-tunnels/connectivity-prechecks/)。
+若 ngrok 顯示 authtoken 無效，重新執行 `./scripts/start-ngrok-tunnel.sh -ReplaceAuthtoken`；若本機 4040 已被其他程式使用，改用 `./scripts/start-ngrok-tunnel.sh -InspectPort 4041`。
 
 ## Docker 常駐服務與區域網路
 
@@ -145,7 +148,37 @@ docker compose down                  # 停止服務；保留 ./data
 
 若希望登入 Windows 後一直可用，請同時開啟 Docker Desktop 的「Start Docker Desktop when you sign in」。
 
-## Cloudflare Quick Tunnel 細節
+## ngrok Tunnel 細節
+
+Git Bash 的標準啟動指令：
+
+```bash
+./scripts/start-ngrok-tunnel.sh
+```
+
+PowerShell 也可以使用同一套流程：
+
+```powershell
+.\scripts\start-ngrok-tunnel.ps1
+```
+
+啟動器會確認 Docker、啟動預設 GPU 服務與 ngrok、等待公開 health check 通過，再產生一條可直接在手機開啟的網址。ngrok 的 HTTP 請求檢視預設關閉，避免在本機 Traffic Inspector 保存影片要求與帶有 RallyCut 存取權杖的下載網址；4040 只綁在 `127.0.0.1`，啟動器用它讀取 tunnel 網址，不會對區域網路公開。
+
+免費方案會提供一個開發用網域，而且 endpoint 沒有固定逾時，但目前每月包含 1 GB 對外傳輸與 20,000 個 HTTP requests。把原片先傳到 Google Drive、再讓電腦直接下載，不會讓整支原片經過 ngrok；手機直接上傳與下載完成的集錦則會使用 ngrok 額度。額度可能調整，實際數字以 [ngrok Free plan limits](https://ngrok.com/docs/pricing-limits/free-plan-limits) 為準。
+
+只停止 ngrok、保留本機剪輯服務與資料：
+
+```powershell
+docker compose -f compose.yaml -f compose.ngrok.yaml stop ngrok
+```
+
+要讓新 token 取代本機保存的舊 token：
+
+```bash
+./scripts/start-ngrok-tunnel.sh -ReplaceAuthtoken
+```
+
+## Cloudflare Quick Tunnel 細節（備用）
 
 不需要 Cloudflare 帳號或網域。Docker Desktop 啟動後，在專案目錄執行。Git Bash：
 
@@ -180,6 +213,8 @@ PowerShell：
 ```powershell
 docker compose -f compose.yaml -f compose.cloudflare.yaml stop cloudflared
 ```
+
+如果紀錄出現 `CONNECTIVITY PRE-CHECKS`、`QUIC connection failed`，並同時顯示 TCP 與 UDP 失敗，代表目前網路封鎖 Cloudflare Tunnel 對外使用的 `7844` 連接埠；一直重啟不會解決。請改用上方 ngrok，或讓電腦改連家中網路／手機熱點後再重試。公司或學校網路則需要網路管理員允許對外 TCP 或 UDP `7844`。詳情見 [Cloudflare connectivity pre-checks](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/troubleshoot-tunnels/connectivity-prechecks/)。
 
 ## 本機 Python 開發
 
