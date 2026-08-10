@@ -150,7 +150,7 @@ docker compose down                  # 停止服務；保留 ./data
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:0.11.2`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.0.0`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
 新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。取得這份 repository 後，在 Git Bash 執行：
 
