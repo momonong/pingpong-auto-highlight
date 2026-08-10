@@ -129,12 +129,15 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "The published image manifest could not be inspected."
     }
-    $digestMatch = [regex]::Match($remoteInspection, '(?m)^Digest:\s+(?<digest>sha256:[a-f0-9]{64})$')
+    $digestMatch = [regex]::Match(
+        $remoteInspection,
+        '(?m)^Digest:[ \t]+(?<digest>sha256:[a-f0-9]{64})[ \t]*\r?$'
+    )
     if (-not $digestMatch.Success) {
         throw "Docker Hub did not return a manifest digest for $versionTag."
     }
     $digest = $digestMatch.Groups["digest"].Value
-    if ($remoteInspection -notmatch '(?m)^\s*Platform:\s+linux/amd64\s*$') {
+    if ($remoteInspection -notmatch '(?m)^[ \t]*Platform:[ \t]+linux/amd64[ \t]*\r?$') {
         throw "The published manifest does not contain the required linux/amd64 platform."
     }
 
@@ -145,7 +148,7 @@ try {
         }
         $latestDigestMatch = [regex]::Match(
             $latestInspection,
-            '(?m)^Digest:\s+(?<digest>sha256:[a-f0-9]{64})$'
+            '(?m)^Digest:[ \t]+(?<digest>sha256:[a-f0-9]{64})[ \t]*\r?$'
         )
         if (-not $latestDigestMatch.Success -or $latestDigestMatch.Groups["digest"].Value -ne $digest) {
             throw "The latest tag does not resolve to the same digest as $versionTag."
