@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$CpuOnly,
+    [switch]$UsePublishedImage,
     [switch]$ReplaceAuthtoken,
     [ValidateRange(30, 300)]
     [int]$TimeoutSeconds = 120,
@@ -17,6 +18,9 @@ $agentConfigPath = Join-Path $repoRoot "data\.ngrok-agent.yml"
 $composeFiles = @(
     "-f", (Join-Path $repoRoot "compose.yaml")
 )
+if ($UsePublishedImage) {
+    $composeFiles += @("-f", (Join-Path $repoRoot "compose.release.yaml"))
+}
 if ($CpuOnly) {
     $composeFiles += @("-f", (Join-Path $repoRoot "compose.cpu.yaml"))
 }
@@ -163,7 +167,16 @@ try {
     Push-Location $repoRoot
     $locationPushed = $true
 
-    & docker compose @composeFiles up -d --build pingpong-highlight ngrok
+    if ($UsePublishedImage) {
+        & docker compose @composeFiles pull pingpong-highlight ngrok
+        if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose could not pull the published RallyCut image from Docker Hub."
+        }
+        & docker compose @composeFiles up -d pingpong-highlight ngrok
+    }
+    else {
+        & docker compose @composeFiles up -d --build pingpong-highlight ngrok
+    }
     if ($LASTEXITCODE -ne 0) {
         if (-not $CpuOnly) {
             throw (
