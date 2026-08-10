@@ -1,5 +1,8 @@
 const elements = {
   tokenWarning: document.querySelector("#tokenWarning"),
+  accessForm: document.querySelector("#accessForm"),
+  accessValue: document.querySelector("#accessValue"),
+  accessMessage: document.querySelector("#accessMessage"),
   dropZone: document.querySelector("#dropZone"),
   videoInput: document.querySelector("#videoInput"),
   filePrompt: document.querySelector("#filePrompt"),
@@ -49,6 +52,26 @@ let lastUploadsSignature = "";
 let lastJobsSignature = "";
 
 const uploadActiveWindowMs = 60 * 1000;
+
+function accessTokenFrom(value) {
+  const input = String(value || "").trim();
+  if (!input) return "";
+  try {
+    const url = new URL(input, window.location.origin);
+    const fragment = new URLSearchParams(url.hash.replace(/^#/, "")).get("token");
+    const query = url.searchParams.get("token");
+    if (fragment || query) return fragment || query;
+  } catch (_) {
+    // Treat non-URL input as a raw token below.
+  }
+  const raw = input.replace(/^#?token=/, "");
+  return raw && !/\s/.test(raw) ? raw : "";
+}
+
+function showAccessMessage(message) {
+  elements.accessMessage.textContent = message;
+  elements.accessMessage.hidden = !message;
+}
 
 const stageNames = {
   queued: "等待電腦處理",
@@ -772,6 +795,17 @@ elements.importList.addEventListener("click", (event) => {
   if (deleteButton) deleteDriveImport(deleteButton);
 });
 elements.refreshButton.addEventListener("click", loadActivity);
+elements.accessForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const recoveredToken = accessTokenFrom(elements.accessValue.value);
+  if (!recoveredToken) {
+    showAccessMessage("找不到有效的存取碼，請貼上包含 #token= 的完整連結。");
+    return;
+  }
+  localStorage.setItem("pingpong-upload-token", recoveredToken);
+  showAccessMessage("已儲存，正在重新連線…");
+  window.location.replace(`${window.location.pathname}${window.location.search}`);
+});
 
 window.addEventListener("beforeunload", (event) => {
   if (!uploadRunning) return;
@@ -782,6 +816,7 @@ window.addEventListener("beforeunload", (event) => {
 async function initialize() {
   if (!token) {
     elements.tokenWarning.hidden = false;
+    showAccessMessage("需要先解鎖，才能顯示這台電腦上的處理 session。");
     return;
   }
   try {
@@ -789,10 +824,12 @@ async function initialize() {
     const config = await configResponse.json();
     chunkSize = config.chunk_size || chunkSize;
     authReady = true;
+    elements.tokenWarning.hidden = true;
     elements.uploadButton.disabled = !selectedFile;
     updateDriveButton();
   } catch (error) {
     elements.tokenWarning.hidden = false;
+    showAccessMessage("存取碼無效或已更換，請重新貼上最新的完整連結。");
   }
   setInterval(loadActivity, 2500);
 }

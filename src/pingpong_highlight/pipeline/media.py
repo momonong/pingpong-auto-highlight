@@ -109,6 +109,8 @@ def probe_media(path: Path) -> MediaInfo:
         has_audio=audio is not None,
         audio_codec=str(audio.get("codec_name")) if audio else None,
         rotation=rotation,
+        video_profile=str(video.get("profile")) if video.get("profile") else None,
+        pixel_format=str(video.get("pix_fmt")) if video.get("pix_fmt") else None,
     )
 
 
@@ -451,6 +453,7 @@ def _point_reel_command(
         command.extend(["-c:v", encoder, "-preset", "p5", "-cq", "21", "-b:v", "0"])
     else:
         command.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "20"])
+    command.extend(["-pix_fmt", "yuv420p"])
     if with_audio:
         command.extend(["-c:a", "aac", "-b:a", "192k"])
     command.extend(
@@ -464,6 +467,15 @@ def _point_reel_command(
         ]
     )
     return command
+
+
+def _validate_browser_compatible_reel(path: Path) -> None:
+    media = probe_media(path)
+    if media.video_codec != "h264" or media.pixel_format != "yuv420p":
+        raise MediaError(
+            "Reel is not browser-compatible H.264 yuv420p "
+            f"(got {media.video_codec} {media.pixel_format or 'unknown pixel format'})"
+        )
 
 
 def build_point_reel(
@@ -506,6 +518,12 @@ def build_point_reel(
         )
         result = _run(command)
         if result.returncode == 0:
+            try:
+                _validate_browser_compatible_reel(destination)
+            except MediaError as exc:
+                errors.append(f"{encoder}: {exc}")
+                destination.unlink(missing_ok=True)
+                continue
             return
         destination.unlink(missing_ok=True)
         errors.append(f"{encoder}: {result.stderr.strip()}")
@@ -599,6 +617,7 @@ def _social_reel_command(
         command.extend(["-c:v", encoder, "-preset", "p5", "-cq", "21", "-b:v", "0"])
     else:
         command.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "20"])
+    command.extend(["-pix_fmt", "yuv420p"])
     if with_audio:
         command.extend(["-c:a", "aac", "-b:a", "192k"])
     command.extend(
@@ -659,6 +678,12 @@ def build_social_reel(
         )
         result = _run(command)
         if result.returncode == 0:
+            try:
+                _validate_browser_compatible_reel(destination)
+            except MediaError as exc:
+                errors.append(f"{encoder}: {exc}")
+                destination.unlink(missing_ok=True)
+                continue
             return
         destination.unlink(missing_ok=True)
         errors.append(f"{encoder}: {result.stderr.strip()}")

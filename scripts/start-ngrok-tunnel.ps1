@@ -268,6 +268,7 @@ try {
     Write-Host "Open this token-protected link on your phone:"
     Write-Output $phoneUrl
     Write-Host ""
+    Write-Host "If ngrok first shows 'Visit Site', tap it and then open the complete link above again."
     Write-Warning "Anyone with the complete link can use this service. Do not share it."
     Write-Warning "Keep Docker Desktop and this computer awake while using RallyCut."
     Write-Host "The latest link is also saved to $latestUrlPath"

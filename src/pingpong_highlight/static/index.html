@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0d12" />
     <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" />
     <title>RallyCut — 桌球精彩集錦</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.11.1-20260811" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.11.2-20260811" />
   </head>
   <body>
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -50,9 +50,18 @@
         </div>
       </section>
 
-      <section id="tokenWarning" class="notice danger" hidden role="alert">
+      <section id="tokenWarning" class="notice danger token-warning" hidden role="alert">
         <span class="notice-icon">!</span>
-        <span><b>這個網址沒有上傳權限。</b>請回到電腦查看服務顯示的 QR code，再重新掃描一次。</span>
+        <div class="notice-copy">
+          <b>這台裝置還沒有存取權限，處理 session 並沒有消失。</b>
+          <p>若剛按過 ngrok 的「Visit Site」，請重新開啟原本的完整連結一次；也可以在下方貼上完整連結或存取碼。</p>
+          <form id="accessForm" class="access-form">
+            <label class="sr-only" for="accessValue">完整存取連結或存取碼</label>
+            <input id="accessValue" type="password" autocomplete="off" spellcheck="false" placeholder="貼上完整連結或存取碼" />
+            <button type="submit">解鎖</button>
+          </form>
+          <p id="accessMessage" class="access-message" hidden aria-live="polite"></p>
+        </div>
       </section>
 
       <section class="workspace">
@@ -166,6 +175,6 @@
       <span>PRIVATE BY DEFAULT · MADE FOR THE NEXT RALLY</span>
     </footer>
 
-    <script src="/static/app.js?v=0.11.1-20260811" defer></script>
+    <script src="/static/app.js?v=0.11.2-20260811" defer></script>
   </body>
 </html>

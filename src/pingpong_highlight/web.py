@@ -141,7 +141,7 @@ def create_app(
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="0.11.1",
+        version="0.11.2",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,

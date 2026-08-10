@@ -18,6 +18,8 @@ class MediaInfo:
     has_audio: bool
     audio_codec: str | None = None
     rotation: int = 0
+    video_profile: str | None = None
+    pixel_format: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
