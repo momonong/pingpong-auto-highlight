@@ -1397,6 +1397,55 @@ h1 em {
   background: var(--coral);
 }
 
+.token-warning {
+  align-items: flex-start;
+}
+
+.notice-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-copy p {
+  margin: 3px 0 0;
+}
+
+.access-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.access-form input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid rgba(255, 192, 182, 0.25);
+  border-radius: 10px;
+  padding: 9px 11px;
+  color: var(--text);
+  background: rgba(7, 10, 15, 0.65);
+}
+
+.access-form button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-weight: 800;
+  color: #1a0d0b;
+  background: var(--coral);
+  cursor: pointer;
+}
+
+.access-message {
+  color: #ffd4cd;
+}
+
+@media (max-width: 560px) {
+  .access-form {
+    flex-direction: column;
+  }
+}
+
 .process-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

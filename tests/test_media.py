@@ -151,6 +151,8 @@ def test_social_reel_is_vertical_and_dissolves_only_between_points(tmp_path: Pat
     info = probe_media(reel)
     assert (info.width, info.height) == (360, 640)
     assert info.duration == pytest.approx(1.8, abs=0.25)
+    assert info.video_codec == "h264"
+    assert info.pixel_format == "yuv420p"
 
     command = _social_reel_command(
         [first, second],
@@ -166,6 +168,7 @@ def test_social_reel_is_vertical_and_dissolves_only_between_points(tmp_path: Pat
     filter_graph = command[command.index("-filter_complex") + 1]
     assert filter_graph.count("xfade=transition=fade") == 1
     assert "fade=t=out" not in filter_graph
+    assert command[command.index("-pix_fmt") + 1] == "yuv420p"
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required")
@@ -208,6 +211,8 @@ def test_point_reel_preserves_source_geometry(tmp_path: Path) -> None:
     info = probe_media(reel)
     assert (info.width, info.height) == (320, 180)
     assert info.duration == pytest.approx(1.8, abs=0.25)
+    assert info.video_codec == "h264"
+    assert info.pixel_format == "yuv420p"
 
     command = _point_reel_command(
         [first, second],
@@ -223,3 +228,4 @@ def test_point_reel_preserves_source_geometry(tmp_path: Path) -> None:
     filter_graph = command[command.index("-filter_complex") + 1]
     assert filter_graph.count("xfade=transition=fade") == 1
     assert "fade=t=out" not in filter_graph
+    assert command[command.index("-pix_fmt") + 1] == "yuv420p"
