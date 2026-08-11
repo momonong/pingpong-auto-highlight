@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0d12" />
     <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" />
     <title>RallyCut — 桌球精彩集錦</title>
-    <link rel="stylesheet" href="/static/styles.css?v=1.2.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=1.2.1" />
   </head>
   <body>
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -163,6 +163,35 @@
         </article>
       </section>
 
+      <section
+        id="annotationDevBlock"
+        class="panel annotation-dev-block"
+        aria-labelledby="annotationDevTitle"
+      >
+        <div class="annotation-dev-heading">
+          <div>
+            <span class="section-kicker">DEVELOPMENT / MANUAL LABELING</span>
+            <h2 id="annotationDevTitle">人工標記精彩球</h2>
+            <p>短期模型優化工具，與上方的手機上傳、處理及成品下載流程分開。</p>
+          </div>
+          <span class="annotation-dev-badge"><i aria-hidden="true"></i> 僅限電腦</span>
+        </div>
+
+        <div class="annotation-dev-summary">
+          <div>
+            <span>POINT REVIEW WORKBENCH</span>
+            <p>選擇一支已完成影片，用大播放器與快捷鍵直接標記每一球。</p>
+          </div>
+          <strong id="annotationDevCount">等待可標記影片</strong>
+        </div>
+
+        <div id="annotationDevEmpty" class="annotation-dev-empty">
+          <b>目前還沒有可標記的影片</b>
+          <span>影片完成處理後，會自動出現在這個開發工具區。</span>
+        </div>
+        <div id="annotationDevList" class="annotation-dev-list" aria-live="polite"></div>
+      </section>
+
       <section class="process-strip" aria-label="集錦製作流程">
         <div><span>01</span><p><b>讀懂每一分</b><small>從發球到得分各自成段</small></p></div>
         <div><span>02</span><p><b>挑出精彩球</b><small>依節奏、動態與回合排序</small></p></div>
@@ -252,6 +281,6 @@
       </div>
     </section>
 
-    <script src="/static/app.js?v=1.2.0" defer></script>
+    <script src="/static/app.js?v=1.2.1" defer></script>
   </body>
 </html>
