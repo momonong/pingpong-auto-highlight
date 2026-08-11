@@ -311,13 +311,25 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert 'id="accessValue"' in index.text
         assert 'id="annotationWorkspace"' in index.text
         assert 'id="annotationWorkspaceVideo"' in index.text
+        assert 'id="annotationDevBlock"' in index.text
+        assert 'id="annotationDevList"' in index.text
+        assert index.text.index('id="jobList"') < index.text.index('id="annotationDevBlock"')
         assert "處理 session 並沒有消失" in index.text
 
         app_js = client.get("/static/app.js")
         assert app_js.status_code == 200
         assert "openAnnotationWorkspace" in app_js.text
+        assert "renderAnnotationDevelopment" in app_js.text
+        assert "lastAnnotationDevSignature" in app_js.text
+        assert 'aria-label="開啟 ${escapeHtml(filename)} 的標記工作區"' in app_js.text
+        assert "renderAnnotationPanel" not in app_js.text
+        assert ".annotation-video" not in app_js.text
         assert 'event.code === "KeyI"' in app_js.text
         assert 'event.code === "KeyO"' in app_js.text
+
+        styles = client.get("/static/styles.css")
+        assert styles.status_code == 200
+        assert ".annotation-dev-block" in styles.text
 
         jobs = client.get("/api/jobs", headers={"X-Upload-Token": "test-secret"})
         assert jobs.status_code == 200
