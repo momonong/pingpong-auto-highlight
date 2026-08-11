@@ -1266,7 +1266,7 @@ h1 em {
 
 .result-panel {
   margin: 16px -8px -8px;
-  padding: 8px;
+  padding: 0;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 15px;
@@ -1274,27 +1274,95 @@ h1 em {
 }
 
 .reel-heading {
-  display: flex;
-  padding: 9px 7px 13px;
+  display: grid;
+  min-height: 52px;
+  padding: 10px 14px;
   align-items: center;
-  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  grid-template-columns: minmax(0, 1fr) auto 12px;
+  gap: 12px;
+  transition: background 160ms ease;
 }
 
-.reel-heading span {
+.reel-heading::-webkit-details-marker {
+  display: none;
+}
+
+.reel-heading::marker {
+  content: "";
+}
+
+.reel-heading:hover {
+  background: rgba(200, 255, 77, 0.035);
+}
+
+.reel-heading:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: -3px;
+}
+
+.result-panel[open] > .reel-heading {
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.reel-heading-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.reel-heading-copy > span {
   color: var(--lime);
   font-family: ui-monospace, monospace;
   font-size: 0.58rem;
   letter-spacing: 0.1em;
 }
 
-.reel-heading b {
-  max-width: 55%;
+.reel-heading-copy b {
   overflow: hidden;
   color: #818b94;
   font-size: 0.6rem;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.reel-toggle-label {
+  color: #aeb7be;
+  font-size: 0.66rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.reel-toggle-open {
+  display: none;
+}
+
+.result-panel[open] .reel-toggle-closed {
+  display: none;
+}
+
+.result-panel[open] .reel-toggle-open {
+  display: inline;
+}
+
+.reel-toggle-icon {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--lime);
+  border-bottom: 2px solid var(--lime);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 160ms ease;
+}
+
+.result-panel[open] .reel-toggle-icon {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+
+.result-panel-body {
+  padding: 8px;
 }
 
 .result-panel video {
@@ -2345,6 +2413,21 @@ body.annotation-workspace-open {
   .result-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .reel-heading {
+    min-height: 56px;
+    padding: 10px 12px;
+    grid-template-columns: minmax(0, 1fr) auto 10px;
+    gap: 9px;
+  }
+
+  .reel-toggle-label {
+    font-size: 0.61rem;
+  }
+
+  .result-panel-body {
+    padding: 7px;
   }
 
   .footer {

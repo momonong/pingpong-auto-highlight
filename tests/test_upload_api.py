@@ -322,6 +322,16 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert "renderAnnotationDevelopment" in app_js.text
         assert "lastAnnotationDevSignature" in app_js.text
         assert 'aria-label="開啟 ${escapeHtml(filename)} 的標記工作區"' in app_js.text
+        assert "expandedResultJobIds" in app_js.text
+        assert "jobRenderSignatures" in app_js.text
+        assert "hydrateResultPanel" in app_js.text
+        assert "renderJobs(jobs)" in app_js.text
+        assert 'data-result-job-id="${escapeHtml(jobId)}"' in app_js.text
+        assert '<span class="sr-only">${escapeHtml(sourceName)} 的剪輯結果：</span>' in app_js.text
+        assert 'aria-label="展開或收合' not in app_js.text
+        assert 'data-src="${escapeHtml(previewUrl)}"' in app_js.text
+        assert '<source src="${escapeHtml(previewUrl)}"' not in app_js.text
+        assert '"toggle",' in app_js.text
         assert "renderAnnotationPanel" not in app_js.text
         assert ".annotation-video" not in app_js.text
         assert 'event.code === "KeyI"' in app_js.text
@@ -330,6 +340,8 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         styles = client.get("/static/styles.css")
         assert styles.status_code == 200
         assert ".annotation-dev-block" in styles.text
+        assert ".result-panel[open]" in styles.text
+        assert ".reel-toggle-label" in styles.text
 
         jobs = client.get("/api/jobs", headers={"X-Upload-Token": "test-secret"})
         assert jobs.status_code == 200

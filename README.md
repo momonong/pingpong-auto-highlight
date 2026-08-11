@@ -13,6 +13,8 @@
 - 相鄰得分以 0.35 秒 cross-dissolve 連接；最後一分不做 fade-out。
 - 同時保留每一分的獨立 MP4，方便人工檢查或重新排序。
 
+完成影片會以精簡卡片列出，播放器、下載與分享操作預設收合；點開該支影片後才會載入集錦，避免多支成品同時佔滿頁面或消耗手機流量。重新整理後會回到全部收合的乾淨狀態。
+
 直式、裁切、字幕等社群發佈格式屬於後續輸出，不會在分析階段綁死。
 
 ## 啟動系統（平常從手機使用）
@@ -163,7 +165,7 @@ docker compose down                  # 停止服務；保留 ./data
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.2.1`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.2.2`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
 新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。取得這份 repository 後，在 Git Bash 執行：
 

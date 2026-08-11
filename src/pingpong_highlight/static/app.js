@@ -69,6 +69,8 @@ let lastImportsSignature = "";
 let lastUploadsSignature = "";
 let lastJobsSignature = "";
 let lastAnnotationDevSignature = "";
+const jobRenderSignatures = new Map();
+const expandedResultJobIds = new Set();
 let annotationWorkspaceJobId = "";
 let annotationWorkspaceStart = null;
 let annotationWorkspaceEnd = null;
@@ -413,7 +415,7 @@ async function shareOrSave(button) {
   }
 }
 
-function renderResultPanel(result) {
+function renderResultPanel(result, jobId, sourceName) {
   const reel = result.files.find((file) => file.kind === "reel");
   const pointFiles = result.files.filter((file) => file.kind === "point" || file.kind === "clip");
   const analysis = result.files.find((file) => file.kind === "analysis");
@@ -445,21 +447,29 @@ function renderResultPanel(result) {
     ? `<a href="${escapeHtml(fileAccessUrl(analysis.url, { download: true }))}" download>分析報告</a>`
     : "";
 
-  return `<div class="result-panel">
-    <div class="reel-heading"><span>BEST POINTS REEL</span><b>${escapeHtml(reel.name)}</b></div>
-    <video controls playsinline preload="metadata" aria-label="得分集錦預覽">
-      <source src="${escapeHtml(previewUrl)}" type="video/mp4" />
-    </video>
-    <div class="result-actions">
-      <a class="result-primary" href="${escapeHtml(downloadUrl)}" download>下載 MP4</a>
-      ${shareAction}
+  const open = expandedResultJobIds.has(jobId) ? " open" : "";
+  return `<details class="result-panel" data-result-job-id="${escapeHtml(jobId)}"${open}>
+    <summary class="reel-heading">
+      <span class="sr-only">${escapeHtml(sourceName)} 的剪輯結果：</span>
+      <span class="reel-heading-copy"><span>BEST POINTS REEL</span><b>${escapeHtml(reel.name)}</b></span>
+      <span class="reel-toggle-label"><span class="reel-toggle-closed">播放與下載</span><span class="reel-toggle-open">收合</span></span>
+      <i class="reel-toggle-icon" aria-hidden="true"></i>
+    </summary>
+    <div class="result-panel-body">
+      <video controls playsinline preload="metadata" aria-label="${escapeHtml(sourceName)} 的得分集錦預覽">
+        <source data-src="${escapeHtml(previewUrl)}" type="video/mp4" />
+      </video>
+      <div class="result-actions">
+        <a class="result-primary" href="${escapeHtml(downloadUrl)}" download>下載 MP4</a>
+        ${shareAction}
+      </div>
+      <p class="save-hint">${saveHint}</p>
+      <details class="more-files">
+        <summary>單分片段與分析檔</summary>
+        <div class="downloads">${pointLinks}${analysisLink}</div>
+      </details>
     </div>
-    <p class="save-hint">${saveHint}</p>
-    <details class="more-files">
-      <summary>單分片段與分析檔</summary>
-      <div class="downloads">${pointLinks}${analysisLink}</div>
-    </details>
-  </div>`;
+  </details>`;
 }
 
 function annotationWorkspaceIsOpen() {
@@ -889,6 +899,7 @@ function renderAnnotationDevelopment(jobs) {
 }
 
 function renderJob(job) {
+  const jobId = String(job.id);
   const result = job.result;
   const filename = result?.source_name || `影片 ${job.upload_id.slice(0, 8)}`;
   const progress = Math.round(job.progress * 100);
@@ -912,16 +923,71 @@ function renderJob(job) {
   const stats = result
     ? `<div class="job-stats"><span><b>${pointCount}</b> 個得分</span>${summary.reel_duration ? `<span><b>${formatDuration(summary.reel_duration)}</b> 集錦</span>` : ""}<span><b>${formatDuration(result.media.duration)}</b> 原片</span></div>`
     : "";
-  const resultPanel = result ? renderResultPanel(result) : "";
+  const resultPanel = result ? renderResultPanel(result, jobId, filename) : "";
   const progressBar =
     job.status === "processing" || job.status === "queued"
       ? `<div class="job-progress-meta"><span>${escapeHtml(jobStage(job))}</span><b>${progress}%</b></div><div class="job-progress"><span style="width:${progress}%"></span></div>`
       : "";
-  return `<article class="job ${escapeHtml(job.status)}">
+  return `<article class="job ${escapeHtml(job.status)}" data-job-id="${escapeHtml(jobId)}">
     <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(job.status)}">${statusText}</span></div>
     <p class="job-detail">${details}</p>
     ${progressBar}${stats}${resultPanel}
   </article>`;
+}
+
+function createJobElement(job) {
+  const template = document.createElement("template");
+  template.innerHTML = renderJob(job).trim();
+  return template.content.firstElementChild;
+}
+
+function hydrateResultPanel(panel) {
+  const video = panel.querySelector(".result-panel-body > video");
+  const source = video?.querySelector("source[data-src]");
+  if (!video || !source || source.hasAttribute("src")) return;
+  source.src = source.dataset.src;
+  video.load();
+}
+
+function renderJobs(jobs) {
+  const existingNodes = new Map(
+    [...elements.jobList.children].map((node) => [node.dataset.jobId, node]),
+  );
+  const liveJobIds = new Set();
+  const expandableJobIds = new Set();
+
+  jobs.forEach((job, index) => {
+    const jobId = String(job.id);
+    const signature = JSON.stringify(job);
+    liveJobIds.add(jobId);
+    if (job.status === "completed" && job.result) expandableJobIds.add(jobId);
+
+    let node = existingNodes.get(jobId);
+    if (!node || jobRenderSignatures.get(jobId) !== signature) {
+      const replacement = createJobElement(job);
+      if (node) node.replaceWith(replacement);
+      node = replacement;
+      jobRenderSignatures.set(jobId, signature);
+    }
+
+    const nodeAtIndex = elements.jobList.children[index];
+    if (nodeAtIndex !== node) {
+      elements.jobList.insertBefore(node, nodeAtIndex || null);
+    }
+
+    const resultPanel = node.querySelector(".result-panel[data-result-job-id]");
+    if (resultPanel?.open) hydrateResultPanel(resultPanel);
+  });
+
+  existingNodes.forEach((node, jobId) => {
+    if (!liveJobIds.has(jobId)) node.remove();
+  });
+  jobRenderSignatures.forEach((_, jobId) => {
+    if (!liveJobIds.has(jobId)) jobRenderSignatures.delete(jobId);
+  });
+  expandedResultJobIds.forEach((jobId) => {
+    if (!expandableJobIds.has(jobId)) expandedResultJobIds.delete(jobId);
+  });
 }
 
 function renderActivity(imports, uploads, jobs) {
@@ -951,7 +1017,7 @@ function renderActivity(imports, uploads, jobs) {
   const jobsSignature = JSON.stringify(jobs);
   if (jobsSignature !== lastJobsSignature) {
     lastJobsSignature = jobsSignature;
-    elements.jobList.innerHTML = jobs.map(renderJob).join("");
+    renderJobs(jobs);
   }
 
   const annotationDevSignature = JSON.stringify(
@@ -1040,6 +1106,22 @@ elements.jobList.addEventListener("click", (event) => {
   const shareButton = event.target.closest(".share-button");
   if (shareButton) shareOrSave(shareButton);
 });
+elements.jobList.addEventListener(
+  "toggle",
+  (event) => {
+    const panel = event.target;
+    if (!panel.matches?.(".result-panel[data-result-job-id]")) return;
+    const jobId = panel.dataset.resultJobId;
+    if (panel.open) {
+      expandedResultJobIds.add(jobId);
+      hydrateResultPanel(panel);
+    } else {
+      expandedResultJobIds.delete(jobId);
+      panel.querySelector("video")?.pause();
+    }
+  },
+  true,
+);
 elements.annotationDevList.addEventListener("click", (event) => {
   const workspaceButton = event.target.closest(".open-annotation-workspace");
   if (workspaceButton) openAnnotationWorkspace(workspaceButton);
