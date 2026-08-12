@@ -17,9 +17,58 @@
 
 直式、裁切、字幕等社群發佈格式屬於後續輸出，不會在分析階段綁死。
 
-## 啟動系統（平常從手機使用）
+## 只在這台電腦使用（localhost，不走 tunnel）
 
-以下是電腦重新開機後的標準流程。預設使用 ngrok，因為它的主要 tunnel 連線走 TLS 443，不像 Cloudflare Tunnel 需要目前被學校網路封鎖的 7844 連接埠。第一次使用需要免費 ngrok 帳號與 authtoken。
+這是 ngrok 額度用完、公開網址失效，或只想在電腦上標記精彩球時的建議模式。若 ngrok 頁面顯示 `Network bandwidth exceeded`，不必繼續重試，直接使用本節。它不啟動 ngrok 或 Cloudflare Tunnel，網站只綁在 `127.0.0.1`，因此瀏覽器播放原片與成品不會消耗 tunnel 流量，也不會讓同一個 Wi-Fi 的其他裝置連入。
+
+1. 開啟 Docker Desktop，等到 Docker Engine 正在執行。
+2. 開啟 Git Bash，進入專案並啟動已發佈的 GPU 版本：
+
+   ```bash
+   cd /d/projects/pingpong-auto-highlight
+   ./scripts/start-localhost.sh -UsePublishedImage
+   ```
+
+   如果正在修改本機程式、希望從目前 source 重新 build，拿掉 `-UsePublishedImage`：
+
+   ```bash
+   ./scripts/start-localhost.sh
+   ```
+
+   PowerShell 對應指令是：
+
+   ```powershell
+   .\scripts\start-localhost.ps1 -UsePublishedImage
+   ```
+
+3. 等終端機顯示 `RallyCut localhost-only mode is ready.`，在**同一台電腦**的瀏覽器開啟它顯示的完整網址。之後也可以從 Git Bash 讀取：
+
+   ```bash
+   cat ./data/local-access-url.txt
+   ```
+
+   完整網址包含本機存取權杖，頁面第一次讀取後會把它從網址列移除。`data/local-access-url.txt` 只存在本機且不會進 Git，仍不應貼到公開場所。
+
+啟動器會先確認目前沒有上傳、Drive 下載或剪輯正在進行，才停止 ngrok／Cloudflare Tunnel 並切換服務；若還有工作，它會拒絕重啟並告訴你先等候或刪除已放棄的未完成上傳。原片、成品、處理紀錄及人工標記都留在 `./data`，切換模式不會刪除。
+
+預設仍使用 NVIDIA GPU。只有 NVIDIA Docker runtime 暫時不可用時，才加上 `-CpuOnly`。想確認服務及 GPU：
+
+```powershell
+docker compose -f compose.yaml -f compose.release.yaml -f compose.localhost.yaml ps
+docker compose -f compose.yaml -f compose.release.yaml -f compose.localhost.yaml exec pingpong-highlight pingpong-highlight doctor
+```
+
+`pingpong-highlight` 應顯示 `healthy`，`NVIDIA NVDEC` 與 `NVIDIA NVENC` 都應顯示 `可用`。停止 localhost 服務但保留所有資料：
+
+```powershell
+docker compose -f compose.yaml -f compose.localhost.yaml stop pingpong-highlight
+```
+
+`127.0.0.1` 只能由這台電腦開啟，手機即使連同一個 Wi-Fi 也不能使用這個網址；需要同一 Wi-Fi 的手機操作時，請用後面的 LAN 模式，需要手機外網時才使用 ngrok。localhost 模式不會產生 tunnel 流量，但第一次 pull Docker image、從 source build dependencies，或讓電腦從 Google Drive 匯入影片，仍會使用一般對外網路。
+
+## 從手機外網使用（ngrok）
+
+只有需要從手機外網操作時才走這條流程。預設使用 ngrok，因為它的主要 tunnel 連線走 TLS 443，不像 Cloudflare Tunnel 需要目前被學校網路封鎖的 7844 連接埠。第一次使用需要免費 ngrok 帳號與 authtoken。
 
 1. 開啟 Docker Desktop，等到左下角顯示 Docker Engine 正在執行。
 2. 開啟 Git Bash，進入專案目錄：
@@ -100,10 +149,10 @@ Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟�
 
 即使頁面重新整理或公開網址改變，電腦已收到的分塊也不會遺失。請回到持有原始影片的手機，重新選擇同一支影片；只要伺服器上剛好有一筆檔名與大小相同的未完成紀錄，系統就會從保存的 offset 續傳。其他裝置可同步查看進度，但無法代替來源手機提供原始檔案。若同一影片不小心留下多筆紀錄，頁面會先要求刪除重複項目，避免再建立第四筆；「刪除這筆上傳」只會刪除電腦上的未完成分塊，不會影響手機原片。
 
-只關閉手機外網入口、保留本機服務與所有資料：
+ngrok 額度用完或公開網址失效時，請等正在進行的上傳與剪輯完成，再切回有完整本機網址與安全檢查的 localhost-only 模式：
 
-```powershell
-docker compose -f compose.yaml -f compose.ngrok.yaml stop ngrok
+```bash
+./scripts/start-localhost.sh -UsePublishedImage
 ```
 
 停止全部服務但保留 `data` 裡的原片、進度與成品：
