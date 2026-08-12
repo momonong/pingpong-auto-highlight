@@ -235,7 +235,9 @@ try {
         }
         throw (
             "ngrok did not become reachable within $TimeoutSeconds seconds. " +
-            "If port $InspectPort is already in use, run again with -InspectPort 4041."
+            "If port $InspectPort is already in use, run again with -InspectPort 4041. " +
+            "If the public page reports 'Network bandwidth exceeded', use " +
+            ".\scripts\start-localhost.ps1 -UsePublishedImage instead."
         )
     }
 
