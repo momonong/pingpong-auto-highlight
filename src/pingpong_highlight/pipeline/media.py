@@ -11,6 +11,8 @@ from typing import BinaryIO
 
 from pingpong_highlight.pipeline.models import MediaInfo
 
+MAX_PLAYBACK_FPS = 30.0
+
 
 class MediaError(RuntimeError):
     pass
@@ -278,8 +280,12 @@ def _clip_command(
     end: float,
     *,
     encoder: str,
+    fps: float = MAX_PLAYBACK_FPS,
+    width: int = 1920,
+    height: int = 1080,
     use_nvdec: bool = False,
 ) -> list[str]:
+    fps = min(max(fps, 1.0), MAX_PLAYBACK_FPS)
     command = [
         "ffmpeg",
         "-hide_banner",
@@ -304,13 +310,17 @@ def _clip_command(
             "-sn",
             "-dn",
             "-vf",
-            "format=yuv420p",
+            f"fps={fps:g},format=yuv420p",
         ]
     )
-    if encoder == "h264_nvenc":
-        command.extend(["-c:v", encoder, "-preset", "p5", "-cq", "21", "-b:v", "0"])
-    else:
-        command.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "20"])
+    command.extend(
+        _streaming_video_options(
+            encoder,
+            width=width,
+            height=height,
+            fps=fps,
+        )
+    )
     command.extend(
         [
             "-c:a",
@@ -327,8 +337,58 @@ def _clip_command(
     return command
 
 
+def _streaming_video_options(
+    encoder: str,
+    *,
+    width: int,
+    height: int,
+    fps: float,
+) -> list[str]:
+    """Return bounded H.264 settings suitable for browser playback."""
+
+    pixel_scale = max((width * height) / (1920 * 1080), 0.25)
+    frame_scale = max(fps, 1.0) / MAX_PLAYBACK_FPS
+    target_mbps = max(4, min(24, round(8 * pixel_scale * frame_scale)))
+    maxrate_mbps = max(target_mbps + 1, min(36, round(target_mbps * 1.5)))
+    buffer_mbps = maxrate_mbps * 2
+    gop = max(1, round(fps * 2))
+    rate_limits = [
+        "-maxrate",
+        f"{maxrate_mbps}M",
+        "-bufsize",
+        f"{buffer_mbps}M",
+        "-g",
+        str(gop),
+    ]
+    if encoder == "h264_nvenc":
+        return [
+            "-c:v",
+            encoder,
+            "-preset",
+            "p5",
+            "-cq",
+            "21",
+            "-rc",
+            "vbr",
+            "-b:v",
+            f"{target_mbps}M",
+            *rate_limits,
+        ]
+    return [
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "20",
+        *rate_limits,
+    ]
+
+
 def export_clip(source: Path, destination: Path, start: float, end: float) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
+    media = probe_media(source)
+    fps = min(media.fps if media.fps > 0 else MAX_PLAYBACK_FPS, MAX_PLAYBACK_FPS)
     encoders = ["h264_nvenc", "libx264"] if has_nvenc() else ["libx264"]
     nvdec_available = has_nvdec()
     errors: list[str] = []
@@ -340,6 +400,9 @@ def export_clip(source: Path, destination: Path, start: float, end: float) -> No
                 start,
                 end,
                 encoder=encoder,
+                fps=fps,
+                width=media.width,
+                height=media.height,
                 use_nvdec=encoder == "h264_nvenc" and nvdec_available,
             )
         )
@@ -403,6 +466,7 @@ def _point_reel_command(
         command.extend(["-i", str(clip)])
 
     filters: list[str] = []
+    fps = min(max(fps, 1.0), MAX_PLAYBACK_FPS)
     fps_value = f"{fps:.6f}"
     for index in range(len(clips)):
         filters.append(
@@ -449,10 +513,14 @@ def _point_reel_command(
     else:
         command.append("-an")
 
-    if encoder == "h264_nvenc":
-        command.extend(["-c:v", encoder, "-preset", "p5", "-cq", "21", "-b:v", "0"])
-    else:
-        command.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "20"])
+    command.extend(
+        _streaming_video_options(
+            encoder,
+            width=width,
+            height=height,
+            fps=fps,
+        )
+    )
     command.extend(["-pix_fmt", "yuv420p"])
     if with_audio:
         command.extend(["-c:a", "aac", "-b:a", "192k"])
@@ -495,7 +563,7 @@ def build_point_reel(
     first = media[0]
     width = first.width - first.width % 2
     height = first.height - first.height % 2
-    fps = first.fps if first.fps > 0 else 30.0
+    fps = min(first.fps if first.fps > 0 else MAX_PLAYBACK_FPS, MAX_PLAYBACK_FPS)
     if width <= 0 or height <= 0:
         raise MediaError("Point clips do not have valid output dimensions")
     with_audio = all(item.has_audio for item in media)
@@ -543,6 +611,7 @@ def _social_reel_command(
     encoder: str,
     use_nvdec: bool = False,
 ) -> list[str]:
+    fps = min(max(fps, 1), round(MAX_PLAYBACK_FPS))
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
     for clip in clips:
         if use_nvdec:
@@ -613,10 +682,14 @@ def _social_reel_command(
     else:
         command.append("-an")
 
-    if encoder == "h264_nvenc":
-        command.extend(["-c:v", encoder, "-preset", "p5", "-cq", "21", "-b:v", "0"])
-    else:
-        command.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "20"])
+    command.extend(
+        _streaming_video_options(
+            encoder,
+            width=width,
+            height=height,
+            fps=float(fps),
+        )
+    )
     command.extend(["-pix_fmt", "yuv420p"])
     if with_audio:
         command.extend(["-c:a", "aac", "-b:a", "192k"])

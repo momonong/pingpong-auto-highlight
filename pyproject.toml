@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pingpong-auto-highlight"
-version = "1.2.2"
+version = "1.2.3"
 description = "Local-first, resumable table-tennis point-reel editing"
 readme = "README.md"
 requires-python = ">=3.11"

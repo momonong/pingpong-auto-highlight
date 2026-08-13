@@ -949,6 +949,15 @@ function hydrateResultPanel(panel) {
   video.load();
 }
 
+function dehydrateResultPanel(panel) {
+  const video = panel.querySelector(".result-panel-body > video");
+  const source = video?.querySelector("source[src]");
+  if (!video || !source) return;
+  video.pause();
+  source.removeAttribute("src");
+  video.load();
+}
+
 function renderJobs(jobs) {
   const existingNodes = new Map(
     [...elements.jobList.children].map((node) => [node.dataset.jobId, node]),
@@ -1117,7 +1126,7 @@ elements.jobList.addEventListener(
       hydrateResultPanel(panel);
     } else {
       expandedResultJobIds.delete(jobId);
-      panel.querySelector("video")?.pause();
+      dehydrateResultPanel(panel);
     }
   },
   true,

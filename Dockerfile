@@ -39,7 +39,7 @@ RUN python -m pip install --no-cache-dir --no-deps /tmp/wheels/*.whl \
     && mkdir -p /data \
     && chown pingpong:pingpong /data
 
-ARG APP_VERSION=1.2.2
+ARG APP_VERSION=1.2.3
 ARG VCS_REF=unknown
 
 LABEL org.opencontainers.image.title="Ping-Pong Auto Highlight" \
