@@ -212,9 +212,17 @@ docker compose down                  # 停止服務；保留 ./data
 
 若希望登入 Windows 後一直可用，請同時開啟 Docker Desktop 的「Start Docker Desktop when you sign in」。
 
+## 影片播放效能
+
+`localhost` 只表示瀏覽器與服務在同一台電腦，不代表影片不需要經過 HTTP、Docker bind mount 與瀏覽器解碼。RallyCut 1.2.3 的影片端點使用可感知斷線的 HTTP Range 串流與較大的讀取區塊；播放器收合或拖曳造成舊請求中斷時，伺服器會立即停止讀檔，不會在背景繼續把整支原片讀完。完成影片可保留在瀏覽器私有快取，重播與倒退也不必每次重新傳輸。
+
+新產生的 H.264 成品最多使用 30 fps、約兩秒一個 GOP，並限制目標與峰值碼率。1.2.3 以前已完成的 MP4 不會被自動覆寫；它們仍可透過新版串流順暢播放，但若希望把舊的 120 fps／高碼率檔案縮小，需要重新處理原片。
+
+正式提供多人或外網使用時，不應讓免費 tunnel 兼任大量影片配送。建議讓 RallyCut 保留驗證、工作狀態與剪輯 API，把完成影片交給支援 Range／sendfile 的反向代理，或使用有權限控制的 object storage／CDN；這樣同時改善並行播放、流量成本與跨地區延遲。
+
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.2.2`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.2.3`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
 新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。取得這份 repository 後，在 Git Bash 執行：
 

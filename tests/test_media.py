@@ -11,6 +11,7 @@ from pingpong_highlight.pipeline.media import (
     _clip_command,
     _point_reel_command,
     _social_reel_command,
+    _streaming_video_options,
     _video_decoder_command,
     build_point_reel,
     build_social_reel,
@@ -38,6 +39,62 @@ def test_gpu_commands_request_cuda_before_video_input(tmp_path: Path) -> None:
     assert clip[clip.index("-hwaccel") + 1] == "cuda"
     assert clip.index("-hwaccel") < clip.index("-i")
     assert "h264_nvenc" in clip
+    assert clip[clip.index("-vf") + 1] == "fps=30,format=yuv420p"
+
+
+def test_browser_output_caps_fps_and_bitrate() -> None:
+    command = _point_reel_command(
+        [Path("point.mp4")],
+        [2.0],
+        Path("reel.mp4"),
+        transition_duration=0.2,
+        width=1920,
+        height=1080,
+        fps=120.0,
+        with_audio=False,
+        encoder="h264_nvenc",
+    )
+
+    assert command[command.index("-r") + 1] == "30.000000"
+    assert command[command.index("-b:v") + 1] == "8M"
+    assert command[command.index("-rc") + 1] == "vbr"
+    assert command[command.index("-maxrate") + 1] == "12M"
+    assert command[command.index("-bufsize") + 1] == "24M"
+    assert command[command.index("-g") + 1] == "60"
+
+    software = _streaming_video_options(
+        "libx264",
+        width=1920,
+        height=1080,
+        fps=30.0,
+    )
+    assert software[software.index("-maxrate") + 1] == "12M"
+    assert "-crf" in software
+
+    social = _social_reel_command(
+        [Path("point.mp4")],
+        [2.0],
+        Path("social.mp4"),
+        transition_duration=0.2,
+        width=1080,
+        height=1920,
+        fps=120,
+        with_audio=False,
+        encoder="h264_nvenc",
+    )
+    social_filter = social[social.index("-filter_complex") + 1]
+    assert "fps=30" in social_filter
+    assert social[social.index("-r") + 1] == "30"
+
+    low_fps_clip = _clip_command(
+        Path("source.mp4"),
+        Path("clip.mp4"),
+        0.0,
+        1.0,
+        encoder="libx264",
+        fps=24.0,
+    )
+    assert low_fps_clip[low_fps_clip.index("-vf") + 1] == "fps=24,format=yuv420p"
 
 
 def test_nvenc_detection_requires_a_successful_runtime_encode(

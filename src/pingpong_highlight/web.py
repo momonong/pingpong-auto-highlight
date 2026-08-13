@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import math
 import mimetypes
 import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from email.utils import formatdate
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import quote
 
+import anyio
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -33,6 +36,99 @@ from pingpong_highlight.pipeline.processor import HighlightProcessor
 from pingpong_highlight.uploads import UploadError, UploadStore
 
 TUS_VERSION = "1.0.0"
+MEDIA_CACHE_CONTROL = "private, max-age=3600"
+MEDIA_CHUNK_SIZE = 1024 * 1024
+
+
+async def _stream_file_range(path: Path, start: int, end: int) -> AsyncIterator[bytes]:
+    async with await anyio.open_file(path, "rb") as media_file:
+        await media_file.seek(start)
+        remaining = end - start
+        while remaining > 0:
+            chunk = await media_file.read(min(MEDIA_CHUNK_SIZE, remaining))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+            yield chunk
+
+
+def _parse_media_range(value: str, file_size: int) -> tuple[int, int]:
+    try:
+        units, requested = value.split("=", 1)
+        if units.strip().lower() != "bytes" or "," in requested:
+            raise ValueError
+        start_value, separator, end_value = requested.strip().partition("-")
+        if not separator:
+            raise ValueError
+        if start_value:
+            start = int(start_value)
+            end = min(int(end_value) + 1, file_size) if end_value else file_size
+        else:
+            suffix_length = int(end_value)
+            if suffix_length <= 0:
+                raise ValueError
+            start = max(file_size - suffix_length, 0)
+            end = file_size
+        if start < 0 or start >= file_size or end <= start:
+            raise ValueError
+        return start, end
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=416,
+            detail="Requested media range is not satisfiable",
+            headers={"Content-Range": f"bytes */{file_size}"},
+        ) from exc
+
+
+class MediaFileResponse(StreamingResponse):
+    """Cancellation-aware byte-range response for large local media."""
+
+    chunk_size = MEDIA_CHUNK_SIZE
+
+    def __init__(
+        self,
+        path: Path,
+        request: Request,
+        *,
+        media_type: str,
+        filename: str | None = None,
+    ) -> None:
+        stat_result = path.stat()
+        file_size = stat_result.st_size
+        last_modified = formatdate(stat_result.st_mtime, usegmt=True)
+        etag_value = f"{stat_result.st_mtime}-{file_size}"
+        etag = f'"{hashlib.md5(etag_value.encode(), usedforsecurity=False).hexdigest()}"'
+        headers = {
+            "Accept-Ranges": "bytes",
+            "Cache-Control": MEDIA_CACHE_CONTROL,
+            "ETag": etag,
+            "Last-Modified": last_modified,
+        }
+        if filename is not None:
+            encoded_filename = quote(filename)
+            if encoded_filename != filename:
+                disposition = f"attachment; filename*=utf-8''{encoded_filename}"
+            else:
+                disposition = f'attachment; filename="{filename}"'
+            headers["Content-Disposition"] = disposition
+
+        start = 0
+        end = file_size
+        status_code = 200
+        range_header = request.headers.get("range")
+        if_range = request.headers.get("if-range")
+        if range_header and (if_range is None or if_range in {etag, last_modified}):
+            start, end = _parse_media_range(range_header, file_size)
+            status_code = 206
+            headers["Content-Range"] = f"bytes {start}-{end - 1}/{file_size}"
+        headers["Content-Length"] = str(end - start)
+
+        super().__init__(
+            _stream_file_range(path, start, end),
+            status_code=status_code,
+            headers=headers,
+            media_type=media_type,
+        )
 
 
 class DriveImportRequest(BaseModel):
@@ -169,7 +265,7 @@ def create_app(
 
     app = FastAPI(
         title="Ping-Pong Auto Highlight",
-        version="1.2.2",
+        version="1.2.3",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -197,7 +293,7 @@ def create_app(
             "script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
         )
         if request.url.path.startswith("/api/"):
-            response.headers["Cache-Control"] = "private, no-store"
+            response.headers.setdefault("Cache-Control", "private, no-store")
         return response
 
     async def authorize(request: Request) -> None:
@@ -387,7 +483,7 @@ def create_app(
         return job, upload
 
     @app.get("/api/jobs/{job_id}/source", dependencies=[Depends(authorize)])
-    async def stream_source(job_id: str) -> FileResponse:
+    async def stream_source(job_id: str, request: Request) -> MediaFileResponse:
         _job, upload = job_and_upload(job_id)
         source = upload.path.resolve()
         if not source.is_file():
@@ -398,10 +494,10 @@ def create_app(
             if upload.content_type.startswith("video/")
             else guessed_type or "application/octet-stream"
         )
-        return FileResponse(
+        return MediaFileResponse(
             source,
+            request,
             media_type=media_type,
-            headers={"Accept-Ranges": "bytes"},
         )
 
     @app.get("/api/jobs/{job_id}/annotations", dependencies=[Depends(authorize)])
@@ -453,7 +549,9 @@ def create_app(
         return Response(status_code=204)
 
     @app.get("/api/jobs/{job_id}/files/{filename}", dependencies=[Depends(authorize)])
-    async def download_file(job_id: str, filename: str, download: bool = False) -> FileResponse:
+    async def download_file(
+        job_id: str, filename: str, request: Request, download: bool = False
+    ) -> Response:
         job = database.get_job(job_id)
         if job is None or not job.result:
             raise HTTPException(status_code=404, detail="Result not found")
@@ -465,8 +563,15 @@ def create_app(
         if path.parent != job_dir or not path.is_file():
             raise HTTPException(status_code=404, detail="Result file not found")
         media_type = "application/json" if path.suffix == ".json" else "video/mp4"
-        return FileResponse(
+        if media_type != "video/mp4":
+            return FileResponse(
+                path,
+                media_type=media_type,
+                filename=filename if download else None,
+            )
+        return MediaFileResponse(
             path,
+            request,
             media_type=media_type,
             filename=filename if download else None,
         )

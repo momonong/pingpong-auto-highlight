@@ -6,10 +6,77 @@ import json
 import time
 from pathlib import Path
 
+import anyio
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 from pingpong_highlight.config import Settings
-from pingpong_highlight.web import create_app
+from pingpong_highlight.web import (
+    MEDIA_CHUNK_SIZE,
+    MediaFileResponse,
+    _stream_file_range,
+    create_app,
+)
+
+
+def test_media_response_uses_large_chunks_for_docker_bind_mounts() -> None:
+    assert MEDIA_CHUNK_SIZE >= 1024 * 1024
+    assert MediaFileResponse.chunk_size == MEDIA_CHUNK_SIZE
+
+
+def test_media_stream_uses_large_chunks(tmp_path: Path) -> None:
+    media_path = tmp_path / "large.mp4"
+    media_path.write_bytes(b"x" * (MEDIA_CHUNK_SIZE * 2 + 17))
+
+    async def collect_sizes() -> list[int]:
+        return [
+            len(chunk)
+            async for chunk in _stream_file_range(media_path, 0, media_path.stat().st_size)
+        ]
+
+    assert anyio.run(collect_sizes) == [MEDIA_CHUNK_SIZE, MEDIA_CHUNK_SIZE, 17]
+
+
+def test_media_response_stops_streaming_after_disconnect(tmp_path: Path) -> None:
+    media_path = tmp_path / "large.mp4"
+    media_path.write_bytes(b"x" * (MEDIA_CHUNK_SIZE * 8))
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/media",
+        "raw_path": b"/media",
+        "query_string": b"",
+        "headers": [(b"range", b"bytes=0-")],
+        "client": ("127.0.0.1", 1234),
+        "server": ("127.0.0.1", 8000),
+    }
+    response = MediaFileResponse(media_path, Request(scope), media_type="video/mp4")
+    messages: list[dict] = []
+
+    async def exercise_disconnect() -> None:
+        disconnected = anyio.Event()
+
+        async def receive() -> dict[str, str]:
+            await disconnected.wait()
+            return {"type": "http.disconnect"}
+
+        async def send(message: dict) -> None:
+            messages.append(message)
+            if message["type"] == "http.response.body" and message.get("body"):
+                disconnected.set()
+
+        await response(scope, receive, send)
+
+    anyio.run(exercise_disconnect)
+    streamed_bytes = sum(
+        len(message.get("body", b""))
+        for message in messages
+        if message["type"] == "http.response.body"
+    )
+    assert 0 < streamed_bytes < media_path.stat().st_size
 
 
 class FakeProcessor:
@@ -155,6 +222,7 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
             headers={"X-Upload-Token": "test-secret"},
         )
         assert download.status_code == 200
+        assert download.headers["cache-control"] == "private, no-store"
 
         preview = client.get(
             f"/api/jobs/{job_id}/files/best_points_reel.mp4",
@@ -162,8 +230,62 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         )
         assert preview.status_code == 200
         assert preview.headers["content-type"] == "video/mp4"
-        assert preview.headers["cache-control"] == "private, no-store"
+        assert preview.headers["cache-control"] == "private, max-age=3600"
+        assert preview.headers["accept-ranges"] == "bytes"
         assert "content-disposition" not in preview.headers
+
+        preview_range = client.get(
+            f"/api/jobs/{job_id}/files/best_points_reel.mp4",
+            headers={"X-Upload-Token": "test-secret", "Range": "bytes=2-5"},
+        )
+        assert preview_range.status_code == 206
+        assert preview_range.content == b"ke-v"
+        assert preview_range.headers["content-range"] == "bytes 2-5/10"
+        assert preview_range.headers["content-length"] == "4"
+        assert preview_range.headers["etag"]
+
+        matching_if_range = client.get(
+            f"/api/jobs/{job_id}/files/best_points_reel.mp4",
+            headers={
+                "X-Upload-Token": "test-secret",
+                "Range": "bytes=2-",
+                "If-Range": preview_range.headers["etag"],
+            },
+        )
+        assert matching_if_range.status_code == 206
+        assert matching_if_range.content == b"ke-video"
+
+        clamped_range = client.get(
+            f"/api/jobs/{job_id}/files/best_points_reel.mp4",
+            headers={"X-Upload-Token": "test-secret", "Range": "bytes=2-999"},
+        )
+        assert clamped_range.status_code == 206
+        assert clamped_range.content == b"ke-video"
+
+        suffix_range = client.get(
+            f"/api/jobs/{job_id}/files/best_points_reel.mp4",
+            headers={"X-Upload-Token": "test-secret", "Range": "bytes=-4"},
+        )
+        assert suffix_range.status_code == 206
+        assert suffix_range.content == b"ideo"
+
+        invalid_range = client.get(
+            f"/api/jobs/{job_id}/files/best_points_reel.mp4",
+            headers={"X-Upload-Token": "test-secret", "Range": "bytes=20-30"},
+        )
+        assert invalid_range.status_code == 416
+        assert invalid_range.headers["content-range"] == "bytes */10"
+
+        stale_if_range = client.get(
+            f"/api/jobs/{job_id}/files/best_points_reel.mp4",
+            headers={
+                "X-Upload-Token": "test-secret",
+                "Range": "bytes=2-5",
+                "If-Range": '"stale"',
+            },
+        )
+        assert stale_if_range.status_code == 200
+        assert stale_if_range.content == b"fake-video"
 
         attachment = client.get(
             f"/api/jobs/{job_id}/files/best_points_reel.mp4?download=true",
@@ -179,7 +301,7 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         assert source.status_code == 206
         assert source.content == payload[:4]
         assert source.headers["content-range"].startswith("bytes 0-3/")
-        assert source.headers["cache-control"] == "private, no-store"
+        assert source.headers["cache-control"] == "private, max-age=3600"
 
         annotations_url = f"/api/jobs/{job_id}/annotations"
         assert client.get(annotations_url, headers=_headers()).json()["annotations"] == []
@@ -325,6 +447,8 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert "expandedResultJobIds" in app_js.text
         assert "jobRenderSignatures" in app_js.text
         assert "hydrateResultPanel" in app_js.text
+        assert "function dehydrateResultPanel(panel)" in app_js.text
+        assert 'source.removeAttribute("src");' in app_js.text
         assert "renderJobs(jobs)" in app_js.text
         assert 'data-result-job-id="${escapeHtml(jobId)}"' in app_js.text
         assert '<span class="sr-only">${escapeHtml(sourceName)} 的剪輯結果：</span>' in app_js.text

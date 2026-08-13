@@ -1,5 +1,5 @@
 services:
   pingpong-highlight:
     build: !reset null
-    image: "${PINGPONG_IMAGE:-docker.io/momonong/pingpong-auto-highlight:1.2.2}"
+    image: "${PINGPONG_IMAGE:-docker.io/momonong/pingpong-auto-highlight:1.2.3}"
     platform: linux/amd64
