@@ -170,7 +170,7 @@ try {
     if ($UsePublishedImage) {
         & docker compose @composeFiles pull pingpong-highlight ngrok
         if ($LASTEXITCODE -ne 0) {
-            throw "Docker Compose could not pull the published RallyCut image from Docker Hub."
+            throw "Docker Compose could not pull the published HighlightCraft image from Docker Hub."
         }
         & docker compose @composeFiles up -d pingpong-highlight ngrok
     }
@@ -243,11 +243,11 @@ try {
 
     $uploadTokenPath = Join-Path $repoRoot "data\.upload-token"
     if (-not (Test-Path -LiteralPath $uploadTokenPath)) {
-        throw "The RallyCut access token was not created at $uploadTokenPath."
+        throw "The HighlightCraft access token was not created at $uploadTokenPath."
     }
     $uploadToken = (Get-Content -Raw -LiteralPath $uploadTokenPath).Trim()
     if (-not $uploadToken) {
-        throw "The RallyCut access token is empty."
+        throw "The HighlightCraft access token is empty."
     }
 
     $phoneUrl = "$tunnelUrl/#token=$([uri]::EscapeDataString($uploadToken))"
@@ -272,7 +272,7 @@ try {
     Write-Host ""
     Write-Host "If ngrok first shows 'Visit Site', tap it and then open the complete link above again."
     Write-Warning "Anyone with the complete link can use this service. Do not share it."
-    Write-Warning "Keep Docker Desktop and this computer awake while using RallyCut."
+    Write-Warning "Keep Docker Desktop and this computer awake while using HighlightCraft."
     Write-Host "The latest link is also saved to $latestUrlPath"
 }
 finally {

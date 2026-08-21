@@ -36,8 +36,18 @@ const elements = {
   annotationWorkspaceEnd: document.querySelector("#annotationWorkspaceEnd"),
   annotationWorkspaceMarkStart: document.querySelector("#annotationWorkspaceMarkStart"),
   annotationWorkspaceMarkEnd: document.querySelector("#annotationWorkspaceMarkEnd"),
+  annotationWorkspaceForm: document.querySelector("#annotationWorkspaceForm"),
   annotationWorkspaceLabel: document.querySelector("#annotationWorkspaceLabel"),
-  annotationWorkspaceNote: document.querySelector("#annotationWorkspaceNote"),
+  annotationWorkspaceNoteTags: Array.from(
+    document.querySelectorAll('input[name="annotation-note-tag"]'),
+  ),
+  annotationWorkspaceNoteOtherToggle: document.querySelector(
+    "#annotationWorkspaceNoteOtherToggle",
+  ),
+  annotationWorkspaceNoteOtherField: document.querySelector(
+    "#annotationWorkspaceNoteOtherField",
+  ),
+  annotationWorkspaceNoteOther: document.querySelector("#annotationWorkspaceNoteOther"),
   annotationWorkspaceSave: document.querySelector("#annotationWorkspaceSave"),
   annotationWorkspaceMessage: document.querySelector("#annotationWorkspaceMessage"),
   annotationWorkspaceCount: document.querySelector("#annotationWorkspaceCount"),
@@ -75,6 +85,9 @@ let annotationWorkspaceJobId = "";
 let annotationWorkspaceStart = null;
 let annotationWorkspaceEnd = null;
 let annotationWorkspaceReturnFocus = null;
+let annotationWorkspaceComposing = false;
+
+const annotationNoteMaxLength = 300;
 
 const uploadActiveWindowMs = 60 * 1000;
 
@@ -489,6 +502,34 @@ function renderAnnotationWorkspaceBoundaries() {
     annotationWorkspaceEnd === null ? "尚未設定" : formatTimestamp(annotationWorkspaceEnd);
 }
 
+function resetAnnotationWorkspaceNote() {
+  for (const checkbox of elements.annotationWorkspaceNoteTags) checkbox.checked = false;
+  elements.annotationWorkspaceNoteOtherToggle.checked = false;
+  elements.annotationWorkspaceNoteOther.value = "";
+  elements.annotationWorkspaceNoteOtherField.hidden = true;
+}
+
+function updateAnnotationWorkspaceNoteOther() {
+  const isOther = elements.annotationWorkspaceNoteOtherToggle.checked;
+  elements.annotationWorkspaceNoteOtherField.hidden = !isOther;
+  if (isOther) {
+    elements.annotationWorkspaceNoteOther.focus({ preventScroll: true });
+  } else {
+    elements.annotationWorkspaceNoteOther.value = "";
+  }
+}
+
+function annotationWorkspaceNoteValue() {
+  const selectedTags = elements.annotationWorkspaceNoteTags
+    .filter((checkbox) => checkbox.checked)
+    .map((checkbox) => checkbox.value);
+  const other = elements.annotationWorkspaceNoteOtherToggle.checked
+    ? elements.annotationWorkspaceNoteOther.value.trim()
+    : "";
+  if (other) selectedTags.push(other);
+  return selectedTags.join("、");
+}
+
 function markAnnotationWorkspaceBoundary(boundary) {
   const current = elements.annotationWorkspaceVideo.currentTime;
   if (!Number.isFinite(current)) return;
@@ -555,12 +596,13 @@ function openAnnotationWorkspace(button) {
   annotationWorkspaceReturnFocus = button;
   annotationWorkspaceStart = null;
   annotationWorkspaceEnd = null;
+  annotationWorkspaceComposing = false;
   renderAnnotationWorkspaceBoundaries();
   showAnnotationWorkspaceMessage("");
   elements.annotationWorkspaceFilename.textContent =
     button.dataset.sourceName || "原始影片";
   elements.annotationWorkspaceLabel.value = "highlight";
-  elements.annotationWorkspaceNote.value = "";
+  resetAnnotationWorkspaceNote();
   elements.annotationWorkspaceCurrent.textContent = "0:00.0";
   elements.annotationWorkspace.hidden = false;
   document.body.classList.add("annotation-workspace-open");
@@ -584,6 +626,7 @@ function closeAnnotationWorkspace() {
   document.body.classList.remove("annotation-workspace-open");
   annotationWorkspaceJobId = "";
   annotationWorkspaceReturnFocus = null;
+  annotationWorkspaceComposing = false;
   const currentLauncher = Array.from(
     elements.annotationDevList.querySelectorAll(".open-annotation-workspace"),
   ).find((button) => button.dataset.jobId === returnJobId);
@@ -611,6 +654,22 @@ async function saveAnnotationWorkspace() {
     showAnnotationWorkspaceMessage("請先按 I 設起點，再按 O 設終點。", true);
     return;
   }
+  const note = annotationWorkspaceNoteValue();
+  if (note.length > annotationNoteMaxLength) {
+    showAnnotationWorkspaceMessage("精彩標籤合計不能超過 300 個字。", true);
+    if (elements.annotationWorkspaceNoteOtherToggle.checked) {
+      elements.annotationWorkspaceNoteOther.focus({ preventScroll: true });
+    }
+    return;
+  }
+  if (
+    elements.annotationWorkspaceNoteOtherToggle.checked &&
+    !elements.annotationWorkspaceNoteOther.value.trim()
+  ) {
+    showAnnotationWorkspaceMessage("請填寫其他標籤，或取消選取「其他…」。", true);
+    elements.annotationWorkspaceNoteOther.focus({ preventScroll: true });
+    return;
+  }
   const button = elements.annotationWorkspaceSave;
   const originalHtml = button.innerHTML;
   button.disabled = true;
@@ -623,12 +682,12 @@ async function saveAnnotationWorkspace() {
         start: annotationWorkspaceStart,
         end: annotationWorkspaceEnd,
         label: elements.annotationWorkspaceLabel.value,
-        note: elements.annotationWorkspaceNote.value.trim(),
+        note,
       }),
     });
     annotationWorkspaceStart = null;
     annotationWorkspaceEnd = null;
-    elements.annotationWorkspaceNote.value = "";
+    resetAnnotationWorkspaceNote();
     renderAnnotationWorkspaceBoundaries();
     showAnnotationWorkspaceMessage("已儲存。可以直接繼續播放並標下一球。", false);
     await loadAnnotationWorkspaceList();
@@ -1142,7 +1201,20 @@ elements.annotationWorkspaceMarkStart.addEventListener("click", () => {
 elements.annotationWorkspaceMarkEnd.addEventListener("click", () => {
   markAnnotationWorkspaceBoundary("end");
 });
-elements.annotationWorkspaceSave.addEventListener("click", saveAnnotationWorkspace);
+elements.annotationWorkspaceNoteOtherToggle.addEventListener(
+  "change",
+  updateAnnotationWorkspaceNoteOther,
+);
+elements.annotationWorkspaceForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveAnnotationWorkspace();
+});
+elements.annotationWorkspace.addEventListener("compositionstart", () => {
+  annotationWorkspaceComposing = true;
+});
+elements.annotationWorkspace.addEventListener("compositionend", () => {
+  annotationWorkspaceComposing = false;
+});
 elements.annotationWorkspace.addEventListener("click", (event) => {
   const seekButton = event.target.closest("button[data-workspace-seek]");
   if (seekButton) {
@@ -1189,13 +1261,36 @@ document.addEventListener(
   "keydown",
   (event) => {
     if (!annotationWorkspaceIsOpen()) return;
+    if (annotationWorkspaceComposing || event.isComposing || event.keyCode === 229) return;
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
       closeAnnotationWorkspace();
       return;
     }
-    if (event.target.matches("input, select, textarea")) return;
+    if (event.target.matches('input[type="text"], textarea')) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        elements.annotationWorkspaceForm.requestSubmit();
+      }
+      return;
+    }
+    if (event.target.matches('input[type="checkbox"][name^="annotation-note-tag"]')) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        elements.annotationWorkspaceForm.requestSubmit();
+      }
+      return;
+    }
+    if (
+      event.target.matches(
+        'input, select, textarea, button, a, [contenteditable="true"]',
+      )
+    ) {
+      return;
+    }
     if (event.code === "Space") {
       event.preventDefault();
       event.stopPropagation();

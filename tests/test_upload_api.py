@@ -460,6 +460,28 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert ".annotation-video" not in app_js.text
         assert 'event.code === "KeyI"' in app_js.text
         assert 'event.code === "KeyO"' in app_js.text
+        assert "function annotationWorkspaceNoteValue()" in app_js.text
+        assert 'return selectedTags.join("、");' in app_js.text
+        assert 'elements.annotationWorkspaceForm.addEventListener("submit"' in app_js.text
+        assert "elements.annotationWorkspaceForm.requestSubmit();" in app_js.text
+        assert 'input[type="checkbox"][name^="annotation-note-tag"]' in app_js.text
+        assert (
+            "annotationWorkspaceComposing || event.isComposing || event.keyCode === 229"
+            in app_js.text
+        )
+        assert "note.length > annotationNoteMaxLength" in app_js.text
+        assert 'input, select, textarea, button, a, [contenteditable="true"]' in app_js.text
+
+        index_html = client.get("/")
+        assert index_html.status_code == 200
+        assert "HighlightCraft — 桌球精彩集錦" in index_html.text
+        assert "RallyCut" not in index_html.text
+        assert 'id="annotationWorkspaceForm"' in index_html.text
+        assert 'name="annotation-note-tag" value="相持"' in index_html.text
+        assert 'name="annotation-note-tag" value="搶攻"' in index_html.text
+        assert 'id="annotationWorkspaceNoteOtherToggle"' in index_html.text
+        assert 'id="annotationWorkspaceNoteOtherField"' in index_html.text
+        assert 'id="annotationWorkspaceNoteOther" type="text" maxlength="274"' in index_html.text
 
         styles = client.get("/static/styles.css")
         assert styles.status_code == 200

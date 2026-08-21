@@ -1,4 +1,4 @@
-# Ping-Pong Auto Highlight
+# HighlightCraft
 
 把一段完整桌球錄影，自動剪成「以得分為單位」的精彩集錦。
 
@@ -22,26 +22,32 @@
 這是 ngrok 額度用完、公開網址失效，或只想在電腦上標記精彩球時的建議模式。若 ngrok 頁面顯示 `Network bandwidth exceeded`，不必繼續重試，直接使用本節。它不啟動 ngrok 或 Cloudflare Tunnel，網站只綁在 `127.0.0.1`，因此瀏覽器播放原片與成品不會消耗 tunnel 流量，也不會讓同一個 Wi-Fi 的其他裝置連入。
 
 1. 開啟 Docker Desktop，等到 Docker Engine 正在執行。
-2. 開啟 Git Bash，進入專案並啟動已發佈的 GPU 版本：
+2. 開啟 Git Bash，進入專案並從目前 source 建置、啟動 GPU 版本：
 
    ```bash
    cd /d/projects/pingpong-auto-highlight
-   ./scripts/start-localhost.sh -UsePublishedImage
+   ./scripts/start-localhost.sh
    ```
 
-   如果正在修改本機程式、希望從目前 source 重新 build，拿掉 `-UsePublishedImage`：
+   如果只想使用 Docker Hub 上已正式發佈、而且不需要目前 checkout 新功能的版本，才加上 `-UsePublishedImage`：
 
    ```bash
-   ./scripts/start-localhost.sh
+   ./scripts/start-localhost.sh -UsePublishedImage
    ```
 
    PowerShell 對應指令是：
 
    ```powershell
+   .\scripts\start-localhost.ps1
+   ```
+
+   PowerShell 若要使用已發佈 image，對應指令是：
+
+   ```powershell
    .\scripts\start-localhost.ps1 -UsePublishedImage
    ```
 
-3. 等終端機顯示 `RallyCut localhost-only mode is ready.`，在**同一台電腦**的瀏覽器開啟它顯示的完整網址。之後也可以從 Git Bash 讀取：
+3. 等終端機顯示 `HighlightCraft localhost-only mode is ready.`，在**同一台電腦**的瀏覽器開啟它顯示的完整網址。之後也可以從 Git Bash 讀取：
 
    ```bash
    cat ./data/local-access-url.txt
@@ -127,10 +133,10 @@ docker compose -f compose.yaml -f compose.localhost.yaml stop pingpong-highlight
 1. 在手機的 Google Drive 上傳原始影片，等 Drive 顯示上傳完成。
 2. 開啟該影片的「管理存取權」或「共用」，把一般存取權改成「知道連結的任何人」，角色選「檢視者」。只要允許下載，不需要給編輯權限。
 3. 複製的是單一影片連結，不是資料夾連結。
-4. 在 RallyCut 的 Google Drive 區塊貼上連結，按「開始匯入」。
+4. 在 HighlightCraft 的 Google Drive 區塊貼上連結，按「開始匯入」。
 5. 「Drive 下載中」會顯示電腦端實際收到的進度；完成後會自動消失並變成 GPU 剪輯工作，不需要再按一次開始。
 
-系統端不需要 Google 帳號、OAuth、API key 或額外設定。公開連結等同任何拿到連結的人都能讀取，因此不要用在敏感影片。等 RallyCut 狀態已從 Drive 下載切換成「排隊中／分析中」後，就可以把 Google Drive 共用權限改回「受限制」；電腦已下載的本機副本不受影響。
+系統端不需要 Google 帳號、OAuth、API key 或額外設定。公開連結等同任何拿到連結的人都能讀取，因此不要用在敏感影片。等 HighlightCraft 狀態已從 Drive 下載切換成「排隊中／分析中」後，就可以把 Google Drive 共用權限改回「受限制」；電腦已下載的本機副本不受影響。
 
 Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟時，會保留已下載部分並在下次啟動續傳；失敗項目也可以直接在頁面重試或刪除。Google 仍可能因下載次數、擁有者禁止下載或組織政策拒絕公開下載，這時頁面會保留進度並顯示權限提示。
 
@@ -142,7 +148,7 @@ Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟�
 
 1. 播放或拖曳原片，在該回合實際開始的位置按 `I` 設起點。
 2. 到該分結束時按 `O` 設終點，再按 `Enter` 儲存；全程不需要抄寫或輸入時間碼。
-3. 選「值得收錄」；如果它是模型選到但你不喜歡的球，改選「不該收錄」。備註可填反拉、長回合等原因，也可留白。
+3. 選「值得收錄」；如果它是模型選到但你不喜歡的球，改選「不該收錄」。精彩標籤可以複選，例如同時選「相持」與「搶攻」；只有不在常用選項裡的內容才需要點「其他…」手動輸入，也可以完全不選。
 4. `Space` 控制播放／暫停，方向鍵前後 1 秒，`Shift` 加方向鍵前後 5 秒，`Esc` 關閉工作區。標記會綁定原片與時間碼，存在 `data/state.sqlite3`，重新整理、更新容器或重跑模型都不會消失。
 
 第一輪建議選 2–3 支不同角度、距離或光線的影片，把其中所有你會放進集錦的球標完；另留 1 支完全不參與調整，最後才用來驗證是否真的改善。先累積約 15–30 個「值得收錄」的球就足以開始比較；不必一次標完整個影片裡所有普通球。
@@ -214,11 +220,11 @@ docker compose down                  # 停止服務；保留 ./data
 
 ## 影片播放效能
 
-`localhost` 只表示瀏覽器與服務在同一台電腦，不代表影片不需要經過 HTTP、Docker bind mount 與瀏覽器解碼。RallyCut 1.2.3 的影片端點使用可感知斷線的 HTTP Range 串流與較大的讀取區塊；播放器收合或拖曳造成舊請求中斷時，伺服器會立即停止讀檔，不會在背景繼續把整支原片讀完。完成影片可保留在瀏覽器私有快取，重播與倒退也不必每次重新傳輸。
+`localhost` 只表示瀏覽器與服務在同一台電腦，不代表影片不需要經過 HTTP、Docker bind mount 與瀏覽器解碼。HighlightCraft 1.2.3 的影片端點使用可感知斷線的 HTTP Range 串流與較大的讀取區塊；播放器收合或拖曳造成舊請求中斷時，伺服器會立即停止讀檔，不會在背景繼續把整支原片讀完。完成影片可保留在瀏覽器私有快取，重播與倒退也不必每次重新傳輸。
 
 新產生的 H.264 成品最多使用 30 fps、約兩秒一個 GOP，並限制目標與峰值碼率。1.2.3 以前已完成的 MP4 不會被自動覆寫；它們仍可透過新版串流順暢播放，但若希望把舊的 120 fps／高碼率檔案縮小，需要重新處理原片。
 
-正式提供多人或外網使用時，不應讓免費 tunnel 兼任大量影片配送。建議讓 RallyCut 保留驗證、工作狀態與剪輯 API，把完成影片交給支援 Range／sendfile 的反向代理，或使用有權限控制的 object storage／CDN；這樣同時改善並行播放、流量成本與跨地區延遲。
+正式提供多人或外網使用時，不應讓免費 tunnel 兼任大量影片配送。建議讓 HighlightCraft 保留驗證、工作狀態與剪輯 API，把完成影片交給支援 Range／sendfile 的反向代理，或使用有權限控制的 object storage／CDN；這樣同時改善並行播放、流量成本與跨地區延遲。
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
@@ -262,7 +268,7 @@ Git Bash 的標準啟動指令：
 ./scripts/start-ngrok-tunnel.sh
 ```
 
-若手機第一次開啟時先看到 ngrok 的「Visit Site」頁面，按下後請再開一次終端顯示的完整網址（必須包含 `#token=...`）。第一次只是在該手機建立 ngrok 的瀏覽器 cookie，跳轉時可能沒有保留 fragment；RallyCut 收不到 token 時仍能顯示首頁，但會無法讀取伺服器端的處理 session。此時可重新開啟完整網址，或把完整網址／存取碼貼進頁面的解鎖欄位。session 與成品都還保存在電腦的 `data`，不會因手機換頁或重新整理而消失。
+若手機第一次開啟時先看到 ngrok 的「Visit Site」頁面，按下後請再開一次終端顯示的完整網址（必須包含 `#token=...`）。第一次只是在該手機建立 ngrok 的瀏覽器 cookie，跳轉時可能沒有保留 fragment；HighlightCraft 收不到 token 時仍能顯示首頁，但會無法讀取伺服器端的處理 session。此時可重新開啟完整網址，或把完整網址／存取碼貼進頁面的解鎖欄位。session 與成品都還保存在電腦的 `data`，不會因手機換頁或重新整理而消失。
 
 PowerShell 也可以使用同一套流程：
 
@@ -270,7 +276,7 @@ PowerShell 也可以使用同一套流程：
 .\scripts\start-ngrok-tunnel.ps1
 ```
 
-啟動器會確認 Docker、啟動預設 GPU 服務與 ngrok、等待公開 health check 通過，再產生一條可直接在手機開啟的網址。ngrok 的 HTTP 請求檢視預設關閉，避免在本機 Traffic Inspector 保存影片要求與帶有 RallyCut 存取權杖的下載網址；4040 只綁在 `127.0.0.1`，啟動器用它讀取 tunnel 網址，不會對區域網路公開。
+啟動器會確認 Docker、啟動預設 GPU 服務與 ngrok、等待公開 health check 通過，再產生一條可直接在手機開啟的網址。ngrok 的 HTTP 請求檢視預設關閉，避免在本機 Traffic Inspector 保存影片要求與帶有 HighlightCraft 存取權杖的下載網址；4040 只綁在 `127.0.0.1`，啟動器用它讀取 tunnel 網址，不會對區域網路公開。
 
 免費方案會提供一個開發用網域，而且 endpoint 沒有固定逾時，但目前每月包含 1 GB 對外傳輸與 20,000 個 HTTP requests。把原片先傳到 Google Drive、再讓電腦直接下載，不會讓整支原片經過 ngrok；手機直接上傳與下載完成的集錦則會使用 ngrok 額度。額度可能調整，實際數字以 [ngrok Free plan limits](https://ngrok.com/docs/pricing-limits/free-plan-limits) 為準。
 

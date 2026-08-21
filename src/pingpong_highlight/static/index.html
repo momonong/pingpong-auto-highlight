@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0d12" />
     <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" />
-    <title>RallyCut — 桌球精彩集錦</title>
+    <title>HighlightCraft — 桌球精彩集錦</title>
     <link rel="stylesheet" href="/static/styles.css?v=1.2.3" />
   </head>
   <body>
@@ -13,9 +13,9 @@
     <div class="ambient ambient-two" aria-hidden="true"></div>
 
     <header class="topbar">
-      <a class="brand" href="/" aria-label="RallyCut 首頁">
+      <a class="brand" href="/" aria-label="HighlightCraft 首頁">
         <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
-        <span><b>RALLYCUT</b><small>LOCAL HIGHLIGHT STUDIO</small></span>
+        <span><b>HIGHLIGHTCRAFT</b><small>LOCAL HIGHLIGHT STUDIO</small></span>
       </a>
       <span class="service-pill"><i aria-hidden="true"></i> 本機服務運作中</span>
     </header>
@@ -200,8 +200,8 @@
     </main>
 
     <footer class="footer">
-      <span>RALLYCUT / LOCAL COURT LAB</span>
-      <span>PRIVATE BY DEFAULT · MADE FOR THE NEXT RALLY</span>
+      <span>HIGHLIGHTCRAFT / LOCAL COURT LAB</span>
+      <span>PRIVATE BY DEFAULT · MADE FOR YOUR BEST MOMENTS</span>
     </footer>
 
     <section
@@ -262,12 +262,31 @@
                 <div><span>回合起點</span><output id="annotationWorkspaceStart">尚未設定</output><button id="annotationWorkspaceMarkStart" type="button"><kbd>I</kbd> 設為起點</button></div>
                 <div><span>回合終點</span><output id="annotationWorkspaceEnd">尚未設定</output><button id="annotationWorkspaceMarkEnd" type="button"><kbd>O</kbd> 設為終點</button></div>
               </div>
-              <div class="annotation-workspace-meta">
-                <label><span>這一球</span><select id="annotationWorkspaceLabel"><option value="highlight">值得收錄</option><option value="exclude">不該收錄</option></select></label>
-                <label><span>備註（可不填）</span><input id="annotationWorkspaceNote" type="text" maxlength="300" placeholder="例如：反拉、長回合、關鍵分" /></label>
-              </div>
-              <button id="annotationWorkspaceSave" class="annotation-workspace-save" type="button"><kbd>Enter</kbd> 儲存這一球</button>
-              <p id="annotationWorkspaceMessage" class="annotation-workspace-message" hidden aria-live="polite"></p>
+              <form id="annotationWorkspaceForm">
+                <div class="annotation-workspace-meta">
+                  <label><span>這一球</span><select id="annotationWorkspaceLabel"><option value="highlight">值得收錄</option><option value="exclude">不該收錄</option></select></label>
+                  <fieldset class="annotation-workspace-tags">
+                    <legend>精彩標籤（可複選）</legend>
+                    <div class="annotation-workspace-tag-options">
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="相持" /><span>相持</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="搶攻" /><span>搶攻</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="反拉" /><span>反拉</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="反壓" /><span>反壓</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="落點" /><span>落點</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="落點控制" /><span>落點控制</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="擋球" /><span>擋球</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="防守" /><span>防守</span></label>
+                      <label class="annotation-workspace-tag"><input id="annotationWorkspaceNoteOtherToggle" type="checkbox" name="annotation-note-tag-other" /><span>其他…</span></label>
+                    </div>
+                  </fieldset>
+                  <label id="annotationWorkspaceNoteOtherField" class="annotation-workspace-note-other" for="annotationWorkspaceNoteOther" hidden>
+                    <span>其他標籤</span>
+                    <input id="annotationWorkspaceNoteOther" type="text" maxlength="274" placeholder="輸入這一球的特別之處" autocomplete="off" />
+                  </label>
+                </div>
+                <button id="annotationWorkspaceSave" class="annotation-workspace-save" type="submit"><kbd>Enter</kbd> 儲存這一球</button>
+                <p id="annotationWorkspaceMessage" class="annotation-workspace-message" hidden aria-live="polite"></p>
+              </form>
             </section>
 
             <section class="annotation-workspace-section annotation-workspace-saved">

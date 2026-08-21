@@ -1894,7 +1894,8 @@ body.annotation-workspace-open {
 }
 
 .annotation-workspace-boundaries span,
-.annotation-workspace-meta span {
+.annotation-workspace-meta > label > span,
+.annotation-workspace-tags legend {
   color: #76818a;
   font-size: 0.57rem;
   font-weight: 700;
@@ -1933,7 +1934,67 @@ body.annotation-workspace-open {
   gap: 5px;
 }
 
-.annotation-workspace-meta input,
+.annotation-workspace-tags {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.annotation-workspace-tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.annotation-workspace-tag {
+  position: relative;
+  display: inline-flex !important;
+  cursor: pointer;
+}
+
+.annotation-workspace-tag input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.annotation-workspace-tag span {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #a8b1b8;
+  background: #0b1016;
+  font-size: 0.63rem;
+  font-weight: 750;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.annotation-workspace-tag input:checked + span {
+  border-color: var(--lime);
+  color: #151b0e;
+  background: var(--lime);
+}
+
+.annotation-workspace-tag input:focus-visible + span {
+  outline: 2px solid var(--lime-soft);
+  outline-offset: 2px;
+}
+
+.annotation-workspace-note-other {
+  grid-column: 1 / -1;
+}
+
+.annotation-workspace-note-other[hidden] {
+  display: none;
+}
+
+.annotation-workspace-meta input[type="text"],
 .annotation-workspace-meta select {
   width: 100%;
   min-width: 0;

@@ -98,7 +98,7 @@ function Get-PublishedPort {
 
     $bindings = @($Inspection.NetworkSettings.Ports."8000/tcp")
     if ($bindings.Count -eq 0 -or -not $bindings[0].HostPort) {
-        throw "RallyCut does not have a published host port for container port 8000."
+        throw "HighlightCraft does not have a published host port for container port 8000."
     }
     return [int]$bindings[0].HostPort
 }
@@ -109,7 +109,7 @@ function Assert-NoActiveWork {
         return
     }
     if ($inspection.State.Restarting) {
-        throw "RallyCut is restarting; unable to verify active work safely."
+        throw "HighlightCraft is restarting; unable to verify active work safely."
     }
     if (-not $inspection.State.Running) {
         return
@@ -117,11 +117,11 @@ function Assert-NoActiveWork {
 
     $tokenPath = Join-Path $repoRoot "data\.upload-token"
     if (-not (Test-Path -LiteralPath $tokenPath)) {
-        throw "RallyCut is running, but its access token is unavailable; refusing to restart it."
+        throw "HighlightCraft is running, but its access token is unavailable; refusing to restart it."
     }
     $token = (Get-Content -Raw -LiteralPath $tokenPath).Trim()
     if (-not $token) {
-        throw "RallyCut is running, but its access token is empty; refusing to restart it."
+        throw "HighlightCraft is running, but its access token is empty; refusing to restart it."
     }
 
     $hostPort = Get-PublishedPort -Inspection $inspection
@@ -143,7 +143,7 @@ function Assert-NoActiveWork {
         )
     }
     catch {
-        throw "Could not verify RallyCut's current work state; refusing to restart it."
+        throw "Could not verify HighlightCraft's current work state; refusing to restart it."
     }
 
     $activeJobs = @($jobs | Where-Object { $_.status -in @("queued", "processing") })
@@ -155,7 +155,7 @@ function Assert-NoActiveWork {
     )
     if ($activeJobs.Count -or $activeImports.Count -or $incompleteUploads.Count) {
         throw (
-            "RallyCut still has active work " +
+            "HighlightCraft still has active work " +
             "($($activeJobs.Count) jobs, $($activeImports.Count) Drive imports, " +
             "$($incompleteUploads.Count) incomplete uploads). " +
             "Wait for it to finish, or remove abandoned uploads in the UI, then run again."
@@ -218,7 +218,7 @@ function Clear-StaleRemoteUrls {
 function Stop-ServicesFailClosed {
     Write-Warning (
         "Localhost safety verification failed after mode switching began. " +
-        "Stopping RallyCut and both tunnel services to fail closed."
+        "Stopping HighlightCraft and both tunnel services to fail closed."
     )
     $cleanupProblems = @()
     if ((Invoke-NativeCommandSilently {
@@ -307,13 +307,13 @@ try {
     if ($UsePublishedImage) {
         & docker compose @composeFiles pull pingpong-highlight
         if ($LASTEXITCODE -ne 0) {
-            throw "Docker Compose could not pull the published RallyCut image from Docker Hub."
+            throw "Docker Compose could not pull the published HighlightCraft image from Docker Hub."
         }
     }
     else {
         & docker compose @composeFiles build pingpong-highlight
         if ($LASTEXITCODE -ne 0) {
-            throw "Docker Compose could not build the RallyCut image."
+            throw "Docker Compose could not build the HighlightCraft image."
         }
     }
 
@@ -323,7 +323,7 @@ try {
     catch {
         Write-Warning (
             "The tunnel services are stopped, but new active work appeared during image preparation. " +
-            "The existing RallyCut service was left running; wait for it to finish and run again."
+            "The existing HighlightCraft service was left running; wait for it to finish and run again."
         )
         throw
     }
@@ -362,13 +362,13 @@ try {
         Start-Sleep -Seconds 1
     } while ((Get-Date) -lt $deadline)
     if (-not $healthy) {
-        throw "RallyCut did not become healthy within $TimeoutSeconds seconds."
+        throw "HighlightCraft did not become healthy within $TimeoutSeconds seconds."
     }
 
     $bindings = @($inspection.NetworkSettings.Ports."8000/tcp")
     $unsafeBindings = @($bindings | Where-Object { $_.HostIp -ne "127.0.0.1" })
     if ($bindings.Count -eq 0 -or $unsafeBindings.Count -gt 0) {
-        throw "Localhost safety check failed: RallyCut is not bound exclusively to 127.0.0.1."
+        throw "Localhost safety check failed: HighlightCraft is not bound exclusively to 127.0.0.1."
     }
     if (
         (Test-TunnelRunning -Overlay "compose.ngrok.yaml" -Service "ngrok") -or
@@ -379,11 +379,11 @@ try {
 
     $tokenPath = Join-Path $repoRoot "data\.upload-token"
     if (-not (Test-Path -LiteralPath $tokenPath)) {
-        throw "The RallyCut access token was not created at $tokenPath."
+        throw "The HighlightCraft access token was not created at $tokenPath."
     }
     $token = (Get-Content -Raw -LiteralPath $tokenPath).Trim()
     if (-not $token) {
-        throw "The RallyCut access token is empty."
+        throw "The HighlightCraft access token is empty."
     }
 
     $localUrl = "http://127.0.0.1:$hostPort/#token=$([uri]::EscapeDataString($token))"
@@ -394,7 +394,7 @@ try {
         [Text.UTF8Encoding]::new($false)
     )
     Write-Host ""
-    Write-Host "RallyCut localhost-only mode is ready." -ForegroundColor Green
+    Write-Host "HighlightCraft localhost-only mode is ready." -ForegroundColor Green
     Write-Host "Open this link on this computer:"
     Write-Output $localUrl
     Write-Host ""
