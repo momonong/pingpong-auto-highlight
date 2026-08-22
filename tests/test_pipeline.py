@@ -76,6 +76,8 @@ def test_end_to_end_signal_fusion_pipeline(tmp_path: Path) -> None:
     assert result["editing"]["height"] == 270
     assert result["editing"]["clip_pre_roll_seconds"] == 1.5
     assert result["editing"]["clip_post_roll_seconds"] == 1.5
+    assert result["editing"]["transition"] == "hard-cut"
+    assert result["editing"]["transition_seconds"] == 0.0
     assert result["editing"]["target_reel_seconds"] == 10.0
     assert result["editing"]["final_point_fades_out"] is False
     assert (output / "best_points_reel.mp4").is_file()

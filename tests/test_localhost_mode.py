@@ -3,6 +3,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_base_compose_owns_gpu_and_clip_context_defaults() -> None:
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+
+    assert "gpus: all" in compose
+    assert "PINGPONG_CLIP_PRE_ROLL_SECONDS" in compose
+    assert "PINGPONG_CLIP_POST_ROLL_SECONDS" in compose
+    assert not (ROOT / "compose.gpu.yaml").exists()
+
+
 def test_localhost_compose_override_is_loopback_only() -> None:
     compose = (ROOT / "compose.localhost.yaml").read_text(encoding="utf-8")
 

@@ -119,7 +119,7 @@ const stageNames = {
   "audio-analysis": "分析擊球聲",
   "motion-analysis": "分析畫面動態",
   "detecting-points": "切分每一個得分",
-  "editing-point-reel": "剪接得分集錦與轉場",
+  "editing-point-reel": "剪接得分集錦",
   completed: "完成",
   failed: "處理失敗",
 };

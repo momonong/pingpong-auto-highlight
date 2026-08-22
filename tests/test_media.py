@@ -45,9 +45,7 @@ def test_gpu_commands_request_cuda_before_video_input(tmp_path: Path) -> None:
 def test_browser_output_caps_fps_and_bitrate() -> None:
     command = _point_reel_command(
         [Path("point.mp4")],
-        [2.0],
         Path("reel.mp4"),
-        transition_duration=0.2,
         width=1920,
         height=1080,
         fps=120.0,
@@ -73,9 +71,7 @@ def test_browser_output_caps_fps_and_bitrate() -> None:
 
     social = _social_reel_command(
         [Path("point.mp4")],
-        [2.0],
         Path("social.mp4"),
-        transition_duration=0.2,
         width=1080,
         height=1920,
         fps=120,
@@ -95,6 +91,38 @@ def test_browser_output_caps_fps_and_bitrate() -> None:
         fps=24.0,
     )
     assert low_fps_clip[low_fps_clip.index("-vf") + 1] == "fps=24,format=yuv420p"
+
+
+def test_hard_cut_command_maps_silent_and_single_clip_reels() -> None:
+    def command(clips: list[Path], *, with_audio: bool) -> list[str]:
+        return _point_reel_command(
+            clips,
+            Path("reel.mp4"),
+            width=320,
+            height=180,
+            fps=30.0,
+            with_audio=with_audio,
+            encoder="libx264",
+        )
+
+    silent_reel = command([Path("one.mp4"), Path("two.mp4")], with_audio=False)
+    silent_filter = silent_reel[silent_reel.index("-filter_complex") + 1]
+    assert "[v0][v1]concat=n=2:v=1:a=0[vout]" in silent_filter
+    assert silent_reel[silent_reel.index("-map") + 1] == "[vout]"
+    assert "-an" in silent_reel
+
+    single_silent = command([Path("one.mp4")], with_audio=False)
+    assert "concat=" not in single_silent[single_silent.index("-filter_complex") + 1]
+    assert single_silent[single_silent.index("-map") + 1] == "[v0]"
+    assert "-an" in single_silent
+
+    single_audio = command([Path("one.mp4")], with_audio=True)
+    mapped_streams = [
+        single_audio[index + 1] for index, value in enumerate(single_audio) if value == "-map"
+    ]
+    assert "concat=" not in single_audio[single_audio.index("-filter_complex") + 1]
+    assert mapped_streams == ["[v0]", "[a0]"]
+    assert "-an" not in single_audio
 
 
 def test_nvenc_detection_requires_a_successful_runtime_encode(
@@ -162,7 +190,7 @@ def test_probe_and_frame_accurate_export(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required")
-def test_social_reel_is_vertical_and_dissolves_only_between_points(tmp_path: Path) -> None:
+def test_social_reel_is_vertical_and_uses_direct_cuts(tmp_path: Path) -> None:
     source = tmp_path / "source.mp4"
     subprocess.run(
         [
@@ -199,7 +227,6 @@ def test_social_reel_is_vertical_and_dissolves_only_between_points(tmp_path: Pat
     build_social_reel(
         [first, second],
         reel,
-        transition_duration=0.2,
         width=360,
         height=640,
         fps=24,
@@ -207,15 +234,13 @@ def test_social_reel_is_vertical_and_dissolves_only_between_points(tmp_path: Pat
 
     info = probe_media(reel)
     assert (info.width, info.height) == (360, 640)
-    assert info.duration == pytest.approx(1.8, abs=0.25)
+    assert info.duration == pytest.approx(2.0, abs=0.25)
     assert info.video_codec == "h264"
     assert info.pixel_format == "yuv420p"
 
     command = _social_reel_command(
         [first, second],
-        [1.0, 1.0],
         reel,
-        transition_duration=0.2,
         width=360,
         height=640,
         fps=24,
@@ -223,8 +248,9 @@ def test_social_reel_is_vertical_and_dissolves_only_between_points(tmp_path: Pat
         encoder="libx264",
     )
     filter_graph = command[command.index("-filter_complex") + 1]
-    assert filter_graph.count("xfade=transition=fade") == 1
-    assert "fade=t=out" not in filter_graph
+    assert "concat=n=2:v=1:a=1[vout][aout]" in filter_graph
+    assert "xfade" not in filter_graph
+    assert "acrossfade" not in filter_graph
     assert command[command.index("-pix_fmt") + 1] == "yuv420p"
 
 
@@ -263,19 +289,17 @@ def test_point_reel_preserves_source_geometry(tmp_path: Path) -> None:
     export_clip(source, second, 1.2, 2.2)
 
     reel = tmp_path / "reel.mp4"
-    build_point_reel([first, second], reel, transition_duration=0.2)
+    build_point_reel([first, second], reel)
 
     info = probe_media(reel)
     assert (info.width, info.height) == (320, 180)
-    assert info.duration == pytest.approx(1.8, abs=0.25)
+    assert info.duration == pytest.approx(2.0, abs=0.25)
     assert info.video_codec == "h264"
     assert info.pixel_format == "yuv420p"
 
     command = _point_reel_command(
         [first, second],
-        [1.0, 1.0],
         reel,
-        transition_duration=0.2,
         width=320,
         height=180,
         fps=30.0,
@@ -283,6 +307,7 @@ def test_point_reel_preserves_source_geometry(tmp_path: Path) -> None:
         encoder="libx264",
     )
     filter_graph = command[command.index("-filter_complex") + 1]
-    assert filter_graph.count("xfade=transition=fade") == 1
-    assert "fade=t=out" not in filter_graph
+    assert "concat=n=2:v=1:a=1[vout][aout]" in filter_graph
+    assert "xfade" not in filter_graph
+    assert "acrossfade" not in filter_graph
     assert command[command.index("-pix_fmt") + 1] == "yuv420p"

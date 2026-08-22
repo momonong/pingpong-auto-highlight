@@ -79,7 +79,7 @@ def test_motion_only_fallback_works_without_audio() -> None:
     assert "audio fallback" in detection.points[0].reason
 
 
-def test_reel_budget_counts_padded_clip_duration() -> None:
+def test_reel_budget_counts_full_padded_duration_for_direct_cuts() -> None:
     events = [
         *[ImpactEvent(time=time, strength=1.0) for time in (3.0, 3.4, 3.8)],
         *[ImpactEvent(time=time, strength=0.9) for time in (12.0, 12.4, 12.8)],
@@ -90,7 +90,7 @@ def test_reel_budget_counts_padded_clip_duration() -> None:
         MotionFeatures.empty(),
         DetectionConfig(
             max_points=2,
-            target_reel_duration=5.0,
+            target_reel_duration=7.5,
             minimum_points_before_budget=1,
             pre_roll=1.5,
             post_roll=1.5,

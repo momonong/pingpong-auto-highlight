@@ -10,7 +10,7 @@
 - 每一分預設在實際回合前後各保留 1.5 秒脈絡。
 - 集錦預設控制在約 55 秒內。
 - 預設保留原片的寬高比例、方向與畫面內容。
-- 相鄰得分以 0.35 秒 cross-dissolve 連接；最後一分不做 fade-out。
+- 相鄰得分直接剪接，保留桌球回合俐落、清楚的節奏。
 - 同時保留每一分的獨立 MP4，方便人工檢查或重新排序。
 
 完成影片會以精簡卡片列出，播放器、下載與分享操作預設收合；點開該支影片後才會載入集錦，避免多支成品同時佔滿頁面或消耗手機流量。重新整理後會回到全部收合的乾淨狀態。
@@ -207,6 +207,8 @@ docker compose up -d --build
 docker compose -f compose.yaml -f compose.cpu.yaml up -d --build
 ```
 
+根目錄的 Compose 檔案是「一個基底加幾個小型開關」，不是六套不同服務。平常只需要 `docker compose up -d --build`；啟動腳本會視需要自動疊加 localhost、CPU、Docker Hub release、ngrok 或 Cloudflare 的小型設定，不需要手動挑選。
+
 常用管理指令：
 
 ```powershell
@@ -378,7 +380,7 @@ flowchart LR
     C --> D["逐分切點"]
     D --> E["精彩度排序與時長預算"]
     E --> F["單分精準重編碼"]
-    F --> G["原片比例與 cross-dissolve"]
+    F --> G["原片比例與直接剪接"]
     G --> H["得分 Reel"]
 ```
 
@@ -397,11 +399,21 @@ flowchart LR
 | `PINGPONG_VIDEO_SAMPLE_FPS` | 8 | 畫面分析取樣率 |
 | `PINGPONG_MAX_POINTS` | 6 | 集錦最多收錄幾分 |
 | `PINGPONG_REEL_TARGET_SECONDS` | 55 | 集錦目標長度 |
-| `PINGPONG_REEL_TRANSITION_SECONDS` | 0.35 | 得分間 dissolve 長度 |
 | `PINGPONG_CLIP_PRE_ROLL_SECONDS` | 1.5 | 每球在實際回合前保留的秒數 |
 | `PINGPONG_CLIP_POST_ROLL_SECONDS` | 1.5 | 每球在實際回合後保留的秒數 |
 
 舊的 `PINGPONG_MAX_HIGHLIGHTS` 仍可作為 `PINGPONG_MAX_POINTS` 的備援值。
+
+## GPU 訓練環境（uv）
+
+訓練套件放在獨立的 `train` dependency group，不會增加一般網站服務的安裝內容。Windows／Linux 使用已鎖定的 PyTorch CUDA 13.0 wheel：
+
+```powershell
+uv sync --frozen --group train
+uv run --frozen --group train python -c "import torch; assert torch.cuda.is_available(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0))"
+```
+
+需要同時執行測試時再加上開發套件：`uv sync --frozen --group train --extra dev`。這只準備並驗證 GPU 執行環境；正式訓練仍應等 candidate 資料與正／負標註檢查完成後，再由固定的 training entrypoint 啟動。
 
 ## 驗證
 

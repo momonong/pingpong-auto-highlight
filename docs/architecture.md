@@ -57,7 +57,7 @@ point candidate 不會再彼此合併。相鄰兩分的 padding 若重疊，兩�
 
 舊版的 `-c copy` 只能在 keyframe 附近切割。現在每個 point 都經 accurate seek 後重編碼成 H.264/AAC，加 `faststart` 方便手機播放。GPU runtime 可用時，輸入優先經 NVDEC 解碼並以 NVENC 編碼；能力檢查會實際試編一個 frame，避免只因 FFmpeg 列出 `h264_nvenc` 就誤判。任何 GPU 編解碼失敗仍會用 CPU／`libx264` 重試。
 
-`build_point_reel()` 以第一個單分片段的解析度與畫面比例作為成品規格。FFmpeg `xfade` 與 `acrossfade` 只建立在相鄰 point 的交界，因此 N 個 point 只有 N−1 個 dissolve，最後一分不會 fade-out。直式、裁切與字幕屬於發佈衍生版本，不改變核心分析輸出；`build_social_reel()` 保留為後續 renderer，但不在預設流程使用。
+`build_point_reel()` 以第一個單分片段的解析度與畫面比例作為成品規格，將正規化後的影音 stream 以 FFmpeg `concat` filter 直接剪接，不重疊或淡化相鄰得分。直式、裁切與字幕屬於發佈衍生版本，不改變核心分析輸出；`build_social_reel()` 保留為後續 renderer，但不在預設流程使用。
 
 完成頁以同一個受 token 保護的檔案端點提供兩種回應：inline response 供 `<video>` range playback，`download=true` 則加入 attachment header。手機可以先預覽，再使用一般下載或 Web Share 儲存；單分片段與分析報告收在次要展開區。
 

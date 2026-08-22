@@ -446,12 +446,32 @@ def concatenate_clips(clips: list[Path], destination: Path, manifest: Path) -> N
         raise MediaError(f"Could not build highlight reel: {result.stderr.strip()}")
 
 
+def _append_hard_cut_concat(
+    filters: list[str],
+    clip_count: int,
+    *,
+    with_audio: bool,
+) -> tuple[str, str | None]:
+    """Join normalized point streams without overlapping or fading boundaries."""
+    if clip_count == 1:
+        return "v0", "a0" if with_audio else None
+
+    inputs = "".join(
+        f"[v{index}]" + (f"[a{index}]" if with_audio else "")
+        for index in range(clip_count)
+    )
+    if with_audio:
+        filters.append(f"{inputs}concat=n={clip_count}:v=1:a=1[vout][aout]")
+        return "vout", "aout"
+
+    filters.append(f"{inputs}concat=n={clip_count}:v=1:a=0[vout]")
+    return "vout", None
+
+
 def _point_reel_command(
     clips: list[Path],
-    durations: list[float],
     destination: Path,
     *,
-    transition_duration: float,
     width: int,
     height: int,
     fps: float,
@@ -482,30 +502,11 @@ def _point_reel_command(
                 f"asetpts=PTS-STARTPTS[a{index}]"
             )
 
-    video_label = "v0"
-    audio_label = "a0" if with_audio else None
-    cumulative_duration = durations[0]
-    for index in range(1, len(clips)):
-        dissolve = min(
-            transition_duration,
-            durations[index - 1] / 4,
-            durations[index] / 4,
-        )
-        offset = cumulative_duration - dissolve
-        next_video = f"vx{index}"
-        filters.append(
-            f"[{video_label}][v{index}]xfade=transition=fade:"
-            f"duration={dissolve:.6f}:offset={offset:.6f}[{next_video}]"
-        )
-        video_label = next_video
-        cumulative_duration += durations[index] - dissolve
-        if with_audio and audio_label is not None:
-            next_audio = f"ax{index}"
-            filters.append(
-                f"[{audio_label}][a{index}]acrossfade=d={dissolve:.6f}:"
-                f"c1=tri:c2=tri[{next_audio}]"
-            )
-            audio_label = next_audio
+    video_label, audio_label = _append_hard_cut_concat(
+        filters,
+        len(clips),
+        with_audio=with_audio,
+    )
 
     command.extend(["-filter_complex", ";".join(filters), "-map", f"[{video_label}]"])
     if with_audio and audio_label is not None:
@@ -549,17 +550,12 @@ def _validate_browser_compatible_reel(path: Path) -> None:
 def build_point_reel(
     clips: list[Path],
     destination: Path,
-    *,
-    transition_duration: float = 0.35,
 ) -> None:
-    """Build a source-aspect point montage with cross-dissolves between points."""
+    """Build a source-aspect point montage with direct cuts between points."""
     if not clips:
         return
-    if transition_duration < 0:
-        raise ValueError("Transition duration cannot be negative")
 
     media = [probe_media(clip) for clip in clips]
-    durations = [item.duration for item in media]
     first = media[0]
     width = first.width - first.width % 2
     height = first.height - first.height % 2
@@ -574,9 +570,7 @@ def build_point_reel(
     for encoder in encoders:
         command = _point_reel_command(
             clips,
-            durations,
             destination,
-            transition_duration=transition_duration,
             width=width,
             height=height,
             fps=fps,
@@ -600,10 +594,8 @@ def build_point_reel(
 
 def _social_reel_command(
     clips: list[Path],
-    durations: list[float],
     destination: Path,
     *,
-    transition_duration: float,
     width: int,
     height: int,
     fps: int,
@@ -651,30 +643,11 @@ def _social_reel_command(
                 f"asetpts=PTS-STARTPTS[a{index}]"
             )
 
-    video_label = "v0"
-    audio_label = "a0" if with_audio else None
-    cumulative_duration = durations[0]
-    for index in range(1, len(clips)):
-        dissolve = min(
-            transition_duration,
-            durations[index - 1] / 4,
-            durations[index] / 4,
-        )
-        offset = cumulative_duration - dissolve
-        next_video = f"vx{index}"
-        filters.append(
-            f"[{video_label}][v{index}]xfade=transition=fade:"
-            f"duration={dissolve:.6f}:offset={offset:.6f}[{next_video}]"
-        )
-        video_label = next_video
-        cumulative_duration += durations[index] - dissolve
-        if with_audio and audio_label is not None:
-            next_audio = f"ax{index}"
-            filters.append(
-                f"[{audio_label}][a{index}]acrossfade=d={dissolve:.6f}:"
-                f"c1=tri:c2=tri[{next_audio}]"
-            )
-            audio_label = next_audio
+    video_label, audio_label = _append_hard_cut_concat(
+        filters,
+        len(clips),
+        with_audio=with_audio,
+    )
 
     command.extend(["-filter_complex", ";".join(filters), "-map", f"[{video_label}]"])
     if with_audio and audio_label is not None:
@@ -710,27 +683,18 @@ def build_social_reel(
     clips: list[Path],
     destination: Path,
     *,
-    transition_duration: float = 0.35,
     width: int = 1080,
     height: int = 1920,
     fps: int = 30,
 ) -> None:
-    """Build a vertical point montage with cross-dissolves between points.
-
-    The final point has no fade-out: each dissolve is placed only at a boundary
-    where a following point exists.
-    """
+    """Build a vertical point montage with direct cuts between points."""
     if not clips:
         return
     if width <= 0 or height <= 0 or width % 2 or height % 2:
         raise ValueError("Reel dimensions must be positive even numbers")
     if fps <= 0:
         raise ValueError("Reel fps must be positive")
-    if transition_duration < 0:
-        raise ValueError("Transition duration cannot be negative")
-
     media = [probe_media(clip) for clip in clips]
-    durations = [item.duration for item in media]
     with_audio = all(item.has_audio for item in media)
     destination.parent.mkdir(parents=True, exist_ok=True)
     encoders = ["h264_nvenc", "libx264"] if has_nvenc() else ["libx264"]
@@ -739,9 +703,7 @@ def build_social_reel(
     for encoder in encoders:
         command = _social_reel_command(
             clips,
-            durations,
             destination,
-            transition_duration=transition_duration,
             width=width,
             height=height,
             fps=fps,

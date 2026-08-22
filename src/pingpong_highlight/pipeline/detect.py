@@ -25,7 +25,6 @@ class DetectionConfig:
     post_roll: float = 1.5
     max_points: int = 6
     target_reel_duration: float = 55.0
-    transition_duration: float = 0.35
     minimum_points_before_budget: int = 3
 
 
@@ -188,12 +187,6 @@ def _select_points(candidates: list[Point], config: DetectionConfig) -> list[Poi
         if len(selected) >= config.max_points:
             break
         added_duration = point.duration
-        if selected:
-            added_duration -= min(
-                config.transition_duration,
-                selected[-1].duration / 4,
-                point.duration / 4,
-            )
         exceeds_budget = reel_duration + added_duration > config.target_reel_duration
         if exceeds_budget and len(selected) >= config.minimum_points_before_budget:
             continue

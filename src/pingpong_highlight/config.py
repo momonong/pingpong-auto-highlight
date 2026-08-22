@@ -31,7 +31,6 @@ class Settings:
     audio_sample_rate: int = 16_000
     max_points: int = 6
     reel_target_seconds: float = 55.0
-    reel_transition_seconds: float = 0.35
     clip_pre_roll_seconds: float = 1.5
     clip_post_roll_seconds: float = 1.5
     worker_count: int = 1
@@ -101,7 +100,6 @@ class Settings:
                 _env_int("PINGPONG_MAX_HIGHLIGHTS", 6),
             ),
             reel_target_seconds=_env_float("PINGPONG_REEL_TARGET_SECONDS", 55.0),
-            reel_transition_seconds=_env_float("PINGPONG_REEL_TRANSITION_SECONDS", 0.35),
             clip_pre_roll_seconds=_env_float("PINGPONG_CLIP_PRE_ROLL_SECONDS", 1.5),
             clip_post_roll_seconds=_env_float("PINGPONG_CLIP_POST_ROLL_SECONDS", 1.5),
             worker_count=_env_int("PINGPONG_WORKERS", 1),

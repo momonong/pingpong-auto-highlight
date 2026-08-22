@@ -1,4 +1,0 @@
-# Backward-compatible overlay for older commands; compose.yaml now enables the GPU by default.
-services:
-  pingpong-highlight:
-    gpus: all

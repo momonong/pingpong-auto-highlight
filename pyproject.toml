@@ -24,6 +24,13 @@ dev = [
     "ruff>=0.14,<1",
 ]
 
+[dependency-groups]
+train = [
+    "torch",
+    "torchaudio",
+    "torchvision",
+]
+
 [project.scripts]
 pingpong-highlight = "pingpong_highlight.cli:main"
 
@@ -41,3 +48,19 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 allowed-confusables = ["：", "，", "（", "）"]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchaudio = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]

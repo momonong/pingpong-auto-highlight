@@ -61,7 +61,6 @@ class HighlightProcessor:
             DetectionConfig(
                 max_points=self.settings.max_points,
                 target_reel_duration=self.settings.reel_target_seconds,
-                transition_duration=self.settings.reel_transition_seconds,
                 pre_roll=self.settings.clip_pre_roll_seconds,
                 post_roll=self.settings.clip_post_roll_seconds,
             ),
@@ -88,11 +87,7 @@ class HighlightProcessor:
             report(0.95, "editing-point-reel")
             reel_path = output_dir / "best_points_reel.mp4"
             try:
-                build_point_reel(
-                    clip_paths,
-                    reel_path,
-                    transition_duration=self.settings.reel_transition_seconds,
-                )
+                build_point_reel(clip_paths, reel_path)
             except MediaError as exc:
                 warnings.append(str(exc))
             else:
@@ -101,7 +96,7 @@ class HighlightProcessor:
                 reel_duration = reel_media.duration
 
         result: dict[str, Any] = {
-            "algorithm_version": "point-reel-v3",
+            "algorithm_version": "point-reel-v4",
             "source_name": source_name,
             "media": media.to_dict() | {"path": source_name},
             "summary": {
@@ -118,8 +113,8 @@ class HighlightProcessor:
                 "width": reel_media.width if reel_media is not None else media.width,
                 "height": reel_media.height if reel_media is not None else media.height,
                 "fps": round(reel_media.fps, 3) if reel_media is not None else round(media.fps, 3),
-                "transition": "cross-dissolve",
-                "transition_seconds": self.settings.reel_transition_seconds,
+                "transition": "hard-cut",
+                "transition_seconds": 0.0,
                 "clip_pre_roll_seconds": self.settings.clip_pre_roll_seconds,
                 "clip_post_roll_seconds": self.settings.clip_post_roll_seconds,
                 "target_reel_seconds": self.settings.reel_target_seconds,
