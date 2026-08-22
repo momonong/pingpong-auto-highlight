@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -18,6 +19,53 @@ from pingpong_highlight.pipeline.media import (
     export_clip,
     probe_media,
 )
+
+
+def _video_color_metadata(path: Path) -> tuple[str | None, str | None]:
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=pix_fmt,color_range",
+            "-of",
+            "json",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    stream = json.loads(result.stdout)["streams"][0]
+    return stream.get("pix_fmt"), stream.get("color_range")
+
+
+def _filtered_frame_md5(path: Path, video_filter: str) -> str:
+    result = subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(path),
+            "-vf",
+            video_filter,
+            "-frames:v",
+            "1",
+            "-an",
+            "-f",
+            "md5",
+            "-",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
 
 
 def test_gpu_commands_request_cuda_before_video_input(tmp_path: Path) -> None:
@@ -39,7 +87,9 @@ def test_gpu_commands_request_cuda_before_video_input(tmp_path: Path) -> None:
     assert clip[clip.index("-hwaccel") + 1] == "cuda"
     assert clip.index("-hwaccel") < clip.index("-i")
     assert "h264_nvenc" in clip
-    assert clip[clip.index("-vf") + 1] == "fps=30,format=yuv420p"
+    assert clip[clip.index("-vf") + 1] == (
+        "fps=30,scale=in_range=auto:out_range=tv,format=yuv420p"
+    )
 
 
 def test_browser_output_caps_fps_and_bitrate() -> None:
@@ -90,7 +140,9 @@ def test_browser_output_caps_fps_and_bitrate() -> None:
         encoder="libx264",
         fps=24.0,
     )
-    assert low_fps_clip[low_fps_clip.index("-vf") + 1] == "fps=24,format=yuv420p"
+    assert low_fps_clip[low_fps_clip.index("-vf") + 1] == (
+        "fps=24,scale=in_range=auto:out_range=tv,format=yuv420p"
+    )
 
 
 def test_hard_cut_command_maps_silent_and_single_clip_reels() -> None:
@@ -311,3 +363,93 @@ def test_point_reel_preserves_source_geometry(tmp_path: Path) -> None:
     assert "xfade" not in filter_graph
     assert "acrossfade" not in filter_graph
     assert command[command.index("-pix_fmt") + 1] == "yuv420p"
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required")
+def test_full_range_phone_video_is_normalized_for_browser_playback(tmp_path: Path) -> None:
+    source = tmp_path / "full-range-source.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc2=size=320x180:rate=30:duration=1.2",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=900:sample_rate=48000:duration=1.2",
+            "-vf",
+            "setparams=range=pc",
+            "-shortest",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-color_range",
+            "pc",
+            "-c:a",
+            "aac",
+            str(source),
+        ],
+        check=True,
+    )
+    assert _video_color_metadata(source)[1] == "pc"
+
+    point = tmp_path / "point.mp4"
+    reel = tmp_path / "reel.mp4"
+    direct_reel = tmp_path / "direct-reel.mp4"
+    social_reel = tmp_path / "social-reel.mp4"
+    export_clip(source, point, 0.0, 1.0)
+    build_point_reel([point], reel)
+    build_point_reel([source], direct_reel)
+    build_social_reel([source], social_reel, width=360, height=640, fps=24)
+
+    for output in (point, reel, direct_reel, social_reel):
+        pixel_format, color_range = _video_color_metadata(output)
+        assert pixel_format == "yuv420p"
+        assert color_range != "pc"
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required")
+def test_limited_range_10_bit_video_is_not_squeezed_again(tmp_path: Path) -> None:
+    source = tmp_path / "limited-10-bit.mkv"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc2=size=320x180:rate=24:duration=1",
+            "-vf",
+            "format=yuv420p10le,setparams=range=tv",
+            "-c:v",
+            "ffv1",
+            "-pix_fmt",
+            "yuv420p10le",
+            "-color_range",
+            "tv",
+            str(source),
+        ],
+        check=True,
+    )
+    assert _video_color_metadata(source) == ("yuv420p10le", "tv")
+    assert _filtered_frame_md5(source, "format=yuv420p") == _filtered_frame_md5(
+        source,
+        "scale=in_range=auto:out_range=tv,format=yuv420p",
+    )
+
+    reel = tmp_path / "limited-reel.mp4"
+    build_point_reel([source], reel)
+
+    pixel_format, color_range = _video_color_metadata(reel)
+    assert pixel_format == "yuv420p"
+    assert color_range != "pc"

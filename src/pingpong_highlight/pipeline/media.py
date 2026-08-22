@@ -310,7 +310,7 @@ def _clip_command(
             "-sn",
             "-dn",
             "-vf",
-            f"fps={fps:g},format=yuv420p",
+            f"fps={fps:g},scale=in_range=auto:out_range=tv,format=yuv420p",
         ]
     )
     command.extend(
@@ -359,6 +359,8 @@ def _streaming_video_options(
         f"{buffer_mbps}M",
         "-g",
         str(gop),
+        "-color_range",
+        "tv",
     ]
     if encoder == "h264_nvenc":
         return [
@@ -491,7 +493,8 @@ def _point_reel_command(
     for index in range(len(clips)):
         filters.append(
             f"[{index}:v:0]fps={fps_value},settb=AVTB,setpts=PTS-STARTPTS,"
-            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease:"
+            "in_range=auto:out_range=tv,"
             f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,"
             f"setsar=1,format=yuv420p[v{index}]"
         )
@@ -632,7 +635,7 @@ def _social_reel_command(
                 ),
                 (
                     f"[bg{index}][fg{index}]overlay=(W-w)/2:(H-h)/2:shortest=1,"
-                    f"format=yuv420p[v{index}]"
+                    f"scale=in_range=auto:out_range=tv,format=yuv420p[v{index}]"
                 ),
             ]
         )
