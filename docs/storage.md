@@ -170,7 +170,7 @@ Google Drive 送件箱（暫存，可在歸檔完成後刪除）
 - inactive／失敗 run 的 clips：可設定較短 retention；先保留，等正式 cleanup 能理解 DB 關聯後再刪。
 - `analysis.json`、設定／版本 manifest 與 SQLite snapshot：體積很小，一起存能讓影片可追溯。live SQLite 仍在本機，不從 pCloud mount 開啟。
 
-第一階段已用 [rclone 的原生 pCloud backend](https://rclone.org/pcloud/) 做 operator-run archive。`scripts/setup-pcloud.{sh,ps1}` 會從官方 release 下載並驗證固定的 rclone 1.75.0，在運算電腦以瀏覽器完成一次 OAuth 授權；不需要 pCloud API key，也不會保存 pCloud 密碼。設定檔固定在 Git 與 Docker build context 排除的 `secrets/rclone/rclone.conf`，而且只讀掛到沒有 port、手動啟動的 `pcloud-admin` container；常駐網站 container 不持有它。pCloud OAuth token 目前不會自動過期，因此這個檔案要視為長期密鑰、不要輸出到 log 或備份進一般媒體 archive。
+第一階段已用 [rclone 的原生 pCloud backend](https://rclone.org/pcloud/) 做 operator-run archive。`scripts/setup-pcloud.{sh,ps1}` 會從官方 release 下載並驗證固定的 rclone 1.75.0，在運算電腦以瀏覽器完成一次 OAuth 授權；不需要 pCloud API key，也不會保存 pCloud 密碼。腳本以 `rclone config create ... --no-output` 建立 remote，避免把完整 OAuth credential 回顯到終端。設定檔固定在 Git 與 Docker build context 排除的 `secrets/rclone/rclone.conf`，而且只讀掛到沒有 port、手動啟動的 `pcloud-admin` container；常駐網站 container 不持有它。pCloud OAuth token 目前不會自動過期，因此這個檔案要視為長期密鑰、不要輸出到 log 或備份進一般媒體 archive；若曾意外輸出，應立即從 `Settings → Linked Accounts → Linked Apps` 移除 rclone、刪除本機設定檔並重新授權。
 
 pCloud 帳號有 US/EU API endpoint，`pcloud doctor` 從 rclone redacted config 讀取 hostname，實際列出遠端根目錄後才回報區域。rclone/pCloud 兩區共同支援 SHA-1，US 另有 MD5、EU 另有 SHA-256；本機會一次計算 SHA-1 + SHA-256，遠端一致性使用共同的 size + SHA-1，完整 SHA-256 留在 SQLite 與 manifest。[pCloud API](https://docs.pcloud.com/) 本身也支援 OAuth、file IDs、上下載與 checksum；只有未來不再沿用 rclone token、改成由本系統自行完成 OAuth app flow 時，才需要另外建立 app/client ID/client secret。
 

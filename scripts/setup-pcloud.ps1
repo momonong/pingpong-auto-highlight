@@ -32,15 +32,12 @@ if (-not (Test-Path -LiteralPath $rclonePath -PathType Leaf)) {
 }
 
 Write-Host ""
-Write-Host "In rclone config:"
-Write-Host "  1. Create a new remote named: highlightcraft-pcloud"
-Write-Host "  2. Choose storage type: pcloud"
-Write-Host "  3. Leave client_id and client_secret blank"
-Write-Host "  4. Use the browser to sign in and authorize once"
+Write-Host "A browser window will open for one-time pCloud authorization."
+Write-Host "The OAuth credential will be saved without being printed to the terminal."
 Write-Host ""
-& $rclonePath --config $configPath config
+& $rclonePath --config $configPath config create highlightcraft-pcloud pcloud --no-output
 if ($LASTEXITCODE -ne 0) {
-    throw "rclone config failed ($LASTEXITCODE)"
+    throw "rclone pCloud authorization failed ($LASTEXITCODE)"
 }
 
 $remotes = @(& $rclonePath --config $configPath listremotes)

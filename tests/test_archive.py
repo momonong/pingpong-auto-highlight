@@ -586,6 +586,259 @@ def test_rclone_staging_copy_uses_ignore_existing(
     assert "--immutable" not in calls[0]
 
 
+def test_directory_id_uses_pcloud_listfolder_metadata(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    backend = RclonePCloudBackend(_settings(tmp_path))
+    rclone_calls: list[tuple[str, ...]] = []
+    api_calls: list[tuple[str, dict[str, str]]] = []
+    secret_section = backend._parse_remote_config(
+        "[highlightcraft-pcloud]\nroot_folder_id = d77\n",
+        "highlightcraft-pcloud",
+    )
+
+    def fake_run(*arguments: str, **_kwargs):
+        rclone_calls.append(arguments)
+        return subprocess.CompletedProcess(arguments, 0, "", "")
+
+    def fake_request(method: str, parameters: dict[str, str]):
+        api_calls.append((method, parameters))
+        folder_id = parameters["folderid"]
+        children = {
+            "77": [
+                {
+                    "id": "d88",
+                    "folderid": 88,
+                    "isfolder": True,
+                    "name": "Morris",
+                }
+            ],
+            "88": [
+                {
+                    "id": "d456",
+                    "folderid": 456,
+                    "isfolder": True,
+                    "name": "HighlightCraft",
+                }
+            ],
+        }
+        return {
+            "result": 0,
+            "metadata": {
+                "id": f"d{folder_id}",
+                "folderid": int(folder_id),
+                "isfolder": True,
+                "name": "/" if folder_id == "77" else "Morris",
+                "contents": children.get(folder_id, []),
+            },
+        }
+
+    monkeypatch.setattr(backend, "_run", fake_run)
+    monkeypatch.setattr(backend, "_pcloud_request", fake_request)
+    monkeypatch.setattr(backend, "_secret_remote_config", lambda: secret_section)
+
+    directory_id = backend._directory_id("Morris/HighlightCraft")
+
+    assert directory_id == "456"
+    assert rclone_calls == [
+        (
+            "mkdir",
+            "highlightcraft-pcloud:Morris/HighlightCraft",
+        )
+    ]
+    assert [parameters["folderid"] for _method, parameters in api_calls] == [
+        "77",
+        "77",
+        "88",
+    ]
+    assert all(method == "listfolder" for method, _parameters in api_calls)
+    assert all(parameters["nofiles"] == "1" for _method, parameters in api_calls)
+    assert all("path" not in parameters for _method, parameters in api_calls)
+    assert all("noshares" not in parameters for _method, parameters in api_calls)
+    assert not any(call and call[0] == "lsjson" for call in rclone_calls)
+
+
+@pytest.mark.parametrize("remote_path", ["/absolute", "safe/../escape"])
+def test_directory_id_rejects_unsafe_path_before_remote_calls(
+    tmp_path: Path,
+    monkeypatch,
+    remote_path: str,
+) -> None:
+    backend = RclonePCloudBackend(_settings(tmp_path))
+    calls: list[str] = []
+    monkeypatch.setattr(backend, "_run", lambda *_args, **_kwargs: calls.append("rclone"))
+    monkeypatch.setattr(
+        backend,
+        "_pcloud_request",
+        lambda *_args, **_kwargs: calls.append("api"),
+    )
+
+    with pytest.raises(ArchiveError, match="Invalid relative pCloud directory path"):
+        backend._directory_id(remote_path)
+
+    assert calls == []
+
+
+def test_folder_metadata_requires_a_json_boolean_directory_flag() -> None:
+    with pytest.raises(ArchiveError, match="valid folder ID"):
+        RclonePCloudBackend._folder_id_from_metadata(
+            {"id": "d7", "folderid": 7, "isfolder": "true"}
+        )
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"result": 2003, "error": "denied"}, "listfolder failed"),
+        ({"result": 0}, "Invalid pCloud folder metadata"),
+        (
+            {
+                "result": 0,
+                "metadata": {"id": "d1", "folderid": 2, "isfolder": True},
+            },
+            "valid folder ID",
+        ),
+    ],
+)
+def test_list_folder_rejects_invalid_provider_payload(
+    tmp_path: Path,
+    monkeypatch,
+    payload: dict,
+    message: str,
+) -> None:
+    backend = RclonePCloudBackend(_settings(tmp_path))
+    monkeypatch.setattr(backend, "_pcloud_request", lambda *_args: payload)
+
+    with pytest.raises(ArchiveError, match=message):
+        backend._list_folder("0")
+
+
+@pytest.mark.parametrize(
+    "contents",
+    [
+        [],
+        [{"id": "f8", "fileid": 8, "isfolder": False, "name": "Target"}],
+        [
+            {"id": "d8", "folderid": 8, "isfolder": True, "name": "Target"},
+            {"id": "d9", "folderid": 9, "isfolder": True, "name": "Target"},
+        ],
+    ],
+)
+def test_directory_id_fails_closed_on_ambiguous_or_missing_child(
+    tmp_path: Path,
+    monkeypatch,
+    contents: list[dict],
+) -> None:
+    backend = RclonePCloudBackend(_settings(tmp_path))
+    secret_section = backend._parse_remote_config(
+        "[highlightcraft-pcloud]\nroot_folder_id = d0\n",
+        "highlightcraft-pcloud",
+    )
+    monkeypatch.setattr(
+        backend,
+        "_run",
+        lambda *arguments, **_kwargs: subprocess.CompletedProcess(
+            arguments, 0, "", ""
+        ),
+    )
+    monkeypatch.setattr(backend, "_secret_remote_config", lambda: secret_section)
+    monkeypatch.setattr(
+        backend,
+        "_pcloud_request",
+        lambda *_args: {
+            "result": 0,
+            "metadata": {
+                "id": "d0",
+                "folderid": 0,
+                "isfolder": True,
+                "contents": contents,
+            },
+        },
+    )
+
+    with pytest.raises(ArchiveError, match="exactly one directory"):
+        backend._directory_id("Target")
+
+
+def test_pcloud_doctor_reads_custom_root_id_from_secret_config_and_api(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "rclone.conf"
+    config_path.write_text("placeholder", encoding="utf-8")
+    settings = Settings(
+        data_dir=tmp_path,
+        upload_token="test",
+        rclone_config=config_path,
+    )
+    settings.ensure_directories()
+    backend = RclonePCloudBackend(settings)
+    rclone_calls: list[tuple[str, ...]] = []
+    api_calls: list[tuple[str, dict[str, str]]] = []
+    secret_section = backend._parse_remote_config(
+        "[highlightcraft-pcloud]\nroot_folder_id = 77\n",
+        "highlightcraft-pcloud",
+    )
+
+    def fake_run(*arguments: str, **_kwargs):
+        rclone_calls.append(arguments)
+        stdout = {
+            ("version",): "rclone v1.75.0\n",
+            ("listremotes",): "highlightcraft-pcloud:\n",
+            (
+                "config",
+                "redacted",
+                "highlightcraft-pcloud",
+            ): (
+                "[highlightcraft-pcloud]\n"
+                "type = pcloud\n"
+                "hostname = api.pcloud.com\n"
+                "root_folder_id = XXX\n"
+            ),
+            ("lsd", "highlightcraft-pcloud:"): "",
+        }[arguments]
+        return subprocess.CompletedProcess(arguments, 0, stdout, "")
+
+    def fake_request(method: str, parameters: dict[str, str]):
+        api_calls.append((method, parameters))
+        if method == "userinfo":
+            return {"result": 0, "userid": 123}
+        assert method == "listfolder"
+        return {
+            "result": 0,
+            "metadata": {
+                "id": "d77",
+                "folderid": 77,
+                "isfolder": True,
+                "path": "/",
+                "contents": [],
+            },
+        }
+
+    monkeypatch.setattr("pingpong_highlight.archive.shutil.which", lambda _name: "rclone")
+    monkeypatch.setattr(backend, "_run", fake_run)
+    monkeypatch.setattr(backend, "_pcloud_request", fake_request)
+    monkeypatch.setattr(backend, "_secret_remote_config", lambda: secret_section)
+
+    result = backend.doctor()
+
+    assert result.region == "US"
+    assert result.account_id == "123"
+    assert result.root_folder_id == "d77"
+    assert not any(call and call[0] == "lsjson" for call in rclone_calls)
+    assert api_calls == [
+        ("userinfo", {}),
+        (
+            "listfolder",
+            {
+                "folderid": "77",
+                "nofiles": "1",
+            },
+        ),
+    ]
+
+
 @pytest.mark.parametrize("result", [0, 2004])
 def test_pcloud_finalize_uses_provider_noover(
     tmp_path: Path,

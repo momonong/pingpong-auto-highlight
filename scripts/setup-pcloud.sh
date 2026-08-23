@@ -64,13 +64,10 @@ if [ ! -x "$rclone_path" ]; then
 fi
 
 echo
-echo "In rclone config:"
-echo "  1. Create a new remote named: highlightcraft-pcloud"
-echo "  2. Choose storage type: pcloud"
-echo "  3. Leave client_id and client_secret blank"
-echo "  4. Use the browser to sign in and authorize once"
+echo "A browser window will open for one-time pCloud authorization."
+echo "The OAuth credential will be saved without being printed to the terminal."
 echo
-"$rclone_path" --config "$config_path" config
+"$rclone_path" --config "$config_path" config create highlightcraft-pcloud pcloud --no-output
 chmod 600 "$config_path"
 
 remotes="$("$rclone_path" --config "$config_path" listremotes)"

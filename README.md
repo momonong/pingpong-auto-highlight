@@ -52,7 +52,7 @@ docker compose run --rm --no-deps pcloud-admin bootstrap --dry-run
 docker compose run --rm --no-deps pcloud-admin bootstrap
 ```
 
-PowerShell 的第一行改為 `./scripts/setup-pcloud.ps1`，後面的 Docker 指令相同；Windows Git Bash 的 `.sh` 會安全轉交給這支 PowerShell script。設定腳本會下載並驗證固定的 rclone 1.75.0 portable binary，再開啟官方互動式設定；remote 名稱必須使用 `highlightcraft-pcloud`、storage 選 `pcloud`，兩個 app credential 欄位留白。
+PowerShell 的第一行改為 `./scripts/setup-pcloud.ps1`，後面的 Docker 指令相同；Windows Git Bash 的 `.sh` 會安全轉交給這支 PowerShell script。設定腳本會下載並驗證固定的 rclone 1.75.0 portable binary，自動建立名為 `highlightcraft-pcloud` 的 pCloud remote，再開啟瀏覽器完成一次 OAuth；不需要手動填 client ID/secret，而且完整 OAuth credential 不會輸出到終端。若任何舊版設定流程曾把 credential 顯示在終端，請先到 pCloud 網頁的 `Settings → Linked Accounts → Linked Apps` 移除 rclone，再刪除本機 `secrets/rclone/rclone.conf` 並重新執行設定腳本。
 
 原生 Linux 要讓網站與 admin 使用同一個 host UID/GID，避免 SQLite 或影片變成另一個使用者擁有；在同一個 shell 先執行 `export PINGPONG_UID=$(id -u) PINGPONG_GID=$(id -g)`，再執行 `docker compose up` 或下列 pCloud 指令。Windows 不需要設定。
 

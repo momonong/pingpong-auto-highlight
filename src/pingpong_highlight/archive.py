@@ -441,32 +441,93 @@ class RclonePCloudBackend:
             raise ArchiveError(f"Invalid pCloud {method} response")
         return payload
 
-    def _directory_id(self, remote_path: str) -> str:
-        self._run("mkdir", self._remote(remote_path))
-        result = self._run("lsjson", self._remote(remote_path), "--stat")
-        assert result is not None
+    @staticmethod
+    def _folder_id_from_metadata(metadata: object) -> str:
+        if not isinstance(metadata, dict):
+            raise ArchiveError("Invalid pCloud folder metadata")
         try:
-            payload = json.loads(result.stdout)
-            directory_id = str(payload["ID"])
-            is_directory = bool(payload["IsDir"])
-        except (KeyError, TypeError, json.JSONDecodeError) as exc:
-            raise ArchiveError(f"Invalid directory metadata for {remote_path}") from exc
-        if not is_directory or not re.fullmatch(r"d\d+", directory_id):
-            raise ArchiveError(f"pCloud did not return a directory ID for {remote_path}")
-        return directory_id[1:]
+            metadata_id = str(metadata["id"])
+            numeric_id = str(metadata["folderid"])
+            is_directory = metadata["isfolder"]
+        except (KeyError, TypeError) as exc:
+            raise ArchiveError("Invalid pCloud folder metadata") from exc
+        if (
+            is_directory is not True
+            or re.fullmatch(r"d[0-9]+", metadata_id) is None
+            or re.fullmatch(r"[0-9]+", numeric_id) is None
+            or metadata_id != f"d{numeric_id}"
+        ):
+            raise ArchiveError("pCloud did not return a valid folder ID")
+        return numeric_id
+
+    def _list_folder(self, folder_id: str) -> dict[str, Any]:
+        if re.fullmatch(r"[0-9]+", folder_id) is None:
+            raise ArchiveError(f"Invalid pCloud folder ID: {folder_id!r}")
+        payload = self._pcloud_request(
+            "listfolder",
+            {"folderid": folder_id, "nofiles": "1"},
+        )
+        try:
+            result = int(payload["result"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ArchiveError("Invalid pCloud listfolder response") from exc
+        if result != 0:
+            detail = str(payload.get("error") or "unknown pCloud API error")
+            raise ArchiveError(f"pCloud listfolder failed ({result}): {detail[:500]}")
+        metadata = payload.get("metadata")
+        if not isinstance(metadata, dict):
+            raise ArchiveError("Invalid pCloud folder metadata")
+        returned_id = self._folder_id_from_metadata(metadata)
+        canonical_requested_id = folder_id.lstrip("0") or "0"
+        if returned_id != canonical_requested_id:
+            raise ArchiveError("pCloud returned metadata for a different folder")
+        return metadata
+
+    def _configured_root_directory_id(self) -> str:
+        section = self._secret_remote_config()
+        configured = section.get("root_folder_id", "d0").strip() or "d0"
+        match = re.fullmatch(r"d?([0-9]+)", configured)
+        if match is None:
+            raise ArchiveError(
+                f"Invalid rclone pCloud root_folder_id: {configured!r}"
+            )
+        numeric_id = match.group(1).lstrip("0") or "0"
+        return f"d{numeric_id}"
 
     def _root_directory_id(self) -> str:
-        result = self._run("lsjson", self._remote(), "--stat")
-        assert result is not None
-        try:
-            payload = json.loads(result.stdout)
-            directory_id = str(payload["ID"])
-            is_directory = bool(payload["IsDir"])
-        except (KeyError, TypeError, json.JSONDecodeError) as exc:
-            raise ArchiveError("Invalid pCloud root metadata") from exc
-        if not is_directory or re.fullmatch(r"d\d+", directory_id) is None:
-            raise ArchiveError("pCloud did not return a root folder ID")
-        return directory_id
+        configured = self._configured_root_directory_id()
+        numeric_id = configured[1:]
+        metadata = self._list_folder(numeric_id)
+        if str(metadata["id"]) != configured:
+            raise ArchiveError("pCloud root folder identity does not match rclone config")
+        return configured
+
+    def _directory_id(self, remote_path: str) -> str:
+        path = PurePosixPath(remote_path)
+        if path.is_absolute() or ".." in path.parts:
+            raise ArchiveError(f"Invalid relative pCloud directory path: {remote_path!r}")
+        parts = tuple(part for part in path.parts if part not in {"", "."})
+        if parts:
+            self._run("mkdir", self._remote(remote_path))
+        current_id = self._root_directory_id()[1:]
+        for part in parts:
+            metadata = self._list_folder(current_id)
+            contents = metadata.get("contents")
+            if not isinstance(contents, list):
+                raise ArchiveError("Invalid pCloud folder contents")
+            matches = [
+                child
+                for child in contents
+                if isinstance(child, dict)
+                and child.get("isfolder") is True
+                and child.get("name") == part
+            ]
+            if len(matches) != 1:
+                raise ArchiveError(
+                    f"pCloud did not return exactly one directory named {part!r}"
+                )
+            current_id = self._folder_id_from_metadata(matches[0])
+        return current_id
 
     def doctor(self) -> PCloudDoctorResult:
         binary = self.settings.rclone_binary
@@ -509,13 +570,14 @@ class RclonePCloudBackend:
             raise ArchiveError("Invalid pCloud userinfo response") from exc
         if account_result != 0 or not account_id.isdigit():
             raise ArchiveError("pCloud userinfo did not return a valid account ID")
+        root_folder_id = self._root_directory_id()
         return PCloudDoctorResult(
             rclone_version=version,
             remote=self.settings.pcloud_remote,
             hostname=hostname,
             region=region,
             account_id=account_id,
-            root_folder_id=self._root_directory_id(),
+            root_folder_id=root_folder_id,
         )
 
     def bootstrap(self, *, dry_run: bool) -> list[str]:
