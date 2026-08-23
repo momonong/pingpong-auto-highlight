@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -95,6 +95,17 @@ class PointCandidate:
     reason: str
     selection: str = "candidate"
     rank: int | None = None
+    origin: str = "audio"
+    impact_times: tuple[float, ...] = ()
+    impact_strengths: tuple[float, ...] = ()
+    tempo: float = 0.0
+    rhythmic_fraction: float = 0.0
+    mean_impact_strength: float = 0.0
+    score_components: tuple[tuple[str, float], ...] = ()
+    strong_impact_count: int = 0
+    core_boundary_reason: str = ""
+    attached_motion_intervals: tuple[tuple[float, float], ...] = ()
+    attached_motion_score: float = 0.0
 
     @property
     def duration(self) -> float:
@@ -111,6 +122,52 @@ class PointCandidate:
             "reason": self.reason,
             "selection": self.selection,
             "rank": self.rank,
+            "origin": self.origin,
+            "impact_times": [round(value, 6) for value in self.impact_times],
+            "impact_strengths": [round(value, 6) for value in self.impact_strengths],
+            "tempo": round(self.tempo, 6),
+            "rhythmic_fraction": round(self.rhythmic_fraction, 6),
+            "mean_impact_strength": round(self.mean_impact_strength, 6),
+            "score_components": {name: round(value, 6) for name, value in self.score_components},
+            "strong_impact_count": self.strong_impact_count,
+            "core_boundary_reason": self.core_boundary_reason,
+            "attached_motion_intervals": [
+                {"start": round(start, 6), "end": round(end, 6)}
+                for start, end in self.attached_motion_intervals
+            ],
+            "attached_motion_score": round(self.attached_motion_score, 6),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ImpactGroupDiagnostic:
+    start: float
+    end: float
+    impact_times: tuple[float, ...]
+    impact_strengths: tuple[float, ...]
+    accepted: bool
+    decision: str
+    strong_impact_count: int = 0
+    core_start: float | None = None
+    core_end: float | None = None
+    core_boundary_reason: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "start": round(self.start, 6),
+            "end": round(self.end, 6),
+            "span": round(self.end - self.start, 6),
+            "impact_count": len(self.impact_times),
+            "impact_times": [round(value, 6) for value in self.impact_times],
+            "impact_strengths": [round(value, 6) for value in self.impact_strengths],
+            "accepted": self.accepted,
+            "decision": self.decision,
+            "strong_impact_count": self.strong_impact_count,
+            "core_start": (
+                round(self.core_start, 6) if self.core_start is not None else None
+            ),
+            "core_end": round(self.core_end, 6) if self.core_end is not None else None,
+            "core_boundary_reason": self.core_boundary_reason,
         }
 
 
@@ -119,3 +176,6 @@ class PointDetection:
     candidates: list[PointCandidate]
     points: list[Point]
     effective_score_threshold: float | None = None
+    audio_groups: list[ImpactGroupDiagnostic] = field(default_factory=list)
+    motion_candidates: list[PointCandidate] = field(default_factory=list)
+    candidate_mode: str = "none"

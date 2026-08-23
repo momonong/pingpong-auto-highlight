@@ -6,9 +6,9 @@
 
 ## 素材與成品形式
 
-- 每支影片會保存分數至少達到同片最佳候選 70% 的候選素材；87% 只標記為「推薦」，不再提前丟掉其他可用球。
+- 候選生成會保存完整、可重現的 point candidate 清單，不以每片六球、Top-k 或 Reel 時長預算裁掉候選；實際輸出素材庫時，才保存分數至少達到同片最佳候選 70% 的素材，87% 只標記為「推薦」。
 - 每一分預設在實際回合前後各保留 1.5 秒脈絡。
-- 分析階段沒有六球或 55 秒上限；長影片可以保存更多素材，短影片也不會為了湊數加入弱球。
+- 素材輸出階段沒有六球或 55 秒上限；長影片可以保存更多素材，短影片也不會為了湊數加入弱球。
 - 預設保留原片的寬高比例、方向與畫面內容。
 - 桌面素材庫會載入 SQLite 中目前與歷史的所有已索引片段，預設只顯示目前版本；可依來源、拍攝日期、相對分數、片段長度、本機 availability 與 pCloud 狀態篩選排序。
 - 每支集錦可勾選最多 100 球、調整順序後才輸出；超過一分鐘只提示，不阻止輸出，相鄰得分以 hard cut 直接剪接。
@@ -25,6 +25,8 @@
 - `data/uploads/`：手機直傳或 Google Drive 匯入後的原片副本。
 - `data/outputs/<job-id>/`：各來源的分析 JSON、逐球 MP4，以及重建產生的版本化 `clip-sets/`。
 - `data/compilations/<compilation-id>/highlight_compilation.mp4`：跨來源選取、排序後的最後自訂集錦。
+- `data/evaluations/candidate-runs/<run-id>/`：開發用候選 JSON、原始 audio/motion signals 與生成 receipt；不含 MP4。
+- `data/evaluations/candidate-recall/<run-id>/`：legacy freeze 的凍結資料集，或正式評分的 metrics、報告與 checksums；不是現役素材庫。
 
 Docker 會把主機的 `./data` bind mount 到容器的 `/data`，因此重建 image 或 container 不會清掉資料；但持久化不等於備份，磁碟損壞或手動刪除仍會失去唯一副本。SQLite 與影片路徑彼此相依，備份或搬機時必須一起複製權威 runtime set；也不要直接從檔案總管刪除 active 影片。完整目錄、資料表關聯、保留策略與備份方式見 [docs/storage.md](docs/storage.md)。
 
@@ -221,7 +223,7 @@ Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟�
 
 卡片會區分「僅本機」、「pCloud 處理中」、「本機 + pCloud」、「僅 pCloud・需取回」、「封存失敗」與「檔案不可用」。本機檔案不存在的索引仍可透過篩選找到，但介面和 API 都會阻止預覽與建立集錦；pCloud hydration 完成前不會把遠端驗證誤當成本機可播放。這些狀態來自本機 SQLite catalog，網站本身不讀 OAuth token，也不把遠端路徑或錯誤細節送到瀏覽器。
 
-來源篩選可以複選，因此可只勾兩場，再按「加入目前篩選的各來源前 6 球」一次取出 12 球；也可逐場篩選，既有勾選不會消失。右側工作台支援上下調整順序，並顯示估計總長；超過 60 秒仍可照常建立。送出前的勾選與順序只存在目前頁面的記憶體，重新整理會清除；送出後才寫入 SQLite。成品以第一個片段的解析度、比例與 FPS 作 canvas，其他比例會 letterbox，因此第一球與排序也會影響輸出規格。集錦、原片分析與 CLI 重建共用同一個跨程序 GPU media queue，避免同時搶顯存。
+來源篩選可以複選，因此可只勾兩場，再按「加入目前篩選的各來源前 6 球」一次取出 12 球；也可逐場篩選，既有勾選不會消失。這個「前 6 球」只是素材庫中的批次勾選捷徑，不是候選生成或素材保存配額。右側工作台支援上下調整順序，並顯示估計總長；超過 60 秒仍可照常建立。送出前的勾選與順序只存在目前頁面的記憶體，重新整理會清除；送出後才寫入 SQLite。成品以第一個片段的解析度、比例與 FPS 作 canvas，其他比例會 letterbox，因此第一球與排序也會影響輸出規格。集錦、原片分析與 CLI 重建共用同一個跨程序 GPU media queue，避免同時搶顯存。
 
 舊版工作只能匯入當年實際輸出的片段；被舊版 55 秒預算捨棄的候選並不存在。要用目前的寬鬆素材門檻安全重建某一支舊片，可執行：
 
@@ -230,7 +232,7 @@ docker compose exec pingpong-highlight `
   pingpong-highlight rebuild-library <job-id> --data-dir /data
 ```
 
-`rebuild-library` 只存在目前 source checkout，公開的 1.3.0 image 不支援。`<job-id>` 是 `/api/jobs` 回傳的內部工作 ID；目前 UI 尚未提供複製按鈕。新版輸出會放在該 job 的獨立 `clip-sets/` 子資料夾，全部成功且至少有一球符合門檻後才切換為素材庫的 active 版本。Ctrl+C、失敗或零合格素材都保留原 active 版本，但可能留下未啟用的 timestamp 目錄；反覆重建會增加磁碟用量，目前不會自動清理。舊片段、舊 Reel 與人工標記都不受影響。若網站正在分析或建立集錦，命令會等待共用 GPU 鎖，不會同時執行重型媒體工作。
+`rebuild-library` 只存在目前 source checkout，公開的 1.3.0 image 不支援。`<job-id>` 是 `/api/jobs` 回傳的內部工作 ID；目前 UI 尚未提供複製按鈕。目前程式新產生的素材版本是 `highlight-library-v3`，但截至 2026-08-24，既有五支來源在 SQLite 中仍是 102 個 active `highlight-library-v2` clips。只有操作者明確執行 `rebuild-library`，且該 job 的新版輸出全部成功、至少有一球符合門檻後，才會原子切換該來源的 active 版本；candidate evaluation 不會觸發這件事。Ctrl+C、失敗或零合格素材都保留原 active 版本，但可能留下未啟用的 timestamp 目錄；反覆重建會增加磁碟用量，目前不會自動清理。舊片段、舊 Reel 與人工標記都不受影響。若網站正在分析或建立集錦，命令會等待共用 GPU 鎖，不會同時執行重型媒體工作。
 
 ### 人工標記精彩球（桌面開發工具）
 
@@ -505,6 +507,31 @@ flowchart LR
 候選先套 70% 素材保存門檻，再依來源內分數排名並各自輸出；不套 Reel 秒數預算，也不會為了達到最低球數而回填。87% 只影響「推薦」標記。舊的 `PINGPONG_MAX_HIGHLIGHTS` 仍可作為 `PINGPONG_MAX_POINTS` 的備援值。若既有 `.env` 寫了 `PINGPONG_MAX_POINTS=6`，它仍會成為明確安全上限；改成 `0` 才是不限制素材數。
 
 相對門檻可適應不同球館、收音與鏡位造成的分數尺度差異，但來源第一名永遠是 100%，所以跨影片排序仍只是 heuristic。要可靠判斷「整支影片都不夠精彩」或建立真正可比較的全域精彩度，仍需補齊明確負向標記，再把分數換成校準過的模型機率。
+
+## 候選能力的正式開發評估
+
+截至 2026-08-24，`candidate-generation-v4` 在凍結的 5 支 development 影片、56 筆人工 `highlight` 上，strict candidate recall 為 **51/56（91.07%）**。它共產生 481 個 candidates，來源總長 108.658377 分鐘，密度 4.426718 candidates/min；candidate core 的 union coverage 為 46.3734%，最長 core 18.957 秒，沒有互相重疊。recall 與 candidate-burden guardrails 都通過，因此決策是 `GO_RANKING`。
+
+這是 commit `7e0881d`、clean worktree、NVIDIA GeForce RTX 5090 Laptop GPU／NVDEC receipt 經驗證後的 **development regression**，不是 held-out accuracy。56 筆標記全部是正向 `highlight`，沒有明確 `exclude`，所以系統對 precision、AP、AUROC、FPR 與 point purity 明確 abstain；未命中的 candidates 仍是 unknown，不能當 false positive。
+
+重現正式 candidate-only run：
+
+```powershell
+$dataset = "data/evaluations/candidate-recall/exploratory-active-v2-20260824/dataset.json"
+
+uv run --frozen pingpong-highlight evaluation run-candidates `
+  --data-dir data `
+  --dataset $dataset `
+  --run-id candidate-v4-YYYYMMDD
+
+uv run --frozen pingpong-highlight evaluation score-candidates `
+  --data-dir data `
+  --dataset $dataset `
+  --candidate-run data/evaluations/candidate-runs/candidate-v4-YYYYMMDD `
+  --run-id formal-v4-YYYYMMDD
+```
+
+`run-candidates` 預設要求 clean worktree 與可用的 NVIDIA NVDEC，會保存完整 candidate JSON、raw signal arrays、Git／設定／GPU／來源 checksum receipts，但不輸出 MP4、不修改 `data/state.sqlite3`，也不切換 active 素材庫。`--allow-cpu` 與 `--allow-dirty` 只供診斷，不能通過目前的 formal scorer。`score-candidates` 通過兩道 gate 時回傳 0；有效但未通過的 STOP 結果回傳 3。完整 matching、burden 與證據界線見 [docs/evaluation.md](docs/evaluation.md)。
 
 ## GPU 訓練環境（uv）
 

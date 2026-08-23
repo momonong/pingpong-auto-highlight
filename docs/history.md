@@ -1,5 +1,13 @@
 # Project history
 
+## August 2026: formal candidate gate and detector v4 (unreleased after 1.3.0)
+
+The candidate-generation and runtime-library identities are now deliberately separate. `candidate-generation-v4` creates complete JSON/NPZ candidate evidence without exporting MP4 or mutating the runtime database; `highlight-library-v3` is the corresponding runtime processor version used only when a new job or an explicit library rebuild exports clips.
+
+The receipt-valid development run at commit `7e0881d` used strict NVIDIA NVDEC on an NVIDIA GeForce RTX 5090 Laptop GPU. Across five development sources and 56 positive `highlight` annotations, v4 reached 51/56 strict candidate recall (91.07%). It produced 481 candidates over 108.658377 source minutes (4.426718/min), covered 46.3734% of the source timelines by candidate-core union, had a maximum core of 18.957 seconds, and left zero overlapping candidate pairs. Recall and every candidate-burden guardrail passed, so the decision is `GO_RANKING`; the previous formal v3 baseline had reached only 4/56 (7.14%) and stopped at the detector.
+
+This is a `valid-development-regression`, not held-out accuracy. All 56 annotations are positive and there are no explicit `exclude` labels, so precision and other false-positive-dependent metrics remain explicitly abstained. The run did not activate new clips: the existing five sources still have 102 active `highlight-library-v2` clips. Moving them to v3 requires an explicit, successful per-job rebuild; no evaluation command performs that switch.
+
 ## August 2026: pCloud archive foundation (unreleased after 1.3.0)
 
 The first additive pCloud phase is implemented without changing local playback or deletion behavior:

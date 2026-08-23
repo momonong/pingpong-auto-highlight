@@ -17,6 +17,15 @@ from pingpong_highlight.archive import (
     RclonePCloudBackend,
     discover_archive_candidates,
 )
+from pingpong_highlight.candidate_evaluation import (
+    CandidateEvaluationError,
+    freeze_active_candidate_evaluation,
+)
+from pingpong_highlight.candidate_run import (
+    CandidateRunError,
+    run_candidate_analysis,
+)
+from pingpong_highlight.candidate_scoring import score_candidate_run
 from pingpong_highlight.config import Settings
 from pingpong_highlight.db import Database, StateConflict
 from pingpong_highlight.media_work import archive_work_lock, media_work_lock
@@ -117,7 +126,7 @@ def _rebuild_library(args: argparse.Namespace) -> int:
         return 2
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    relative_output = Path("clip-sets") / f"highlight-library-v2-{timestamp}"
+    relative_output = Path("clip-sets") / f"highlight-library-v3-{timestamp}"
     output = settings.outputs_dir / job.id / relative_output
     processor = HighlightProcessor(settings)
     last_stage = ""
@@ -168,6 +177,92 @@ def _probe(args: argparse.Namespace) -> int:
         f"video={info.video_codec}, audio={info.audio_codec or 'none'}, rotation={info.rotation}°"
     )
     return 0
+
+
+def _resolve_review_database(
+    data_dir: Path,
+    requested: Path | None,
+) -> Path:
+    if requested is not None:
+        return requested.expanduser().resolve()
+    matches = sorted(data_dir.glob("state.training-baseline-*.sqlite3"))
+    if len(matches) != 1:
+        raise CandidateEvaluationError(
+            "Specify --review-database; automatic discovery requires exactly one "
+            "state.training-baseline-*.sqlite3 file"
+        )
+    return matches[0].resolve()
+
+
+def _freeze_active_evaluation(args: argparse.Namespace) -> int:
+    settings = Settings.from_env(data_dir=args.data_dir)
+    try:
+        review_database = _resolve_review_database(
+            settings.data_dir,
+            args.review_database,
+        )
+        destination, metrics = freeze_active_candidate_evaluation(
+            settings.data_dir,
+            review_database=review_database,
+            run_id=args.run_id,
+            output_root=args.output_root,
+            progress=print,
+        )
+    except CandidateEvaluationError as exc:
+        print(f"無法建立 frozen evaluation：{exc}", file=sys.stderr)
+        return 2
+    strict = metrics["aggregate"]["strict_candidate_recall"]
+    print(
+        f"Strict candidate recall：{strict['hits']}/{strict['total']} "
+        f"({strict['micro_recall']:.2%})"
+    )
+    print(f"GO/STOP：{metrics['gate']['decision']}")
+    print(f"報告：{destination / 'report.md'}")
+    print("這是 legacy diagnostic freeze，舊 artifact 缺少生成當下的完整 receipt。")
+    return 2
+
+
+def _run_candidate_evaluation(args: argparse.Namespace) -> int:
+    settings = Settings.from_env(data_dir=args.data_dir)
+    try:
+        destination = run_candidate_analysis(
+            settings,
+            dataset_path=args.dataset,
+            run_id=args.run_id,
+            output_root=args.output_root,
+            require_gpu=not args.allow_cpu,
+            allow_dirty=args.allow_dirty,
+            progress=print,
+        )
+    except CandidateRunError as exc:
+        print(f"無法執行 candidate-only analysis：{exc}", file=sys.stderr)
+        return 2
+    print(f"Candidate-only run：{destination}")
+    print("沒有輸出 MP4，也沒有修改 active 素材庫或 runtime database。")
+    return 0
+
+
+def _score_candidate_evaluation(args: argparse.Namespace) -> int:
+    settings = Settings.from_env(data_dir=args.data_dir)
+    output_root = args.output_root or (settings.data_dir / "evaluations" / "candidate-recall")
+    try:
+        destination, metrics = score_candidate_run(
+            dataset_path=args.dataset,
+            candidate_run=args.candidate_run,
+            run_id=args.run_id,
+            output_root=output_root,
+        )
+    except CandidateEvaluationError as exc:
+        print(f"無法評分 candidate run：{exc}", file=sys.stderr)
+        return 2
+    strict = metrics["aggregate"]["strict_candidate_recall"]
+    print(
+        f"Strict candidate recall：{strict['hits']}/{strict['total']} "
+        f"({strict['micro_recall']:.2%})"
+    )
+    print(f"GO/STOP：{metrics['gate']['decision']}")
+    print(f"報告：{destination / 'report.md'}")
+    return 0 if metrics["gate"]["threshold_met"] else 3
 
 
 def _human_bytes(value: int) -> str:
@@ -274,8 +369,7 @@ def _archive_plan_lines(
             problems += 1
         total_bytes += size
         lines.append(
-            f"[{candidate.media_kind}] {state} | {_human_bytes(size)} | "
-            f"{candidate.remote_path}"
+            f"[{candidate.media_kind}] {state} | {_human_bytes(size)} | {candidate.remote_path}"
         )
     return lines, total_bytes, problems
 
@@ -294,8 +388,7 @@ def _pcloud_plan(args: argparse.Namespace) -> int:
     for line in lines:
         print(line)
     print(
-        f"共 {len(candidates)} 個檔案，約 {_human_bytes(total_bytes)}，"
-        f"本機有 {problems} 個問題。"
+        f"共 {len(candidates)} 個檔案，約 {_human_bytes(total_bytes)}，本機有 {problems} 個問題。"
     )
     print("plan 不會建立遠端檔案或登記 storage object。")
     return 0 if problems == 0 else 1
@@ -313,8 +406,7 @@ def _pcloud_archive(args: argparse.Namespace) -> int:
         return 1
 
     existing = {
-        (record.owner_type, record.owner_id): record
-        for record in database.list_storage_objects()
+        (record.owner_type, record.owner_id): record for record in database.list_storage_objects()
     }
     candidates = [
         candidate
@@ -363,10 +455,7 @@ def _pcloud_archive(args: argparse.Namespace) -> int:
     completed = 0
     with archive_work_lock(settings.data_dir):
         for index, candidate in enumerate(candidates, start=1):
-            print(
-                f"[{index}/{len(candidates)}] 雜湊、上傳並驗證："
-                f"{candidate.local_relative_path}"
-            )
+            print(f"[{index}/{len(candidates)}] 雜湊、上傳並驗證：{candidate.local_relative_path}")
             try:
                 result = archiver.archive(candidate)
             except (ArchiveError, OSError, StateConflict) as exc:
@@ -474,6 +563,53 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor = subparsers.add_parser("doctor", help="檢查 FFmpeg 與 GPU 編解碼能力")
     doctor.set_defaults(handler=_doctor)
+
+    evaluation = subparsers.add_parser(
+        "evaluation",
+        help="凍結並量測精彩球候選能力",
+    )
+    evaluation_commands = evaluation.add_subparsers(
+        dest="evaluation_command",
+        required=True,
+    )
+    freeze_active = evaluation_commands.add_parser(
+        "freeze-active",
+        help="只讀匯入目前 active candidates，建立不可覆寫的診斷基線",
+    )
+    freeze_active.add_argument("--data-dir", type=Path, default=None)
+    freeze_active.add_argument("--review-database", type=Path, default=None)
+    freeze_active.add_argument("--output-root", type=Path, default=None)
+    freeze_active.add_argument("--run-id", default=None)
+    freeze_active.set_defaults(handler=_freeze_active_evaluation)
+    run_candidates = evaluation_commands.add_parser(
+        "run-candidates",
+        help="以 GPU 重跑候選與 signals，不輸出 MP4 或修改素材庫",
+    )
+    run_candidates.add_argument("--dataset", type=Path, required=True)
+    run_candidates.add_argument("--run-id", required=True)
+    run_candidates.add_argument("--data-dir", type=Path, default=None)
+    run_candidates.add_argument("--output-root", type=Path, default=None)
+    run_candidates.add_argument(
+        "--allow-cpu",
+        action="store_true",
+        help="NVDEC 不可用時允許 CPU 解碼",
+    )
+    run_candidates.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help="只供診斷，正式 baseline 應保持 clean worktree",
+    )
+    run_candidates.set_defaults(handler=_run_candidate_evaluation)
+    score_candidates = evaluation_commands.add_parser(
+        "score-candidates",
+        help="驗證 immutable receipts 並以 frozen 規則量測 candidate recall",
+    )
+    score_candidates.add_argument("--dataset", type=Path, required=True)
+    score_candidates.add_argument("--candidate-run", type=Path, required=True)
+    score_candidates.add_argument("--run-id", required=True)
+    score_candidates.add_argument("--data-dir", type=Path, default=None)
+    score_candidates.add_argument("--output-root", type=Path, default=None)
+    score_candidates.set_defaults(handler=_score_candidate_evaluation)
 
     pcloud = subparsers.add_parser("pcloud", help="管理 pCloud 長期影片 archive")
     pcloud.add_argument("--data-dir", type=Path, default=None)

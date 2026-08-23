@@ -1,16 +1,19 @@
 # Evaluation and model roadmap
 
-## Current evidence boundary (2026-08-23)
+## Current evidence boundary (2026-08-24)
 
-目前 runtime database 有 5 支來源、56 筆人工 annotation；56 筆全部是 `highlight`，沒有明確的 `exclude`，schema 也還沒有每支來源的 `review_complete`。素材庫另有 135 筆 heuristic clip metadata，其中 102 筆是目前 active 的 v2 候選。這兩者不能混為一談：
+目前 runtime database `data/state.sqlite3` 有 5 支來源、56 筆人工 annotation；56 筆全部是 `highlight`，沒有明確的 `exclude`。runtime schema 本身沒有 `source_reviews`，但凍結的 `data/state.training-baseline-20260822.sqlite3` 已記錄 5/5 來源 `review_complete`，且 `reviewed_until` 覆蓋各自完整來源時長。這仍不會把空白時間自動變成負樣本：目前 evaluation contract 只接受明確 `exclude` 作為 negative，未標記 candidate 一律是 unknown。
+
+現役素材庫另有 135 筆 heuristic clip metadata，其中 102 筆是 active `highlight-library-v2`；程式的新 runtime 輸出版本雖已是 `highlight-library-v3`，candidate-only evaluation 不會自動重建或切換 active。人工標記、素材庫與 candidate artifacts 不能混為一談：
 
 - `annotations` 是人工選擇，存在 `data/state.sqlite3`。
 - `highlight_clips` 與 `analysis.json` 是演算法預測／診斷輸出，不是 ground truth。
-- 沒有 annotation 的時間不能視為「不精彩」，因為無法知道使用者是看過後否決，還是尚未審閱。
+- `data/evaluations/candidate-runs/` 的 JSON／NPZ 是完整候選與 signals，不是可播放素材，也不會寫入 `highlight_clips`。
+- 沒有明確 `exclude` 的時間不能視為「不精彩」；即使來源已 review complete，precision 仍然 abstain。
 
-這份資料已足以檢查漏抓案例、邊界與來源差異，也足以驗證素材庫工作流；仍不足以宣稱 accuracy、校準跨來源 threshold，或訓練可靠的二元分類器。以下是下一階段評估設計，而不是目前已達成的結果。
+五支來源全部是 detector iteration 使用過的 `development` data，沒有 held-out source。Formal scoring contract v1 也刻意只接受 `development` split；「formal」代表 immutable receipts 完整有效，不代表 held-out。這份資料足以做 receipt-valid 的 development regression、檢查漏抓案例、邊界與來源差異；仍不足以宣稱 held-out accuracy、precision，或訓練可靠的二元分類器。
 
-## What to label first
+## What to label next
 
 長期目標是收集 20–30 支你真的會拍的影片，刻意涵蓋直式／橫式、桌側／底線／斜角、遠近、安靜與吵雜球館。第一輪不用畫每一顆球的 bounding box；目前標記介面實際能保存：
 
@@ -18,61 +21,99 @@
 - `highlight`（值得收錄）或 `exclude`（不該收錄）；
 - 可選的備註字串，包含常用精彩類型或自由文字。
 
-下一版資料契約應再加入每支來源的 `review_complete`，並把 failure reason 與偏好 tags 拆成結構化欄位。若需要 separately 評估發球、最後一拍與反應邊界，也要新增明確欄位；目前 schema 不能從單一 start/end 推回這三個時間點。
+正式 runtime 資料契約下一步應把 frozen DB 已有的 `review_complete`／`reviewed_until` 納入主資料流，並收集明確 `exclude`、結構化 failure reason 與偏好 tags。若需要 separately 評估發球、最後一拍與反應邊界，也要新增明確欄位；目前 schema 不能從單一 start/end 推回這三個時間點。
 
 用影片分組切 train／validation／test；同一場球切出的片段不能跨集合，否則背景和拍攝角度會造成資料洩漏。
 
-## Metrics
+## Metric contract
 
-每次演算法版本至少報告：
+Strict candidate recall 使用整數毫秒、half-open `[start_ms, end_ms)` 區間，在同一來源內做 chronological one-to-one matching。只有 candidate **core** 與人工 `highlight` 的交集除以人工區間長度至少為 50% 才算命中；剛好 50% 通過，同一 candidate 不得重複命中兩筆 annotation。播放器與成品用的前後 1.5 秒 padding 不參與 matching，避免靠展示脈絡灌高 recall。matching 先最大化命中數，再依 annotation coverage、IoU、boundary error 與穩定 ID 決定 ties。
 
-1. Point recall：真實精彩得分有多少與輸出片段重疊至少 50%。
-2. Point purity：輸出片段有多少只包含一分，沒有混入前後得分。
-3. Boundary error：預測開始／結束與真實時間的絕對誤差中位數。
-4. Compression ratio：輸出總長度 ÷ 原片長度。
-5. Threshold precision／recall：在固定 validation threshold 下，入選中有多少值得保留，以及人工精彩球有多少被選到。
-6. Library volume：每片保存候選數、推薦數、零候選率、素材總長與磁碟量；分別按短／中／長片回報，避免固定 Top-k 掩蓋長度偏差。
-7. Compilation utility：使用者實際選入率、跨來源比例、成品總長、每分平均長度與直接剪接後是否仍看得懂得分結果。
-8. Runtime factor：分析秒數 ÷ 影片秒數，以及 peak RAM／VRAM。
+Candidate recall 不能靠密集 sliding windows、超長 core 或重複區間達成，因此正式 gate 同時要求：
 
-產品初期應優先 point recall，因為漏掉好球無法挽回；ranking precision 可以先透過 review UI 讓人快速刪除。建議未來 held-out baseline target：精彩 point recall ≥ 0.90、point purity ≥ 0.85、開始邊界誤差中位數 ≤ 1.5 秒；在 test split 和標註完整性建立前，這些數字只是驗收門檻，不是目前成績。
+| Candidate burden guardrail | 上限 |
+|---|---:|
+| 全資料 candidates/minute | 6.0 |
+| 單一來源 candidates/minute | 8.0 |
+| 全資料 candidate-core union coverage | 50% |
+| 單一來源 candidate-core union coverage | 75% |
+| 單一 candidate core 長度 | 20 秒 |
+| unresolved overlap | 0 ms，且 overlapping pair count = 0 |
+
+後續每次演算法版本還應報告 boundary error、library volume、compression ratio、compilation utility 與 runtime factor。Point purity、threshold precision／recall、AP、AUROC、NDCG 與 FPR 必須等明確 negatives 存在後才啟用；現在不能把 unmatched candidates 當 false positive。
+
+產品初期優先 candidate recall，因為偵測層漏掉好球後 ranking 無法挽回。建議未來 held-out baseline target：精彩 point recall ≥ 0.90、point purity ≥ 0.85、開始邊界誤差中位數 ≤ 1.5 秒；在獨立 test split 和負向標註建立前，這些數字只是未來驗收門檻。
 
 ## Current objective and GO/STOP gate (2026-08-24)
 
-目前第一個工程目標是 **strict candidate recall ≥ 0.80**：先保存門檻、Top-k 與時長預算之前的完整 point candidates，再以來源影片分組，計算每筆人工 `highlight` 的 core interval 是否被某個 candidate 覆蓋至少 50%。這個 0.80 是用來定位瓶頸的第一關，不是對外宣稱的模型準確率，也不取代未來 held-out 0.90 point-recall 目標。
+第一個工程目標是 **strict candidate recall ≥ 0.80**，同時通過 candidate-burden guardrails。決策順序固定如下：
 
-Definition of Done：
+| 條件 | 決策 | 下一個元件 |
+|---|---|---|
+| recall < 0.80 | `STOP_DETECTOR` | impact detection、point grouping、core boundaries |
+| recall ≥ 0.80，但 burden 失敗 | `STOP_CANDIDATE_BURDEN` | candidate consolidation、core boundaries |
+| recall 與 burden 都通過 | `GO_RANKING` | ranking |
 
-1. 每支評估影片的所有 candidates、時間範圍、signal features、score 與演算法版本可重現保存；不能只留下最後 Top-6。
-2. 人工標註 snapshot、checksum、來源分組與 overlap 規則被凍結，報告同時列 micro 與 per-source recall。
-3. 不以每片固定球數或硬湊時長影響 candidate recall；threshold 與 ranking 只在後續層評估。
-4. strict candidate recall 達 0.80 才 GO 到 ranking 改進；未達則 STOP，不先訓練 ranker，而是檢查 impact detection、point grouping 與候選邊界。
-5. precision 目標要等 `review_complete` 與明確 `exclude` 標籤存在後才鎖定；在此之前空白區段不是負樣本。
+`candidate-generation-v3` 的正式 GPU baseline 只有 4/56（7.14%），因此是 `STOP_DETECTOR`。commit `7e0881d` 的 `candidate-generation-v4` 已完成 clean-worktree、strict NVIDIA NVDEC run，GPU receipt 為 NVIDIA GeForce RTX 5090 Laptop GPU；結果如下：
+
+| 指標 | v4 結果 |
+|---|---:|
+| Strict candidate recall | **51/56（91.07%）** |
+| Candidates | 481 |
+| 來源總長 | 108.658377 分鐘 |
+| Candidate density | 4.426718/min |
+| Candidate-core union coverage | 46.3734% |
+| 最長 core | 18.957 秒 |
+| Overlapping pairs／overlap excess | 0／0 ms |
+| Gate | **`GO_RANKING`** |
+
+五支來源的 per-source density 與 union coverage 也都在 guardrails 內。這代表 detector candidate gate 已通過，可以開始評估 ranking；它不是整個產品完成，也不是 held-out accuracy。證據狀態是 `valid-development-regression`，precision 狀態仍是 `abstained_missing_explicit_negatives`。
 
 ## Iteration order
 
-### 1. Calibrate the existing signals
+### 1. Preserve the detector gate
 
-把 `analysis.json` 的所有 candidates 與人工標註比對，分別畫 audio score、motion score、相對門檻決策與錯誤類型。先確認問題來自事件偵測、時序 grouping 或 ranking，避免同時調十個 threshold。未標記區間不能直接當負樣本；每支影片要先記錄 review complete，才能計算正式 precision。
+v4 已在目前 development set 通過 detector gate。之後任何 detector、boundary 或 signal 變更都要重跑同一份 frozen dataset，同時維持 recall 與 burden；不能只看 recall 上升，也不能用固定 Top-k 隱藏長影片的候選量。
 
-### 2. Train a table-tennis impact classifier
+### 2. Build ranking evidence and explicit negatives
 
-從 audio transient 周圍裁 100–250 ms log-mel patch，將真實擊球、鞋聲、拍手、說話、附近球桌做分類。這個小模型比直接在 4K 畫面找 40 mm 球更便宜，也最能降低吵雜球館 false positive。模型輸出仍可沿用現在的 event／grouping interface。
+保留使用者「加入集錦／略過／調整邊界」行為，讓 ranking model 學個人偏好，而不是把精彩定義寫死。ranking 與 point segmentation 分離：前者可以個人化，後者仍維持客觀 candidate recall。現在只有送出 compilation 後的 clip IDs／順序保存在 `compilation_items`；下一步要把明確略過／`exclude` 與排序選擇匯出成可稽核 training examples。
 
-### 3. Add semantic visual evidence
+### 3. Establish a held-out source split
 
-只有當錯誤分析證明需要時，再加入低頻率的 table／person／pose inference：
+新增不同日期、鏡位、場館的來源，依整支影片或場次切 validation／test。development 上的 91.07% 只能用來防 regression；threshold 確定後才執行一次 held-out evaluation，不得把 test set 反覆拿來調參。
+
+### 4. Add learned detector evidence only when error analysis requires it
+
+若 held-out miss atlas 顯示 audio false events 是主要瓶頸，可從 transient 周圍裁 100–250 ms log-mel patch，分類真實擊球、鞋聲、拍手、說話與附近球桌。只有錯誤分析證明需要時，才加入低頻率的 table／person／pose inference：
 
 - 以多個時間點估計 stable play area，不使用「前 90 幀最大框」。
 - 將 pose velocity、兩側球員同時活動、racket-side wrist acceleration 當 evidence，不直接當 rally state。
 - 若要偵測球，需以實際手機素材訓練 tiny-object detector，並保留高解析 crop；generic YOLO weight 不足以支撐這項假設。
 
-### 4. Learn personal point ranking
-
-保留使用者「加入集錦／略過／調整邊界」行為，訓練 ranking model，而不是把精彩定義寫死。ranking 與 point segmentation 分離：前者可以個人化，後者仍追求客觀 recall。目前只有送出 compilation 後的 clip IDs／順序保存在 `compilation_items`；編輯中未送出的選擇只在瀏覽器記憶體，也還沒有把「略過」或排序行為匯出成正式 training examples。
-
 ## Reproducible experiment record
 
-每次實驗記錄 Git commit、algorithm version、設定、test video IDs、metrics 與輸出報告。不得用 test set 調 threshold；確認 validation 改善後才跑一次 test。這會讓 side project 從 demo 變成能持續進步的系統。
+每次實驗記錄 Git commit、algorithm version、設定、來源 IDs、metrics 與輸出報告。不得用 test set 調 threshold；確認 validation 改善後才跑一次 test。
 
-實驗輸出應放在與 runtime 媒體可區分的位置；不要把 `data/outputs/` 的 active clips 當成 frozen evaluation set。每次評估至少保存 annotation snapshot／checksum、來源分組、候選生成版本與設定，才能重現結果並避免重建素材庫後悄悄改變測試資料。
+目前 formal development run 使用已凍結的 dataset：
+
+```powershell
+$dataset = "data/evaluations/candidate-recall/exploratory-active-v2-20260824/dataset.json"
+
+uv run --frozen pingpong-highlight evaluation run-candidates `
+  --data-dir data `
+  --dataset $dataset `
+  --run-id candidate-v4-YYYYMMDD
+
+uv run --frozen pingpong-highlight evaluation score-candidates `
+  --data-dir data `
+  --dataset $dataset `
+  --candidate-run data/evaluations/candidate-runs/candidate-v4-YYYYMMDD `
+  --run-id formal-v4-YYYYMMDD
+```
+
+第一個命令預設要求 clean worktree 與 NVIDIA NVDEC，並在 `data/evaluations/candidate-runs/<run-id>/` 保存 `manifest.json`、每來源 `candidates.json`、`signals.npz` 與 checksummed receipts；它不輸出 MP4、不修改 runtime database 或 active library。`--allow-cpu`／`--allow-dirty` 只供診斷，不能通過目前 formal scorer。第二個命令會重新驗證 dataset、annotation snapshot、來源、設定、Git、GPU 與 signal hashes，再把 `metrics.json`、`report.md`、`manifest.json` 與 `checksums.sha256` 寫到 `data/evaluations/candidate-recall/<run-id>/`。GO 回傳 0；有效的 STOP gate 回傳 3。
+
+`evaluation freeze-active` 只用來從舊 active artifacts 建立 immutable dataset 與 legacy diagnostic。舊 v2 artifacts 沒有 generation-time Git/config/source receipt，因此其 report 即使 checksummed 也不能取代上述 formal run。
+
+不要把 `data/outputs/` 的 active clips 當成 frozen evaluation set。每次評估至少成套保存 annotation snapshot／checksum、來源分組、candidate run、raw signals、生成版本與設定，才能重現結果並避免重建素材庫後悄悄改變測試資料。

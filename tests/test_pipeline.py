@@ -70,7 +70,7 @@ def test_end_to_end_signal_fusion_pipeline(tmp_path: Path) -> None:
     output = tmp_path / "output"
     result = HighlightProcessor(settings).run(source, output)
 
-    assert result["algorithm_version"] == "highlight-library-v2"
+    assert result["algorithm_version"] == "highlight-library-v3"
     assert result["summary"]["impact_count"] >= 5
     assert result["summary"]["point_count"] >= 1
     assert result["summary"]["candidate_point_count"] == len(result["candidates"])
