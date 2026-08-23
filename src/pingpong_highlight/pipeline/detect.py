@@ -269,6 +269,6 @@ def detect_points(
         candidates=candidates,
         points=points,
         effective_score_threshold=(
-            round(score_threshold, 3) if score_threshold is not None else None
+            round(score_threshold, 6) if score_threshold is not None else None
         ),
     )
