@@ -141,6 +141,12 @@ def test_relative_threshold_accepts_equality_and_rejects_lower_scores() -> None:
     ]
 
 
+def test_candidate_report_keeps_threshold_debugging_precision() -> None:
+    candidate = _candidate(1.0, 12.3456784)
+
+    assert candidate.to_dict()["score"] == 12.345678
+
+
 def test_default_selection_has_no_six_point_quota() -> None:
     candidates = [_candidate(index * 3.0, 10.0) for index in range(7)]
 
