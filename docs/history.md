@@ -1,5 +1,18 @@
 # Project history
 
+## August 2026: threshold-selected point reels
+
+Version 1.3 removes the per-video six-point quota from the default selection policy:
+
+- candidates must reach 87% of the strongest score from the same source;
+- the 55-second Reel budget remains, while the point-count cap is disabled by default;
+- `analysis.json` persists every candidate, its score threshold, and the selection decision;
+- padding is assigned only among selected points, so rejected neighbours no longer trim context;
+- hard-cut H.264/AAC exports normalize timestamps and use signed CTS offsets so NVENC B-frames remain decodable in MP4;
+- five real GPU reruns selected 22 points instead of the previous fixed 30, with every Reel fully decoding and no pipeline warnings.
+
+The relative score rule is an interim heuristic rather than a calibrated probability. It adapts to source-level score shifts but still retains the strongest candidate whenever a source has any candidate at all.
+
 ## February 2026: first prototype
 
 Commits `67aee40` and `1c53645` established the first runnable pipeline:
