@@ -74,18 +74,23 @@ Docker Compose 把主機的 `./data` bind mount 到容器 `/data`。資料庫與
 
 ### Planned pCloud archive adapter
 
-pCloud 的角色是 durable archive 與可選 inbox，不是 live filesystem。現行分析 contract 繼續要求一個完整、已驗證的本機 `source_path`，因此未來 pCloud adapter 只在 pipeline 兩側工作：
+pCloud 的角色是影片的 durable archive，不是 live filesystem；手機的主要 ingress 仍是 Google Drive。現行分析 contract 繼續要求一個完整落盤的本機 `source_path`，因此未來 pCloud adapter 位於 pipeline 輸出端，並提供按需 hydration：
 
 ```mermaid
 flowchart LR
-    PI["pCloud inbox"] -->|"download .part + verify"| LOCAL["local upload store"]
+    PIXEL["Pixel"] --> DRIVE["Google Drive handoff"]
+    DRIVE -->|"existing importer"| LOCAL["local upload/cache"]
     LOCAL --> MEDIA["existing analysis/export pipeline"]
     MEDIA --> ART["immutable local artifacts"]
     ART -->|"async copy + checksum"| PA["pCloud archive"]
     PA -->|"on-demand hydrate"| LOCAL
+    DB["local SQLite catalog"] --- LOCAL
+    DB -.->|"small snapshots"| PA
 ```
 
-第一階段使用 rclone 原生 pCloud backend 與 OAuth，archive worker 不拿 GPU media lock，但應限制網路／磁碟並行度。它只做單向 immutable copy；上傳、provider checksum 與 DB commit 全部成功後才標成 remote verified。第二階段才新增 `storage_objects` catalog、inbox 掃描、local eviction 與 on-demand hydration。`rclone.conf`／OAuth token 要留在 runtime media mount 之外並限制權限。
+先以一次性 rclone `copy`／`check` 驗證帳號、區域 endpoint 與大型影片速度。正式第一階段同時加入 `storage_objects`／archive job、rclone pCloud backend 與 OAuth；archive worker 不拿 GPU media lock，但應限制網路／磁碟並行度。它只做單向 immutable copy，上傳、provider checksum 與 DB commit 全部成功後才標成 remote verified，而且不刪本機。第二階段加入 on-demand hydration，第三階段才開放 local eviction。pCloud inbox 可以日後作備援入口，不需要阻塞這三階段。`rclone.conf`／OAuth token 要留在 runtime media mount 之外並限制權限。
+
+Google Drive 是暫存 handoff，不是第二個永久 archive。公開連結 importer 沒有刪除使用者 Drive 檔案的權限；pCloud 原片驗證成功後，UI 只能提示使用者可以手動刪除。桌機本機檔案則必須等 remote verified、hydration 可用且沒有 worker／播放器正在使用時，才由系統狀態機安全 eviction。
 
 live SQLite、FFmpeg seek input 與未完成 `.part` 都不能直接放在 pCloud Drive、WebDAV 或 rclone mount。這能讓雲端斷線只延遲 archive，不會破壞處理中的 transaction。完整資料生命週期與官方能力連結見 [storage.md](storage.md#pcloud-長期保存方案規劃中尚未實作)。
 

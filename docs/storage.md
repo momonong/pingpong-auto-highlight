@@ -111,30 +111,53 @@ SQLite 使用 WAL mode，適合目前單機、單一 web service process 加背�
 
 ## pCloud 長期保存方案（規劃中，尚未實作）
 
-pCloud 適合做長期 archive，但不應直接取代本機工作目錄。建議採「本機 hot cache + pCloud immutable archive」：
+pCloud 適合成為影片的長期主要儲存，但不應直接取代本機工作目錄。目標流程是「Google Drive 送件 + 本機處理 cache + pCloud immutable video archive」：
 
 ```text
-pCloud /HighlightCraft/inbox
-        │ 按需下載並驗證
-        ▼
-data/uploads + local SQLite ── GPU/FFmpeg ── data/outputs, data/compilations
-        │                              │
-        └────── 非同步 copy + hash 驗證 ┘
-                         ▼
-              pCloud /HighlightCraft/archive
+Pixel 手機
+    │ Google Drive Android 上傳
+    ▼
+Google Drive 送件箱（暫存，可在歸檔完成後刪除）
+    │ 現有 Drive importer 下載、完整落盤
+    ▼
+桌機 local cache ── CPU analysis + GPU/FFmpeg ── clips / compilations
+    │                                           │
+    └──────────── 非同步 copy + checksum ───────┘
+                              ▼
+                 pCloud 長期影片 archive
+                              │
+                    需要時 hydrate 回本機
 ```
+
+| 層級 | 定位 | 保存多久 |
+|---|---|---|
+| Google Drive | Pixel 最方便的 ingress／handoff | pCloud 原片驗證完成前 |
+| 桌機 `data/` | processing workspace 與近期 hot cache | 工作中；之後依 cache policy |
+| pCloud | 原片與影片結果的長期 primary archive | 依使用者 retention 決定 |
+| 本機 SQLite | live catalog、標記、關聯與狀態 | 長期；另做小型 immutable snapshot |
+
+[pCloud Android App](https://help.pcloud.com/article/uploading-downloading-organizing) 也支援手動上傳、Android Gallery 分享與 Automatic Upload，可保留成備援 ingress；但目前 Google Drive 已有可運作的 importer，而且 [Google Drive Android](https://support.google.com/drive/answer/2424368?co=GENIE.Platform%3DAndroid) 原生上傳路徑清楚，所以第一版不需要同時維護兩套手機入口。
 
 推薦的遠端結構：
 
 ```text
 /HighlightCraft/
-├── inbox/                         # 手機 pCloud App 放入待處理原片
-├── originals/<upload-id>/         # 不可變原片
-├── clips/<clip-id>.mp4            # 可選；active 素材或完整歷史
-├── compilations/<compilation-id>.mp4
-├── analysis/<job-id>/<run-id>.json
-└── database-snapshots/<timestamp>/
+├── originals/<YYYY>/<MM>/<upload-id>/<original-name>
+├── jobs/<job-id>/<library-version>/
+│   ├── analysis.json
+│   └── clips/<clip-id>.mp4
+├── compilations/<YYYY>/<MM>/<compilation-id>/highlight_compilation.mp4
+├── database-snapshots/<timestamp>/state.sqlite3
+└── inbox/                         # 可選的 pCloud 手機備援入口
 ```
+
+應保存的內容：
+
+- 原片：必存。它是重新分析、重新切片與人工標記的唯一來源。
+- active clips：建議存。雖然可由原片重建，但保留後能快速恢復素材庫且不用再次耗費 GPU 時間。
+- final compilations：必存。這是使用者真正要分享的成品。
+- inactive／失敗 run 的 clips：可設定較短 retention；先保留，等正式 cleanup 能理解 DB 關聯後再刪。
+- `analysis.json`、設定／版本 manifest 與 SQLite snapshot：體積很小，一起存能讓影片可追溯。live SQLite 仍在本機，不從 pCloud mount 開啟。
 
 第一階段建議用 [rclone 的原生 pCloud backend](https://rclone.org/pcloud/) 做單向 `copy`，在運算電腦上以瀏覽器完成一次 OAuth 授權；不要把 pCloud 密碼寫進服務。pCloud 帳號有 US/EU API endpoint，授權時取得的 hostname 必須保存。rclone 的 pCloud backend 支援雜湊：兩區都有 SHA-1，US 另有 MD5、EU 另有 SHA-256；上傳後應再以 `rclone check` 或 provider checksum 驗證。[pCloud API](https://docs.pcloud.com/) 本身也支援 OAuth、file IDs、上下載與 checksum，日後可用正式 adapter 取代外部命令。pCloud 目前的 OAuth access token 不會自動過期，因此 `rclone.conf` 必須視為長期密鑰、放在 Git 與 container image 之外並限制檔案權限。
 
@@ -146,7 +169,27 @@ data/uploads + local SQLite ── GPU/FFmpeg ── data/outputs, data/compilat
 - 不以 WebDAV 作主要大型影片管道。pCloud 雖提供 [WebDAV](https://help.pcloud.com/article/webdav)，但 OAuth/rclone 比保存帳號密碼更適合本系統，也能提供 provider-aware checksum 與 file ID。
 - 不把 pCloud 公開連結當網站影片 CDN；它可作備援匯入，但分享流量和權限是另一個限制面。
 
-正式整合前需要新增 `storage_objects`（或同等資料表），至少記錄 `provider`、`remote_file_id`、`remote_path`、size、hash、`sync_state`、`synced_at`、`verified_at` 與本機是否存在。只有在遠端已上傳、雜湊驗證通過且 SQLite 已提交遠端位置後，UI 才能提供「釋放本機空間」；需要播放、標記或重跑時再 hydrate 回本機。第一版先做 archive，不自動刪本機，風險最低。
+公開連結 Drive importer 目前沒有可比對的 Drive cryptographic checksum；它只確認下載成功、大小／空間限制並完整移入 upload store。正式 archive worker 要另外計算本機整檔 hash，再與 pCloud 兩個區域都支援的共同 hash 比對。
+
+正式整合前需要新增 `storage_objects`（或同等資料表），至少記錄 `media_kind`、owner type/ID、`local_path`、`provider`／region、`remote_file_id`、`remote_path`、byte size、local/provider hash algorithm/value、last error/attempt，以及 uploaded/verified/last-checked/last-accessed timestamps。Remote archive 與本機 availability 是兩個正交狀態，不能壓成一條線：
+
+```text
+archive_state = pending | queued | uploading | verifying | verified | failed
+local_state   = present | evicting | evicted | restoring | missing
+```
+
+`evicted` 表示使用者有意釋放而且能還原；`missing` 表示 DB 認為應在本機但檔案意外消失，必須顯示錯誤。上傳應先寫 remote staging name，驗證後再 finalize 成以 upload/clip/compilation ID 命名的 immutable path，最後才 commit `verified`。重啟時要 reconcile「remote 已完成但 DB 未提交」及「DB 說 verified、remote 卻被手動刪除」兩種 crash／drift。
+
+刪除規則必須由狀態機執行：
+
+1. Google Drive 原片只有在 pCloud `original` size/hash 驗證完成後，才顯示「現在可從 Drive 刪除」。公開連結模式沒有刪除 Drive 的權限，因此第一版由使用者手動刪。
+2. 桌機原片只有在 remote verified、DB remote record 已提交，而且按需 restore/hydrate 已可用時，才提供「釋放本機空間」。
+3. clips 與 compilations 同樣要先 remote verified；被播放器或 compilation worker 使用中時不能 eviction。清理順序先從 inactive 且未被 compilation 引用的舊 clip-set 開始，active clips 與 final compilations 最後處理。
+4. pCloud 上的影片刪除是另一個明確操作，不能因清 local cache 或使用 `rclone sync` 被連帶刪除。
+
+Archive job 應在影片檔已關閉且重型 media work 釋放後執行，避免一邊 FFmpeg 讀寫、一邊上傳同一檔案；分析失敗時原片仍可獨立歸檔。任何 pCloud 上傳或驗證失敗都只會成為 `archive_state=failed`、`local_state=present`，不影響本機成品，也不能觸發 Drive 或 local cleanup。
+
+目前程式仍假設所有 DB-referenced media 都在本機。因此在 `storage_objects`、remote media response 與 hydration 完成前，**不能現在就手動刪除 `data/uploads`、active clips 或 compilations**；否則播放器、人工標記和重跑都會失敗。第一版先做 archive 並保留本機，第二版完成 restore，第三版才開放安全 eviction。遠端-only 素材在 UI 應顯示「從 pCloud 取回」與進度，而不是一般 404；新 compilation 送出前也要 preflight 並 hydrate 所有缺少的 clips。播放器中的檔案還需要 lease/refcount 或保守 TTL，避免 Windows 上仍在 Range 播放時被刪除。
 
 pCloud 的 Lifetime 容量能改善長期成本，但仍是單一帳號／供應商，不等於完整備份。最重要的原片和 SQLite snapshot 最好另留第二份離線硬碟或未來主機副本。pCloud 的 Trash/Revisions/Rewind 也有方案相關的保留期間，不應被當作永久版本庫；參考官方 [File Recovery and History](https://help.pcloud.com/article/file-recovery-and-history)。
 

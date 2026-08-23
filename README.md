@@ -30,9 +30,17 @@ Docker 會把主機的 `./data` bind mount 到容器的 `/data`，因此重建 i
 
 ### 長期改用 pCloud？
 
-可以串，而且推薦把它定位成「長期 archive／手機 inbox」，本機只做 GPU 運算與保留近期 hot cache。不要把正在使用的 SQLite 或 FFmpeg 工作目錄直接放在 pCloud Drive/WebDAV mount：雲端 mount 的鎖定、seek、延遲寫回與斷線語意都不適合 live database 和長影片處理。
+可以串，而且目標流程改成：
 
-最小可行版本會在電腦用 [rclone pCloud backend](https://rclone.org/pcloud/) 完成一次 OAuth 授權，將驗證完成的原片、分析結果、素材、集錦與 SQLite snapshot 單向 `copy` 到專用 `/HighlightCraft/`；之後再加 pCloud `inbox/` 匯入與按需下載。遠端 size/hash 驗證成功且 SQLite 記錄已提交前，不會自動刪本機檔案。這項整合目前是已記錄的下一階段設計，尚未在本版執行；詳見 [pCloud 長期保存方案](docs/storage.md#pcloud-長期保存方案規劃中尚未實作)。
+```text
+Pixel 手機 → Google Drive 送件箱 → 桌機本地處理/cache → pCloud 影片 archive
+```
+
+Google Drive 保留目前已經順手的手機入口；pCloud 負責長期保存原片、逐球影片和最後集錦。桌機仍在本機跑 FFmpeg/GPU，完成遠端 checksum 驗證後，未來才由系統提供「釋放本機空間」。SQLite live database 留本機即可，但它保存標記、active 版本與遠端檔案關聯，會另外產生很小的定期 snapshot。
+
+[pCloud Android App](https://help.pcloud.com/article/uploading-downloading-organizing) 本身也支援手動、Android 分享選單與 Automatic Upload，所以可保留成備援入口；目前不需要為此放棄既有 Google Drive 匯入流程。不要把正在使用的 SQLite 或 FFmpeg 工作目錄直接放在 pCloud Drive/WebDAV mount：雲端 mount 的鎖定、seek、延遲寫回與斷線語意都不適合 live database 和長影片處理。
+
+最小可行版本會在電腦用 [rclone pCloud backend](https://rclone.org/pcloud/) 完成一次 OAuth 授權，將驗證完成的影片單向 `copy` 到專用 `/HighlightCraft/`。在 pCloud 原片已驗證前，不會提示刪除 Google Drive；在 remote record、size/hash 與按需還原能力完成前，也不會自動刪本機檔案。這項整合目前仍是下一階段設計，尚未在本版執行；現在手動刪除 `data/` 裡的影片仍會讓播放或重跑失敗。詳見 [pCloud 長期保存方案](docs/storage.md#pcloud-長期保存方案規劃中尚未實作)。
 
 ## 快速選擇啟動方式
 
