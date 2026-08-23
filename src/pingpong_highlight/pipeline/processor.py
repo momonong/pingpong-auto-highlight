@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,7 @@ class HighlightProcessor:
             audio,
             motion,
             DetectionConfig(
+                minimum_point_score_ratio=self.settings.minimum_point_score_ratio,
                 max_points=self.settings.max_points,
                 target_reel_duration=self.settings.reel_target_seconds,
                 pre_roll=self.settings.clip_pre_roll_seconds,
@@ -66,6 +68,18 @@ class HighlightProcessor:
             ),
         )
         points = detection.points
+        counted_decisions = Counter(
+            candidate.selection for candidate in detection.candidates
+        )
+        selection_counts = {
+            decision: counted_decisions[decision]
+            for decision in (
+                "selected",
+                "below-score-threshold",
+                "duration-budget",
+                "point-cap",
+            )
+        }
 
         files: list[dict[str, str]] = []
         clip_paths: list[Path] = []
@@ -96,16 +110,30 @@ class HighlightProcessor:
                 reel_duration = reel_media.duration
 
         result: dict[str, Any] = {
-            "algorithm_version": "point-reel-v4",
+            "algorithm_version": "point-reel-v5",
             "source_name": source_name,
             "media": media.to_dict() | {"path": source_name},
             "summary": {
                 "point_count": len(points),
                 "candidate_point_count": len(detection.candidates),
+                "eligible_candidate_count": (
+                    len(detection.candidates)
+                    - selection_counts["below-score-threshold"]
+                ),
                 "impact_count": len(audio.events),
                 "motion_sample_count": int(motion.scores.size),
                 "reel_duration": round(reel_duration, 3) if reel_duration is not None else None,
-                "used_motion_only_fallback": any(point.impact_count == 0 for point in points),
+                "used_motion_only_fallback": any(
+                    candidate.impact_count == 0 for candidate in detection.candidates
+                ),
+            },
+            "selection": {
+                "policy": "relative-score-threshold",
+                "minimum_point_score_ratio": self.settings.minimum_point_score_ratio,
+                "effective_score_threshold": detection.effective_score_threshold,
+                "maximum_reel_seconds": self.settings.reel_target_seconds,
+                "maximum_points": self.settings.max_points,
+                "decision_counts": selection_counts,
             },
             "editing": {
                 "unit": "scored-point",
@@ -120,6 +148,7 @@ class HighlightProcessor:
                 "target_reel_seconds": self.settings.reel_target_seconds,
                 "final_point_fades_out": False,
             },
+            "candidates": [candidate.to_dict() for candidate in detection.candidates],
             "points": [point.to_dict() for point in points],
             "warnings": warnings,
             "files": [*files, {"name": "analysis.json", "kind": "analysis"}],

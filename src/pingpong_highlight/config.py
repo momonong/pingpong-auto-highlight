@@ -16,6 +16,18 @@ def _env_float(name: str, default: float) -> float:
     return float(value) if value is not None else default
 
 
+def _env_optional_positive_int(name: str, fallback_name: str | None = None) -> int | None:
+    value = os.getenv(name)
+    if (value is None or not value.strip()) and fallback_name is not None:
+        value = os.getenv(fallback_name)
+    if value is None or not value.strip():
+        return None
+    parsed = int(value)
+    if parsed < 0:
+        raise ValueError(f"{name} must be zero or a positive integer")
+    return parsed or None
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     data_dir: Path
@@ -29,11 +41,22 @@ class Settings:
     video_sample_fps: float = 8.0
     analysis_frame_size: int = 320
     audio_sample_rate: int = 16_000
-    max_points: int = 6
+    minimum_point_score_ratio: float = 0.87
+    max_points: int | None = None
     reel_target_seconds: float = 55.0
     clip_pre_roll_seconds: float = 1.5
     clip_post_roll_seconds: float = 1.5
     worker_count: int = 1
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.minimum_point_score_ratio <= 1.0:
+            raise ValueError("minimum_point_score_ratio must be between 0 and 1")
+        if self.max_points is not None and self.max_points < 0:
+            raise ValueError("max_points must be zero, positive, or None")
+        if self.max_points == 0:
+            object.__setattr__(self, "max_points", None)
+        if self.reel_target_seconds <= 0:
+            raise ValueError("reel_target_seconds must be positive")
 
     @property
     def uploads_dir(self) -> Path:
@@ -95,9 +118,13 @@ class Settings:
             video_sample_fps=_env_float("PINGPONG_VIDEO_SAMPLE_FPS", 8.0),
             analysis_frame_size=_env_int("PINGPONG_ANALYSIS_FRAME_SIZE", 320),
             audio_sample_rate=_env_int("PINGPONG_AUDIO_SAMPLE_RATE", 16_000),
-            max_points=_env_int(
+            minimum_point_score_ratio=_env_float(
+                "PINGPONG_MIN_POINT_SCORE_RATIO",
+                0.87,
+            ),
+            max_points=_env_optional_positive_int(
                 "PINGPONG_MAX_POINTS",
-                _env_int("PINGPONG_MAX_HIGHLIGHTS", 6),
+                "PINGPONG_MAX_HIGHLIGHTS",
             ),
             reel_target_seconds=_env_float("PINGPONG_REEL_TARGET_SECONDS", 55.0),
             clip_pre_roll_seconds=_env_float("PINGPONG_CLIP_PRE_ROLL_SECONDS", 1.5),

@@ -51,7 +51,9 @@ Docker 預設掛入 NVIDIA 的 `compute,utility,video` capabilities。NVDEC runt
 
 相鄰 impact events 依合理回球間隔組成 point candidate；impact count、tempo、節奏一致性、span 與局部 motion 共同形成 ranking score。沒有可靠 audio candidate 時才使用 motion-only fallback。
 
-point candidate 不會再彼此合併。相鄰兩分的 padding 若重疊，兩者會平分中間的安靜區域，避免下一次發球或上一分反應同時出現在兩個片段。排名後使用「最多分數 + Reel 目標秒數」雙重預算選片，再依原片時間排序播放。
+point candidate 不會再彼此合併。系統先以同片最佳分數為基準套用相對門檻，再依分數由高到低放入 Reel 秒數預算；預設不設固定球數，也不會為了湊數回填。`max_points` 只保留為選用的安全上限。相鄰的已入選得分若 padding 重疊，兩者會平分中間的安靜區域，避免下一次發球或上一分反應同時出現在兩個片段；被門檻或預算淘汰的候選不會縮短入選片段的前後脈絡。最後依原片時間排序播放，rank 仍表示精彩度順序。FFmpeg 會把片段邊界對齊 frame／audio packet，因此成品 probe 長度可能和理論預算有極小差異。
+
+目前相對門檻是 heuristic retention rule，不是校準過的精彩機率。`analysis.json` 會保存所有候選的核心區間、分數、有效門檻，以及 `selected`、`below-score-threshold`、`duration-budget`、`point-cap` 決策，供後續以完整正／負標記校準。
 
 ### Export
 
