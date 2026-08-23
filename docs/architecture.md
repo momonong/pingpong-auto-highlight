@@ -90,7 +90,7 @@ flowchart LR
 
 第一階段已新增 `archive.py`、additive `storage_objects` table、固定版本的 rclone pCloud backend、OAuth setup scripts 與 `pcloud doctor/bootstrap/plan/archive/status/verify` CLI。遠端名稱由 canonical builder 產生，先以 `copyto --ignore-existing` 進 `_staging`，核對 size/SHA-1 後，用 pCloud `copyfile noover=1` 在 provider 端拒絕同名覆寫；影片與 deterministic manifest 都再次驗證後才標成 `verified`，最後只刪除 hash 相同的 staging object。這是應用層 no-overwrite contract，不會阻止使用者之後從其他 pCloud client 手動改檔，因此 `pcloud verify` 可重新檢查 drift。既有資料只會被 `plan` 發現，使用者明確加上 `archive --execute` 才登記與傳輸，避免服務重啟時突然送出十多 GiB。
 
-目前沒有常駐 archive worker，CLI 也不拿 GPU media lock；操作者要先確認 media work idle，再分批傳輸。下一小步是把相同 backend 接到單 worker queue 與 UI 狀態，之後加入 on-demand hydration，最後才開放 local eviction。`rclone.conf`／OAuth token 位於 Git 與 Docker build context 之外的 `secrets/rclone/`，只讀掛載到沒有 port、手動啟動的 `pcloud-admin` container；常駐網站服務不持有它，而且它不是一般媒體備份的一部分。
+目前沒有常駐 archive worker，CLI 也不拿 GPU media lock；操作者要先確認 media work idle，再分批傳輸。網站已能從本機 SQLite catalog 顯示與篩選 archive 狀態，但不持有 credential、也不直接列 pCloud 目錄。下一小步是把相同 backend 接到單 worker queue，之後加入 on-demand hydration，最後才開放 local eviction。`rclone.conf`／OAuth token 位於 Git 與 Docker build context 之外的 `secrets/rclone/`，只讀掛載到沒有 port、手動啟動的 `pcloud-admin` container；常駐網站服務不持有它，而且它不是一般媒體備份的一部分。
 
 Google Drive 是暫存 handoff，不是第二個永久 archive。公開連結 importer 沒有刪除使用者 Drive 檔案的權限；pCloud 原片驗證成功後，UI 只能提示使用者可以手動刪除。桌機本機檔案則必須等 remote verified、hydration 可用且沒有 worker／播放器正在使用時，才由系統狀態機安全 eviction。
 
@@ -127,7 +127,7 @@ point candidate 不會再彼此合併。系統以同片最佳分數為基準，�
 
 ### Media delivery and trust boundary
 
-原片、逐球素材、舊 job 輸出與 compilation 都由受 upload token 保護的 API 提供。API 不接受任意磁碟路徑，而是先從 SQLite 取得相對路徑，再確認解析後仍位於該 job 或 compilation 的允許目錄內。影片端點支援單一 byte range、`206 Partial Content`、`ETag`、`Last-Modified` 與 `If-Range`；瀏覽器拖曳時可只讀需要的範圍，`download=true` 才切換成附件下載。
+原片、逐球素材、舊 job 輸出與 compilation 都由受 upload token 保護的 API 提供。API 不接受任意磁碟路徑，而是先從 SQLite 取得相對路徑，再確認解析後仍位於該 job 或 compilation 的允許目錄內。影片端點支援單一 byte range、`206 Partial Content`、`ETag`、`Last-Modified` 與 `If-Range`；瀏覽器拖曳時可只讀需要的範圍，`download=true` 才切換成附件下載。若 clip 只剩經驗證的 pCloud 副本，清單仍會回傳安全的 archive 狀態，但不提供 `media_url`；播放與 compilation 在 hydration 完成前會明確拒絕，不會回傳遠端路徑、provider error 或 credential。
 
 目前 token 是單一使用者 bearer secret，適合這個 local-first side project，不等於多使用者授權模型。`data/.upload-token`、帶 token 的 local/remote URL 與 ngrok authtoken 都不能公開。公開部署時還需要 TLS、使用者身分、每個資源的 authorization、rate limiting 與反向代理／object storage 的媒體配送策略。
 

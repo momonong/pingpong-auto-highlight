@@ -29,6 +29,8 @@ const elements = {
   highlightLibrarySourceFilter: document.querySelector("#highlightLibrarySourceFilter"),
   highlightLibrarySourceSummary: document.querySelector("#highlightLibrarySourceSummary"),
   highlightLibrarySourceOptions: document.querySelector("#highlightLibrarySourceOptions"),
+  highlightLibraryLifecycle: document.querySelector("#highlightLibraryLifecycle"),
+  highlightLibraryStorage: document.querySelector("#highlightLibraryStorage"),
   highlightLibraryAfter: document.querySelector("#highlightLibraryAfter"),
   highlightLibraryMinimum: document.querySelector("#highlightLibraryMinimum"),
   highlightLibrarySort: document.querySelector("#highlightLibrarySort"),
@@ -130,6 +132,7 @@ const annotationNoteMaxLength = 300;
 
 const uploadActiveWindowMs = 60 * 1000;
 const desktopLibraryMedia = window.matchMedia("(min-width: 901px)");
+const archiveInProgressStates = new Set(["pending", "queued", "uploading", "verifying"]);
 
 function accessTokenFrom(value) {
   const input = String(value || "").trim();
@@ -551,14 +554,130 @@ function localDateKey(value) {
   return `${year}-${month}-${day}`;
 }
 
+function highlightArchiveState(highlight) {
+  const state = String(highlight.storage?.archive_state || "").trim().toLowerCase();
+  return state || "unregistered";
+}
+
+function highlightAvailability(highlight) {
+  const availability = String(highlight.availability || "").trim().toLowerCase();
+  if (["local", "remote_only", "unavailable"].includes(availability)) {
+    return availability;
+  }
+  if (highlight.media_url) return "local";
+  if (highlight.storage?.remote_verified) return "remote_only";
+  return "unavailable";
+}
+
+function highlightIsPlayable(highlight) {
+  if (highlightAvailability(highlight) !== "local") return false;
+  if (typeof highlight.playable === "boolean") return highlight.playable;
+  return Boolean(highlight.media_url);
+}
+
+function highlightIsCompilable(highlight) {
+  if (highlightAvailability(highlight) !== "local") return false;
+  if (typeof highlight.compilable === "boolean") return highlight.compilable;
+  return Boolean(highlight.media_url);
+}
+
+function highlightMatchesStorageFilter(highlight, filter) {
+  if (filter === "all") return true;
+  const availability = highlightAvailability(highlight);
+  const archiveState = highlightArchiveState(highlight);
+  if (["local", "remote_only", "unavailable"].includes(filter)) {
+    return availability === filter;
+  }
+  if (filter === "in_progress") return archiveInProgressStates.has(archiveState);
+  return archiveState === filter;
+}
+
+function highlightStorageStatus(highlight) {
+  const availability = highlightAvailability(highlight);
+  const archiveState = highlightArchiveState(highlight);
+  const progressLabels = {
+    pending: "等待封存",
+    queued: "等待上傳",
+    uploading: "pCloud 上傳中",
+    verifying: "pCloud 驗證中",
+  };
+
+  if (availability === "remote_only") {
+    return {
+      label: "僅 pCloud · 需取回",
+      className: "remote",
+      title: "pCloud 封存已驗證，但本機檔案不存在；取回後才能預覽或建立集錦。",
+    };
+  }
+
+  if (availability === "unavailable") {
+    if (archiveInProgressStates.has(archiveState)) {
+      return {
+        label: `${progressLabels[archiveState]} · 無本機檔`,
+        className: "progress",
+        title: "封存尚未完成，而且本機檔案目前不存在。",
+      };
+    }
+    if (archiveState === "failed") {
+      return {
+        label: "封存失敗 · 無本機檔",
+        className: "failed",
+        title: "pCloud 封存失敗，而且本機檔案目前不存在。",
+      };
+    }
+    return {
+      label: archiveState === "verified" ? "pCloud 已驗證 · 目前不可用" : "檔案不可用",
+      className: "unavailable",
+      title: "目前沒有可供預覽或建立集錦的本機檔案。",
+    };
+  }
+
+  if (archiveState === "verified") {
+    return {
+      label: "本機 + pCloud",
+      className: "verified",
+      title: "本機可直接使用，pCloud 封存也已完成驗證。",
+    };
+  }
+  if (archiveInProgressStates.has(archiveState)) {
+    return {
+      label: `本機 · ${progressLabels[archiveState]}`,
+      className: "progress",
+      title: "本機檔案可直接使用；pCloud 封存正在處理。",
+    };
+  }
+  if (archiveState === "failed") {
+    return {
+      label: "本機 · 封存失敗",
+      className: "failed",
+      title: "本機檔案仍可使用，但上一次 pCloud 封存失敗。",
+    };
+  }
+  return {
+    label: "僅本機",
+    className: "local",
+    title: "本機檔案可直接使用，尚未完成 pCloud 封存。",
+  };
+}
+
 function filteredLibraryHighlights() {
   const query = elements.highlightLibrarySearch.value.trim().toLocaleLowerCase("zh-TW");
+  const lifecycle = elements.highlightLibraryLifecycle.value;
+  const storageFilter = elements.highlightLibraryStorage.value;
   const after = elements.highlightLibraryAfter.value;
   const minimum = Number(elements.highlightLibraryMinimum.value) || 0;
   const filtered = libraryHighlights.filter((highlight) => {
-    if (query && !String(highlight.source_name).toLocaleLowerCase("zh-TW").includes(query)) {
+    const searchText = [highlight.source_name, highlight.job_id, highlight.id]
+      .map((value) => String(value || ""))
+      .join(" ")
+      .toLocaleLowerCase("zh-TW");
+    if (query && !searchText.includes(query)) {
       return false;
     }
+    const active = highlight.active !== false;
+    if (lifecycle === "active" && !active) return false;
+    if (lifecycle === "inactive" && active) return false;
+    if (!highlightMatchesStorageFilter(highlight, storageFilter)) return false;
     if (selectedLibrarySourceIds.size && !selectedLibrarySourceIds.has(highlight.job_id)) {
       return false;
     }
@@ -588,7 +707,9 @@ function filteredLibraryHighlights() {
 
 function selectedHighlights() {
   const byId = new Map(libraryHighlights.map((highlight) => [highlight.id, highlight]));
-  return selectedHighlightIds.map((id) => byId.get(id)).filter(Boolean);
+  return selectedHighlightIds
+    .map((id) => byId.get(id))
+    .filter((highlight) => highlight && highlightIsCompilable(highlight));
 }
 
 function showCompilationMessage(message, isError = false) {
@@ -630,6 +751,26 @@ function renderCompilationSelection() {
     .join("");
 }
 
+function indexedLibrarySources(serverSources, highlights) {
+  const sources = new Map(
+    (serverSources || []).map((source) => [String(source.job_id), source]),
+  );
+  for (const highlight of highlights) {
+    const jobId = String(highlight.job_id || "");
+    if (!jobId || sources.has(jobId)) continue;
+    sources.set(jobId, {
+      job_id: jobId,
+      name: highlight.source_name || jobId,
+      source_date: highlight.source_date,
+    });
+  }
+  return [...sources.values()].sort(
+    (left, right) =>
+      Date.parse(right.source_date) - Date.parse(left.source_date) ||
+      String(left.name).localeCompare(String(right.name), "zh-TW"),
+  );
+}
+
 function renderHighlightSourceOptions() {
   const availableIds = new Set(librarySources.map((source) => source.job_id));
   selectedLibrarySourceIds = new Set(
@@ -646,19 +787,24 @@ function renderHighlightSourceOptions() {
 }
 
 function renderHighlightLibrary() {
-  const availableIds = new Set(libraryHighlights.map((highlight) => highlight.id));
+  const availableIds = new Set(
+    libraryHighlights.filter(highlightIsCompilable).map((highlight) => highlight.id),
+  );
   selectedHighlightIds = selectedHighlightIds.filter((id) => availableIds.has(id));
   const visible = filteredLibraryHighlights();
   const selectedIds = new Set(selectedHighlightIds);
+  const compilableVisible = visible.filter(highlightIsCompilable).length;
   elements.highlightLibraryTotal.textContent = String(libraryHighlights.length);
-  elements.highlightLibraryVisible.textContent = `${visible.length} 個結果`;
+  elements.highlightLibraryVisible.textContent = `顯示 ${visible.length} / ${libraryHighlights.length} 個 · ${compilableVisible} 個可剪輯`;
+  elements.highlightLibraryTopSix.disabled = compilableVisible === 0;
+  elements.highlightLibraryEachTopSix.disabled = compilableVisible === 0;
   elements.highlightLibraryEmpty.hidden = visible.length > 0;
   if (!visible.length) {
     const emptyTitle = elements.highlightLibraryEmpty.querySelector("b");
     const emptyDetail = elements.highlightLibraryEmpty.querySelector("span");
     if (libraryHighlights.length) {
       emptyTitle.textContent = "沒有符合目前篩選的素材";
-      emptyDetail.textContent = "放寬來源、日期或相對分數條件，就能再次顯示既有片段。";
+      emptyDetail.textContent = "放寬版本、來源、日期、封存狀態或相對分數條件，就能再次顯示既有片段。";
     } else {
       emptyTitle.textContent = "素材庫目前是空的";
       emptyDetail.textContent = "新影片完成分析後，所有達門檻的精彩球會各自存進來。";
@@ -668,15 +814,28 @@ function renderHighlightLibrary() {
     .map((highlight) => {
       const selected = selectedIds.has(highlight.id);
       const relativePercent = Math.round(highlight.relative_score * 100);
-      return `<article class="highlight-card${selected ? " selected" : ""}" data-highlight-id="${escapeHtml(highlight.id)}">
+      const playable = highlightIsPlayable(highlight);
+      const compilable = highlightIsCompilable(highlight);
+      const storageStatus = highlightStorageStatus(highlight);
+      const inactive = highlight.active === false;
+      const remoteOnly = highlightAvailability(highlight) === "remote_only";
+      const unavailableHint = remoteOnly
+        ? "需先從 pCloud 取回本機"
+        : "目前沒有可用的本機檔案";
+      const unavailableAction = remoteOnly ? "取回後可加入" : "目前不可加入";
+      return `<article class="highlight-card${selected ? " selected" : ""}${inactive ? " inactive" : ""}${compilable ? "" : " unavailable"}" data-highlight-id="${escapeHtml(highlight.id)}">
         <div class="highlight-card-top">
           <div class="highlight-card-score"><b>${relativePercent}</b><small>REL / 100</small></div>
           <div class="highlight-card-source"><b title="${escapeHtml(highlight.source_name)}">${escapeHtml(highlight.source_name)}</b><span>${formatLibraryDate(highlight.source_date)} · 來源排名 #${highlight.source_rank}${highlight.recommended ? " · 推薦" : ""}</span></div>
         </div>
+        <div class="highlight-card-state">
+          <span class="highlight-storage-badge ${escapeHtml(storageStatus.className)}" title="${escapeHtml(storageStatus.title)}">${escapeHtml(storageStatus.label)}</span>
+          ${inactive ? '<span class="highlight-lifecycle-badge">歷史版本</span>' : ""}
+        </div>
         <div class="highlight-card-meta"><span>原片 ${formatTimestamp(highlight.start)}</span><span>${highlight.duration.toFixed(1)} 秒</span></div>
         <div class="highlight-card-actions">
-          <label class="highlight-card-select"><input type="checkbox" data-library-select${selected ? " checked" : ""} /> 加入集錦</label>
-          <button type="button" data-highlight-preview>預覽</button>
+          <label class="highlight-card-select${compilable ? "" : " disabled"}"${compilable ? "" : ` title="${escapeHtml(unavailableHint)}"`}><input type="checkbox" data-library-select${selected ? " checked" : ""}${compilable ? "" : " disabled"} /> ${compilable ? "加入集錦" : unavailableAction}</label>
+          <button type="button" data-highlight-preview${playable && highlight.media_url ? "" : ` disabled title="${escapeHtml(unavailableHint)}"`}>${playable && highlight.media_url ? "預覽" : "無法預覽"}</button>
         </div>
       </article>`;
     })
@@ -781,7 +940,7 @@ function renderCompilations() {
 function addHighlightsToSelection(highlights) {
   const selected = new Set(selectedHighlightIds);
   for (const highlight of highlights) {
-    if (!selected.has(highlight.id)) {
+    if (highlightIsCompilable(highlight) && !selected.has(highlight.id)) {
       selected.add(highlight.id);
       selectedHighlightIds.push(highlight.id);
     }
@@ -791,7 +950,7 @@ function addHighlightsToSelection(highlights) {
 
 function openHighlightPreview(highlightId, returnFocus = null) {
   const highlight = libraryHighlights.find((item) => item.id === highlightId);
-  if (!highlight) return;
+  if (!highlight || !highlightIsPlayable(highlight) || !highlight.media_url) return;
   elements.highlightPreviewTitle.textContent = `來源排名 #${highlight.source_rank}`;
   elements.highlightPreviewMeta.textContent = `${highlight.source_name} · ${formatTimestamp(highlight.start)} · 相對分數 ${Math.round(highlight.relative_score * 100)}`;
   elements.highlightPreviewVideo.src = fileAccessUrl(highlight.media_url);
@@ -1469,7 +1628,7 @@ async function loadLibraryActivity() {
   libraryActivityLoading = true;
   try {
     const [highlightsResponse, compilationsResponse] = await Promise.all([
-      apiFetch("/api/highlights"),
+      apiFetch("/api/highlights?lifecycle=all"),
       apiFetch("/api/compilations"),
     ]);
     const [highlightsPayload, compilationsPayload] = await Promise.all([
@@ -1480,7 +1639,7 @@ async function loadLibraryActivity() {
     if (librarySignature !== lastLibrarySignature) {
       lastLibrarySignature = librarySignature;
       libraryHighlights = highlightsPayload.highlights || [];
-      librarySources = highlightsPayload.sources || [];
+      librarySources = indexedLibrarySources(highlightsPayload.sources, libraryHighlights);
       renderHighlightSourceOptions();
       renderHighlightLibrary();
     }
@@ -1593,6 +1752,8 @@ elements.jobList.addEventListener(
 );
 for (const control of [
   elements.highlightLibrarySearch,
+  elements.highlightLibraryLifecycle,
+  elements.highlightLibraryStorage,
   elements.highlightLibraryAfter,
   elements.highlightLibraryMinimum,
   elements.highlightLibrarySort,
@@ -1600,11 +1761,14 @@ for (const control of [
   control.addEventListener(control.tagName === "INPUT" ? "input" : "change", renderHighlightLibrary);
 }
 elements.highlightLibraryTopSix.addEventListener("click", () => {
-  addHighlightsToSelection(filteredLibraryHighlights().slice(0, 6));
+  addHighlightsToSelection(
+    filteredLibraryHighlights().filter(highlightIsCompilable).slice(0, 6),
+  );
 });
 elements.highlightLibraryEachTopSix.addEventListener("click", () => {
   const grouped = new Map();
   for (const highlight of filteredLibraryHighlights()) {
+    if (!highlightIsCompilable(highlight)) continue;
     if (!grouped.has(highlight.job_id)) grouped.set(highlight.job_id, []);
     grouped.get(highlight.job_id).push(highlight);
   }
@@ -1618,6 +1782,8 @@ elements.highlightLibraryClearFilters.addEventListener("click", () => {
   elements.highlightLibrarySearch.value = "";
   selectedLibrarySourceIds = new Set();
   renderHighlightSourceOptions();
+  elements.highlightLibraryLifecycle.value = "active";
+  elements.highlightLibraryStorage.value = "all";
   elements.highlightLibraryAfter.value = "";
   elements.highlightLibraryMinimum.value = "0";
   elements.highlightLibrarySort.value = "quality";
@@ -1642,6 +1808,13 @@ elements.highlightLibraryGrid.addEventListener("change", (event) => {
   const card = checkbox.closest("[data-highlight-id]");
   const highlightId = card?.dataset.highlightId;
   if (!highlightId) return;
+  const highlight = libraryHighlights.find((item) => item.id === highlightId);
+  if (!highlight || !highlightIsCompilable(highlight)) {
+    checkbox.checked = false;
+    selectedHighlightIds = selectedHighlightIds.filter((id) => id !== highlightId);
+    renderHighlightLibrary();
+    return;
+  }
   if (checkbox.checked && !selectedHighlightIds.includes(highlightId)) {
     selectedHighlightIds.push(highlightId);
   } else if (!checkbox.checked) {

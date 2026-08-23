@@ -10,6 +10,8 @@ The first additive pCloud phase is implemented without changing local playback o
 - every transfer uses a unique staging path, local SHA-1/SHA-256, pCloud `copyfile noover=1`, remote size/SHA-1 verification, and crash reconciliation before SQLite marks the object verified;
 - the first transfer attempt freezes content/manifest checksums, while catalog preflight rejects account, backend-root, or archive-root drift before another object is registered;
 - `storage_objects` records independent local/archive state, remote alias/region/account/root/file ID/path, checksums, attempts, and errors;
+- the desktop library loads active and inactive indexed clips, then filters lifecycle, local availability, and archive state without exposing remote paths or credentials;
+- remote-only clips remain discoverable but cannot be previewed or compiled until hydration exists, and staging cleanup is idempotent when pCloud has already removed an object;
 - the long-lived OAuth config is absent from the web container and mounted only into the operator-run `pcloud-admin` container;
 - this phase does not delete Drive or local files and does not yet provide background upload, hydration, eviction, or database snapshots.
 

@@ -492,3 +492,51 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         jobs = client.get("/api/jobs", headers={"X-Upload-Token": "test-secret"})
         assert jobs.status_code == 200
         assert jobs.headers["cache-control"] == "private, no-store"
+
+
+def test_highlight_library_static_ui_is_archive_aware(tmp_path: Path) -> None:
+    app = create_app(_settings(tmp_path), processor=FakeProcessor(b"x"))
+    with TestClient(app) as client:
+        index = client.get("/")
+        app_js = client.get("/static/app.js")
+        styles = client.get("/static/styles.css")
+
+    assert index.status_code == 200
+    assert 'id="highlightLibraryLifecycle"' in index.text
+    assert '<option value="active">目前版本</option>' in index.text
+    assert '<option value="inactive">歷史版本</option>' in index.text
+    assert '<option value="all">全部版本</option>' in index.text
+    assert 'id="highlightLibraryStorage"' in index.text
+    for value in (
+        "local",
+        "remote_only",
+        "unavailable",
+        "unregistered",
+        "in_progress",
+        "verified",
+        "failed",
+    ):
+        assert f'<option value="{value}">' in index.text
+    assert "個已索引片段" in index.text
+
+    assert app_js.status_code == 200
+    assert 'apiFetch("/api/highlights?lifecycle=all")' in app_js.text
+    assert "function highlightMatchesStorageFilter(highlight, filter)" in app_js.text
+    assert "function highlightStorageStatus(highlight)" in app_js.text
+    assert "function highlightIsPlayable(highlight)" in app_js.text
+    assert "function highlightIsCompilable(highlight)" in app_js.text
+    assert "libraryHighlights.filter(highlightIsCompilable)" in app_js.text
+    assert 'elements.highlightLibraryLifecycle.value = "active";' in app_js.text
+    assert 'elements.highlightLibraryStorage.value = "all";' in app_js.text
+    assert 'data-library-select${selected ? " checked" : ""}${compilable' in app_js.text
+    assert "data-highlight-preview${playable && highlight.media_url" in app_js.text
+    assert "顯示 ${visible.length} / ${libraryHighlights.length} 個" in app_js.text
+
+    assert styles.status_code == 200
+    assert ".highlight-storage-badge.remote" in styles.text
+    assert ".highlight-storage-badge.progress" in styles.text
+    assert ".highlight-storage-badge.failed" in styles.text
+    assert ".highlight-card-select.disabled" in styles.text
+    mobile_styles = styles.text.split("@media (max-width: 900px)", maxsplit=1)[1]
+    assert ".highlight-library-block" in mobile_styles[:500]
+    assert "display: none;" in mobile_styles[:500]

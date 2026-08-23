@@ -28,6 +28,7 @@ from pingpong_highlight.db import (
     HighlightClipRecord,
     JobRecord,
     StateConflict,
+    StorageObjectRecord,
     UploadRecord,
 )
 from pingpong_highlight.drive import (
@@ -246,7 +247,31 @@ def _annotation_payload(record: AnnotationRecord) -> dict[str, Any]:
     }
 
 
-def _highlight_payload(record: HighlightClipRecord) -> dict[str, Any]:
+def _highlight_media_path(
+    settings: Settings,
+    record: HighlightClipRecord,
+) -> Path | None:
+    job_dir = (settings.outputs_dir / record.job_id).resolve()
+    path = (job_dir / record.clip_filename).resolve()
+    if not path.is_relative_to(job_dir) or not path.is_file():
+        return None
+    return path
+
+
+def _highlight_payload(
+    record: HighlightClipRecord,
+    *,
+    settings: Settings,
+    storage: StorageObjectRecord | None,
+) -> dict[str, Any]:
+    local_path = _highlight_media_path(settings, record)
+    remote_verified = storage is not None and storage.archive_state == "verified"
+    if local_path is not None:
+        availability = "local"
+    elif remote_verified:
+        availability = "remote_only"
+    else:
+        availability = "unavailable"
     return {
         "id": record.id,
         "job_id": record.job_id,
@@ -265,7 +290,22 @@ def _highlight_payload(record: HighlightClipRecord) -> dict[str, Any]:
         "source_rank": record.source_rank,
         "reason": record.reason,
         "library_version": record.library_version,
-        "media_url": f"/api/highlights/{record.id}/media",
+        "active": record.active,
+        "availability": availability,
+        "playable": local_path is not None,
+        "compilable": local_path is not None,
+        "media_url": (
+            f"/api/highlights/{record.id}/media" if local_path is not None else None
+        ),
+        "storage": {
+            "provider": "pcloud",
+            "cataloged": storage is not None,
+            "archive_state": storage.archive_state if storage else "unregistered",
+            "local_state": storage.local_state if storage else None,
+            "remote_verified": remote_verified,
+            "verified_at": storage.verified_at if storage else None,
+            "last_checked_at": storage.last_checked_at if storage else None,
+        },
         "created_at": record.created_at,
         "updated_at": record.updated_at,
     }
@@ -621,8 +661,15 @@ def create_app(
         return Response(status_code=204)
 
     @app.get("/api/highlights", dependencies=[Depends(authorize)])
-    async def list_highlights() -> dict[str, Any]:
-        highlights = database.list_highlight_clips()
+    async def list_highlights(
+        lifecycle: Literal["active", "inactive", "all"] = "active",
+    ) -> dict[str, Any]:
+        active = {"active": True, "inactive": False, "all": None}[lifecycle]
+        highlights = database.list_highlight_clips(active=active)
+        storage_by_highlight = {
+            record.owner_id: record
+            for record in database.list_highlight_storage_objects()
+        }
         sources: dict[str, dict[str, Any]] = {}
         for highlight in highlights:
             sources.setdefault(
@@ -638,7 +685,11 @@ def create_app(
             )
         return {
             "highlights": [
-                _highlight_payload(record)
+                _highlight_payload(
+                    record,
+                    settings=settings,
+                    storage=storage_by_highlight.get(record.id),
+                )
                 | {
                     "recommended": (
                         record.relative_score >= settings.minimum_point_score_ratio
@@ -661,9 +712,17 @@ def create_app(
         highlight = database.get_highlight_clip(highlight_id)
         if highlight is None:
             raise HTTPException(status_code=404, detail="Highlight not found")
-        job_dir = (settings.outputs_dir / highlight.job_id).resolve()
-        path = (job_dir / highlight.clip_filename).resolve()
-        if not path.is_relative_to(job_dir) or not path.is_file():
+        path = _highlight_media_path(settings, highlight)
+        if path is None:
+            storage = database.get_highlight_storage_object(highlight.id)
+            if storage is not None and storage.archive_state == "verified":
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Highlight is archived in pCloud and must be restored "
+                        "before playback"
+                    ),
+                )
             raise HTTPException(status_code=404, detail="Highlight file not found")
         return MediaFileResponse(path, request, media_type="video/mp4")
 
@@ -697,6 +756,22 @@ def create_app(
     )
     async def create_compilation(payload: CompilationRequest) -> dict[str, Any]:
         name = payload.name.strip() or f"精彩球集錦 · {len(payload.highlight_ids)} 球"
+        unavailable = [
+            highlight_id
+            for highlight_id in dict.fromkeys(payload.highlight_ids)
+            if (
+                (highlight := database.get_highlight_clip(highlight_id)) is not None
+                and _highlight_media_path(settings, highlight) is None
+            )
+        ]
+        if unavailable:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "One or more selected highlights are unavailable locally; "
+                    "restore archived clips before compilation"
+                ),
+            )
         try:
             record = compilations.submit(
                 name=name,

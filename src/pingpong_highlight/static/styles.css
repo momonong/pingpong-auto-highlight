@@ -2403,7 +2403,7 @@ body.annotation-workspace-open {
 
 .highlight-library-controls {
   display: grid;
-  grid-template-columns: 1.1fr 1.3fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 24px;
 }
@@ -2605,6 +2605,15 @@ body.annotation-workspace-open {
   background: rgba(200, 255, 77, 0.14);
 }
 
+.highlight-library-batch button:disabled,
+.highlight-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  border-color: var(--line);
+  color: var(--muted);
+  background: transparent;
+}
+
 .highlight-library-batch button.quiet,
 .compilation-builder-actions button.quiet {
   border-color: var(--line);
@@ -2667,6 +2676,14 @@ body.annotation-workspace-open {
   background: rgba(200, 255, 77, 0.065);
 }
 
+.highlight-card.inactive {
+  border-style: dashed;
+}
+
+.highlight-card.unavailable:not(.selected) {
+  background: rgba(8, 11, 16, 0.42);
+}
+
 .highlight-card-top,
 .highlight-card-actions,
 .highlight-card-meta {
@@ -2721,6 +2738,62 @@ body.annotation-workspace-open {
   font-size: 0.61rem;
 }
 
+.highlight-card-state {
+  display: flex;
+  min-height: 23px;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.highlight-storage-badge,
+.highlight-lifecycle-badge {
+  width: fit-content;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #aeb7bf;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.highlight-storage-badge.verified {
+  border-color: rgba(200, 255, 77, 0.28);
+  color: var(--lime-soft);
+  background: rgba(200, 255, 77, 0.075);
+}
+
+.highlight-storage-badge.local {
+  border-color: rgba(139, 216, 255, 0.24);
+  color: var(--sky);
+  background: rgba(139, 216, 255, 0.065);
+}
+
+.highlight-storage-badge.remote {
+  border-color: rgba(182, 156, 255, 0.3);
+  color: #d4c4ff;
+  background: rgba(182, 156, 255, 0.08);
+}
+
+.highlight-storage-badge.progress {
+  border-color: rgba(255, 212, 121, 0.3);
+  color: #ffd479;
+  background: rgba(255, 212, 121, 0.07);
+}
+
+.highlight-storage-badge.failed {
+  border-color: rgba(255, 123, 108, 0.3);
+  color: #ff9b8b;
+  background: rgba(255, 123, 108, 0.07);
+}
+
+.highlight-storage-badge.unavailable,
+.highlight-lifecycle-badge {
+  color: #8c959d;
+}
+
 .highlight-card-select {
   display: flex;
   gap: 7px;
@@ -2733,6 +2806,11 @@ body.annotation-workspace-open {
   width: 17px;
   height: 17px;
   accent-color: var(--lime);
+}
+
+.highlight-card-select.disabled {
+  cursor: not-allowed;
+  color: #6f7880;
 }
 
 .compilation-builder {

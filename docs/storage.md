@@ -96,7 +96,7 @@ SQLite 使用 WAL mode，適合目前單機、單一 web service process 加背�
 2. Google Drive 匯入時，背景 worker 先下載到 `drive-imports/`；完成後移入 `uploads/`，建立 upload 與 job 關聯。
 3. Job worker 讀取原片；現行 heuristic baseline 的 audio/motion/NumPy 分析在 CPU，GPU 用於 FFmpeg NVDEC 解碼與 NVENC 輸出，失敗時可退回 CPU。片段寫入 `outputs/<job-id>/`，結果與片段索引再寫入 SQLite。
 4. `rebuild-library` 會在新的 `clip-sets/<algorithm-version>-<timestamp>/` 完整產生片段。只有全部成功後，才在同一個資料庫 transaction 中停用舊列並啟用新列；失敗時不會把半套結果切成現役素材庫。
-5. API 從 SQLite 讀取 `highlight_clips.active = 1` 與 metadata；日期、分數、來源與長度的篩選排序目前由瀏覽器端完成，不會掃描資料夾。
+5. API 預設只讀 `highlight_clips.active = 1`，也支援明確要求 inactive 或 all；桌面素材庫用 all 載入完整索引，再由瀏覽器依生命週期、日期、分數、來源、長度與 storage 狀態篩選。pCloud 關聯只接受 `provider = pcloud`、`media_kind = highlight_clip`、`owner_type = highlight_clip` 與相同 owner ID，不會因為沒有 storage row 就漏掉尚未封存的片段，也不會掃描遠端資料夾。
 6. 建立集錦時，選取順序寫入 `compilation_items`，背景 worker 以 FFmpeg concat filter 正規化不同素材並重新編碼，以 hard cut 產生 `compilations/<id>/highlight_compilation.mp4`。
 
 分析、素材庫重建與集錦輸出會共用 `data/.media-work.lock`，避免多個 FFmpeg/GPU 工作同時搶資源。服務重啟後，背景管理器會從 SQLite 恢復可恢復的 queue 狀態。
@@ -107,7 +107,7 @@ SQLite 使用 WAL mode，適合目前單機、單一 web service process 加背�
 - 重建素材庫不會覆寫初次 job 的 `jobs.result_json`，所以工作卡片可保留當時結果，而素材庫顯示目前 active 片段。
 - 重建也不會自動刪除舊 clip-set；舊資料列設為 inactive、舊 MP4 留在磁碟，以便稽核或回溯。
 - 自訂集錦與原始影片目前也沒有自動 retention/garbage collection。
-- 目前 UI/API 只支援刪除未完成的直接上傳，以及 queued/failed 的 Drive import；不支援直接刪除已完成來源、job、clip-set 或 compilation。
+- 目前 UI/API 只支援刪除未完成的直接上傳，以及 queued/failed 的 Drive import；不支援直接刪除已完成來源、job、clip-set 或 compilation。inactive clip 是可稽核的歷史版本，不等於可清除垃圾。
 
 因此，不要只從檔案總管手動刪除 active MP4：SQLite 仍會指向該路徑，播放器與下載就會失敗。需要清容量前，應先加入一個能同時檢查關聯、更新資料庫並刪檔的正式 cleanup 流程。
 
@@ -204,7 +204,7 @@ local_state   = present | evicting | evicted | restoring | missing
 
 目前 archive 由明確 CLI 操作啟動，不會因 web service 開機就突然上傳全部舊資料。先以 `pcloud plan` 做不傳輸、不登記 object 的盤點，再用 `pcloud archive --kind highlight --limit 1 --execute` 測試小檔；確認後才逐批送原片。第一次由新版程式開啟 SQLite 時仍會執行 additive schema migration。執行前應確認 FFmpeg media work idle，避免同時大量讀同一顆磁碟。任何 pCloud 上傳或驗證失敗只會成為 `archive_state=failed`、本機仍保持 `present`（檔案確實不存在時則為 `missing`），不影響 upload/job/compilation，也不能觸發 Drive 或 local cleanup。
 
-目前程式仍假設所有 player/annotation/rebuild/compilation 需要的 media 都在本機。雖然 `storage_objects` 與 remote verification 已完成，restore/hydration 還沒有，所以 **不能現在就手動刪除 `data/uploads`、active clips 或 compilations**；否則播放器、人工標記和重跑都會失敗。第二階段要加入 on-demand hydration，第三階段才開放安全 eviction。遠端-only 素材在 UI 應顯示「從 pCloud 取回」與進度，而不是一般 404；新 compilation 送出前也要 preflight 並 hydrate 所有缺少的 clips。播放器中的檔案還需要 lease/refcount 或保守 TTL，避免 Windows 上仍在 Range 播放時被刪除。
+目前程式仍假設所有 player/annotation/rebuild/compilation 需要的 media 都在本機。雖然 `storage_objects`、remote verification 與 archive-aware 素材庫篩選已完成，restore/hydration 還沒有，所以 **不能現在就手動刪除 `data/uploads`、active clips 或 compilations**；否則人工標記和重跑仍會失敗。素材庫現在會保留遠端-only 索引、顯示「僅 pCloud・需取回」、停用預覽／選取，media API 回傳 restore-needed conflict，compilation API 也會在排隊前拒絕缺少的本機 clip。第二階段要讓這些入口觸發 on-demand hydration，第三階段才開放安全 eviction；播放器中的檔案還需要 lease/refcount 或保守 TTL，避免 Windows 上仍在 Range 播放時被刪除。
 
 pCloud 的 Lifetime 容量能改善長期成本，但仍是單一帳號／供應商，不等於完整備份。最重要的原片和 SQLite snapshot 最好另留第二份離線硬碟或未來主機副本。pCloud 的 Trash/Revisions/Rewind 也有方案相關的保留期間，不應被當作永久版本庫；參考官方 [File Recovery and History](https://help.pcloud.com/article/file-recovery-and-history)。
 

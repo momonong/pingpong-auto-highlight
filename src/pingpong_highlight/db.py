@@ -1292,7 +1292,12 @@ class Database:
                 (timestamp, job_id),
             )
 
-    def list_highlight_clips(self) -> list[HighlightClipRecord]:
+    def list_highlight_clips(
+        self,
+        *,
+        active: bool | None = True,
+    ) -> list[HighlightClipRecord]:
+        active_value = None if active is None else int(active)
         with self._lock, self._connect() as connection:
             rows = connection.execute(
                 """
@@ -1303,12 +1308,14 @@ class Database:
                 FROM highlight_clips
                 JOIN uploads ON uploads.id = highlight_clips.upload_id
                 JOIN jobs ON jobs.id = highlight_clips.job_id
-                WHERE jobs.status = 'completed' AND highlight_clips.active = 1
+                WHERE jobs.status = 'completed'
+                  AND (? IS NULL OR highlight_clips.active = ?)
                 ORDER BY highlight_clips.relative_score DESC,
                          highlight_clips.score DESC,
                          uploads.created_at DESC,
                          highlight_clips.start
-                """
+                """,
+                (active_value, active_value),
             ).fetchall()
         return [
             record
@@ -1647,6 +1654,42 @@ class Database:
         return [
             record for row in rows if (record := self._storage_object(row)) is not None
         ]
+
+    def list_highlight_storage_objects(self) -> list[StorageObjectRecord]:
+        """Return only pCloud objects whose identity is a highlight clip."""
+
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM storage_objects
+                WHERE provider = 'pcloud'
+                  AND media_kind = 'highlight_clip'
+                  AND owner_type = 'highlight_clip'
+                ORDER BY created_at, owner_id
+                """
+            ).fetchall()
+        return [
+            record for row in rows if (record := self._storage_object(row)) is not None
+        ]
+
+    def get_highlight_storage_object(
+        self,
+        highlight_id: str,
+    ) -> StorageObjectRecord | None:
+        """Find a pCloud archive object with an exact highlight identity."""
+
+        with self._lock, self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM storage_objects
+                WHERE provider = 'pcloud'
+                  AND media_kind = 'highlight_clip'
+                  AND owner_type = 'highlight_clip'
+                  AND owner_id = ?
+                """,
+                (highlight_id,),
+            ).fetchone()
+        return self._storage_object(row)
 
     def start_storage_upload(
         self,
