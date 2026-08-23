@@ -28,7 +28,7 @@ flowchart LR
     BUILD --> GPU
 ```
 
-系統分成三層：FastAPI/UI 是 control plane，SQLite 是 metadata catalog 與狀態機，`data/` 裡的實體影片是 media plane。三個背景 manager 分別處理 Drive 匯入、來源分析及 compilation；分析、CLI rebuild 與 compilation 會共用同一個媒體鎖，Drive 下載則可並行。
+系統分成三層：FastAPI/UI 是 control plane，SQLite 是 metadata catalog 與狀態機，`data/` 裡的實體影片是 media plane。三個背景 manager 分別處理 Drive 匯入、來源分析及 compilation；分析、CLI rebuild 與 compilation 會共用同一個媒體鎖，Drive 下載則可並行。正式 candidate evaluator 是獨立的開發支線：它讀取同一批來源，以 GPU/NVDEC 產生 JSON／NPZ 與 immutable receipts，但不進入 MP4 export、不寫 runtime SQLite，也不改 active library。
 
 ## Components
 
@@ -59,10 +59,12 @@ Docker Compose 把主機的 `./data` bind mount 到容器 `/data`。資料庫與
 | 原片 | `data/uploads/` | 完成匯入、可供重建與人工標記的來源 bytes |
 | 來源素材 | `data/outputs/<job-id>/` | `analysis.json`、逐球 MP4、版本化 `clip-sets/` |
 | 最後集錦 | `data/compilations/<compilation-id>/` | 使用者提交排序後產生的 H.264/AAC MP4 |
+| 候選生成 artifacts | `data/evaluations/candidate-runs/<run-id>/` | 完整 candidates、raw signals、Git/config/GPU/source receipts；不含 MP4 |
+| 候選評分 artifacts | `data/evaluations/candidate-recall/<run-id>/` | legacy freeze 的 dataset，或正式 metrics／報告／manifest／checksums |
 
 `uploads` 與 `jobs` 是最多一對一；一個 upload 可有多個 `annotations` 和 `highlight_clips`；一個 compilation 透過有 `position` 的 `compilation_items` 對多個 clips 建立有序多對多關係。`storage_objects` 以 provider + owner type/ID 對應原片、active clip 或 final compilation 的 local/remote 狀態。系統目前沒有獨立 `clip_sets` table，版本是由每筆 `highlight_clips.library_version` 與 `active` 表達。
 
-`jobs.result_json` 保存初次分析的工作結果；每次分析本身另有磁碟上的 `analysis.json`。`rebuild-library` 不覆寫原 job 結果，而是在獨立的 `clip-sets/<algorithm-version>-<timestamp>/` 寫完所有檔案後，以單一 SQLite transaction 停用舊 clip rows、啟用新 rows。DB 的 `library_version` 只保存演算法版本，不含 timestamp。舊 rows 與舊 MP4 保留，因此 DB activation 是 atomic，但檔案系統不是單一 transaction；中斷可能留下未被 DB 引用的半成品目錄，不會取代現役版本。
+`jobs.result_json` 保存初次分析的工作結果；每次分析本身另有磁碟上的 `analysis.json`。目前程式的新 runtime 輸出版本是 `highlight-library-v3`，但截至 2026-08-24，既有五支來源仍有 102 個 active `highlight-library-v2` clips。版本常數改變或執行 `candidate-generation-v4` 都不會自動切換 active。只有新 job 正常完成，或操作者明確執行 `rebuild-library`，才會在獨立的 `clip-sets/<algorithm-version>-<timestamp>/` 寫完所有檔案後，以單一 SQLite transaction 停用該來源的舊 clip rows、啟用新 rows。DB 的 `library_version` 只保存演算法版本，不含 timestamp。舊 rows 與舊 MP4 保留，因此 DB activation 是 atomic，但檔案系統不是單一 transaction；中斷可能留下未被 DB 引用的半成品目錄，不會取代現役版本。
 
 詳細目錄樹、資料表與備份／保留策略見 [storage.md](storage.md)。
 
@@ -111,11 +113,13 @@ Docker 預設掛入 NVIDIA 的 `compute,utility,video` capabilities。NVDEC runt
 
 畫面訊號計算相鄰 sample 的灰階差，切成 8 × 8 blocks。只聚合變化最大的八分之一區塊，並扣除全畫面背景變化，因此不必知道球桌在哪裡。曝光突變或 scene cut 影響大多數 blocks，會被抑制。
 
-相鄰 impact events 依合理回球間隔組成 point candidate；impact count、tempo、節奏一致性、span 與局部 motion 共同形成 ranking score。沒有可靠 audio candidate 時才使用 motion-only fallback。
+`candidate-generation-v4` 先以 weak／strong 雙門檻取得 sparse audio impacts。相鄰 events 依合理回球間隔組成 point candidate；遇到介於一般與最大 gap 的模糊區間時，只有在畫面沒有持續 quiet motion 時才橋接。core 邊界再向前後搜尋 quiet motion，並在相鄰 audio cores 之間決定單一共享分界，避免重複區間。impact count、tempo、節奏一致性、span 與局部 motion 形成 ranking score。
 
-point candidate 不會再彼此合併。系統以同片最佳分數為基準，預設把達 70% 的候選各自存入素材庫；87% 只標成推薦。資料庫保存 `relative_score`，API 依目前設定動態計算 `recommended`，不是在 clip row 存一個永久 boolean。來源擷取不再套 Reel 秒數預算，預設也不設固定球數，`max_points` 僅保留為選用安全上限。相鄰的已保存得分若 padding 重疊，兩者會平分中間的安靜區域，避免下一次發球或上一分反應同時出現在兩個片段。素材依原片時間輸出，rank 仍表示該來源內的分數順序。
+Motion 不再只是「audio 全部失敗才啟用」的 fallback。系統每次都建立 motion diagnostics：與 audio core 相鄰或重疊的 motion evidence 會附著到同一個 `audio-motion` candidate，不另製造重複候選；遠離 audio 且達較高強度門檻的 isolated motion 才能成為 rescue candidate，較弱 isolated motion 只留在 diagnostics。candidate mode 因此可能是 `audio`、`audio-motion`、`motion` 或 `none`。
 
-目前相對分數是 heuristic，不是跨來源校準過的精彩機率。`analysis.json` 會保存所有候選的核心區間、分數、素材門檻、推薦門檻，以及 `selected`、`below-score-threshold`、`point-cap` 決策，供後續以完整正／負標記校準。
+候選生成層保存所有 core candidates，不套固定六球、Top-k、相對分數或 Reel 秒數預算。`highlight-library-v3` 的 runtime export 才以同片最佳分數為基準，預設把達 70% 的候選各自存入素材庫；87% 只標成推薦。資料庫保存 `relative_score`，API 依目前設定動態計算 `recommended`，不是在 clip row 存一個永久 boolean。`max_points` 僅保留為選用安全上限。相鄰的已保存得分若 padding 重疊，兩者會平分中間的安靜區域，避免下一次發球或上一分反應同時出現在兩個片段。素材依原片時間輸出，rank 仍表示該來源內的分數順序。
+
+目前相對分數是 heuristic，不是跨來源校準過的精彩機率。runtime `analysis.json` 會保存所有候選的核心區間、分數、素材門檻、推薦門檻，以及 `selected`、`below-score-threshold`、`point-cap` 決策；formal candidate run 另保存未輸出 MP4 的完整 candidates 與 raw signals。現有 56 筆標註全是正向 `highlight`，因此可以量測 recall，但 precision 明確 abstain，不能把 unmatched candidates 當 false positive。
 
 ### Export
 
@@ -123,7 +127,7 @@ point candidate 不會再彼此合併。系統以同片最佳分數為基準，�
 
 `build_point_reel()` 只在使用者提交 ordered compilation items 後執行。它以第一個素材的解析度、畫面比例與 FPS 作為成品規格，將不同來源的影音 stream 正規化後，以 FFmpeg `concat` filter 重新編碼成 hard cuts；比例不同的來源會 letterbox。缺音軌的單一素材會補等長靜音，不會讓整支跨來源集錦失去聲音。輸出不設預設時長上限。網站分析、背景集錦與 CLI 重建會透過 data directory 內的跨程序 lock file 共用同一個 GPU media slot。直式、裁切與字幕屬於後續發佈衍生版本。
 
-`highlight_clips` 保存穩定 clip ID、來源時間、來源內分數與 active library version。舊版結果可回填，但未曾輸出的舊候選必須明確重跑；新版 clip set 全部成功後才切換 active，舊檔不刪除。集錦 builder 的未送出勾選只存在瀏覽器記憶體；`POST /api/compilations` 成功後，`compilations` 與 `compilation_items` 才保存跨來源選取及明確順序，背景 manager 再建立 H.264/AAC 成品。所有素材與集錦端點都受 token 保護並支援 HTTP Range。
+`highlight_clips` 保存穩定 clip ID、來源時間、來源內分數與 active library version。舊版結果可回填，但未曾輸出的舊候選必須明確重跑；`highlight-library-v3` clip set 全部成功後才切換該來源的 active rows，舊檔不刪除。`candidate-generation-v4` 只建立 evaluation artifacts，完全不執行這個 activation transaction。集錦 builder 的未送出勾選只存在瀏覽器記憶體；`POST /api/compilations` 成功後，`compilations` 與 `compilation_items` 才保存跨來源選取及明確順序，背景 manager 再建立 H.264/AAC 成品。所有素材與集錦端點都受 token 保護並支援 HTTP Range。
 
 ### Media delivery and trust boundary
 
@@ -146,7 +150,7 @@ point candidate 不會再彼此合併。系統以同片最佳分數為基準，�
 | NVDEC 不可用或不支援來源格式 | 同一支影片自動改用 CPU 解碼 |
 | NVENC 不可用 | 同一 clip 自動改用 `libx264` |
 | Compilation filter 或編碼失敗 | 素材不受影響，工作標記 failed 並保留錯誤 |
-| 無音軌 | motion-only fallback，報告會標記 |
+| 無音軌 | 只有達 isolated-motion 強度門檻的區間會成為 rescue candidate；較弱 motion 只留在 diagnostics，因此允許零 candidate |
 | active MP4 被手動刪除 | SQLite 索引仍在；播放回傳 404，使用它的 compilation 失敗 |
 | SQLite 遺失 | 影片 bytes 還在，但狀態、標註、active 版本與順序無法只靠檔名完整還原 |
 

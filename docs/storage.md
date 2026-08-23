@@ -19,6 +19,9 @@ HighlightCraft 採用「SQLite + 一般檔案」的混合儲存：
 | 原始影片 | `./data/uploads/` | `/data/uploads/` | 是 |
 | 分析結果與逐球片段 | `./data/outputs/` | `/data/outputs/` | 是 |
 | 自訂集錦 | `./data/compilations/` | `/data/compilations/` | 是 |
+| 凍結 review snapshot | `./data/state.training-baseline-*.sqlite3` | `/data/state.training-baseline-*.sqlite3` | 否；開發評估證據 |
+| Candidate generation runs | `./data/evaluations/candidate-runs/` | `/data/evaluations/candidate-runs/` | 否；開發評估證據 |
+| Candidate recall reports | `./data/evaluations/candidate-recall/` | `/data/evaluations/candidate-recall/` | 否；開發評估證據 |
 
 `./data` 是相對於專案根目錄，而不是 Docker volume 的匿名空間。SQLite 與 runtime media 必須視為同一份資料集；但這個 checkout 的 `data/` 也混有開發／評估目錄，所以備份時應使用後文列出的權威 runtime set，而不是忽略錯誤地打包所有內容。
 
@@ -29,6 +32,7 @@ data/
 ├── state.sqlite3                 # catalog/control plane；SQLite 使用 WAL mode
 ├── state.sqlite3-wal             # 服務執行期間可能出現
 ├── state.sqlite3-shm             # 服務執行期間可能出現
+├── state.training-baseline-*.sqlite3 # frozen development review snapshot
 ├── .upload-token                 # 網頁與 API 的存取 token，需保密
 ├── .media-work.lock              # 分析/重建/編譯共用的跨程序媒體工作鎖
 ├── .archive-work.lock            # pCloud CLI 共用的獨立跨程序傳輸鎖
@@ -47,6 +51,20 @@ data/
 ├── compilations/
 │   └── <compilation-id>/
 │       └── highlight_compilation.mp4
+├── evaluations/
+│   ├── candidate-runs/<run-id>/
+│   │   ├── manifest.json          # algorithm/config/Git/GPU/source receipts
+│   │   ├── run-state.json         # resumable candidate-only run state
+│   │   └── sources/<upload-id>/
+│   │       ├── candidates.json    # complete candidate set and diagnostics
+│   │       └── signals.npz        # raw audio/motion arrays
+│   └── candidate-recall/<run-id>/
+│       ├── dataset.json           # freeze-active runs only
+│       ├── candidate-run.json     # legacy diagnostic freeze only
+│       ├── metrics.json
+│       ├── report.md
+│       ├── manifest.json
+│       └── checksums.sha256
 ├── work/                         # 保留給暫時性工作資料；不是權威來源
 ├── local-access-url.txt          # localhost 啟動器寫入的本機網址
 ├── remote-access-url.txt         # tunnel 啟動時寫入的外部網址
@@ -57,10 +75,10 @@ data/
 幾個容易混淆的地方：
 
 - `outputs/<job-id>/` 保存「某個來源影片分析出來的素材」。
-- `outputs/<job-id>/clip-sets/<algorithm-version>-<timestamp>/` 是重建素材庫時產生的獨立執行目錄；資料庫的 `library_version` 是演算法版本（目前為 `highlight-library-v2`），不含該 timestamp。舊檔會留下，但資料庫會把舊列設為 `active = 0`。
+- `outputs/<job-id>/clip-sets/<algorithm-version>-<timestamp>/` 是重建素材庫時產生的獨立執行目錄；資料庫的 `library_version` 是演算法版本，不含該 timestamp。目前程式的新輸出版本是 `highlight-library-v3`，但截至 2026-08-24，既有五支來源仍有 102 個 active `highlight-library-v2` clips。只有明確且成功的 job／`rebuild-library` 會切換該來源的 active rows；candidate evaluation 不會。
 - `compilations/<compilation-id>/highlight_compilation.mp4` 才是從多支來源、任意片段組成的最後自訂集錦。
 - CLI `analyze` 可產生手動輸出，但不會自動登錄到網頁素材庫；要重建可管理的素材庫應使用 `rebuild-library`。
-- `data/datasets/`、`evaluations/`、`real-eval/`、UI smoke 與 worktree 目錄若存在，屬於開發／評估產物，不是正式 runtime data flow。
+- `state.training-baseline-*.sqlite3`、`data/datasets/`、`evaluations/`、`real-eval/`、UI smoke 與 worktree 目錄若存在，屬於開發／評估產物，不是正式 runtime data flow。它們不應混入 runtime restore，但要重現一次正式評估時，frozen dataset、candidate run、raw signals 與 score report 必須成套保留。
 
 ## SQLite 裡存什麼
 
@@ -99,11 +117,14 @@ SQLite 使用 WAL mode，適合目前單機、單一 web service process 加背�
 5. API 預設只讀 `highlight_clips.active = 1`，也支援明確要求 inactive 或 all；桌面素材庫用 all 載入完整索引，再由瀏覽器依生命週期、日期、分數、來源、長度與 storage 狀態篩選。pCloud 關聯只接受 `provider = pcloud`、`media_kind = highlight_clip`、`owner_type = highlight_clip` 與相同 owner ID，不會因為沒有 storage row 就漏掉尚未封存的片段，也不會掃描遠端資料夾。
 6. 建立集錦時，選取順序寫入 `compilation_items`，背景 worker 以 FFmpeg concat filter 正規化不同素材並重新編碼，以 hard cut 產生 `compilations/<id>/highlight_compilation.mp4`。
 
+Formal candidate evaluation 是旁路流程。`evaluation run-candidates` 讀取 frozen dataset 指向的既有來源，在 `data/evaluations/candidate-runs/<run-id>/` 寫入 `candidate-generation-v4` JSON／NPZ 與 receipts；不輸出 MP4、不新增 `highlight_clips`、不寫 `jobs.result_json`，也不切換 active library。`evaluation score-candidates` 只驗證這些 immutable artifacts，並把 metrics／report 寫到 `data/evaluations/candidate-recall/<run-id>/`。目前正式 development 結果是 51/56（91.07%）、481 candidates／108.658377 分鐘、4.426718 candidates/min、46.3734% union coverage、最長 core 18.957 秒與零 overlap，決策為 `GO_RANKING`；這些數字不是影片檔，也不代表 held-out accuracy 或 precision。
+
 分析、素材庫重建與集錦輸出會共用 `data/.media-work.lock`，避免多個 FFmpeg/GPU 工作同時搶資源。服務重啟後，背景管理器會從 SQLite 恢復可恢復的 queue 狀態。
 
 ## 版本、保留與刪除行為
 
 - 素材庫的「目前版本」由 `highlight_clips.active` 決定，不是由最新檔案時間決定。
+- 程式內的 `highlight-library-v3` 版本字串與 `candidate-generation-v4` 評估結果都不會自動改寫既有 active v2 rows；只有明確成功的來源分析或 `rebuild-library` activation transaction 才會切換。
 - 重建素材庫不會覆寫初次 job 的 `jobs.result_json`，所以工作卡片可保留當時結果，而素材庫顯示目前 active 片段。
 - 重建也不會自動刪除舊 clip-set；舊資料列設為 inactive、舊 MP4 留在磁碟，以便稽核或回溯。
 - 自訂集錦與原始影片目前也沒有自動 retention/garbage collection。
