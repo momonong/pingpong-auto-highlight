@@ -182,6 +182,26 @@ def test_hard_cut_command_maps_silent_and_single_clip_reels() -> None:
     assert "-an" not in single_audio
 
 
+def test_point_reel_adds_silence_for_a_cross_source_clip_without_audio() -> None:
+    command = _point_reel_command(
+        [Path("with-audio.mp4"), Path("silent.mp4")],
+        Path("reel.mp4"),
+        width=1920,
+        height=1080,
+        fps=30.0,
+        with_audio=True,
+        encoder="libx264",
+        audio_presence=[True, False],
+        durations=[4.0, 5.5],
+    )
+
+    filter_graph = command[command.index("-filter_complex") + 1]
+    assert "[0:a:0]aresample=48000" in filter_graph
+    assert "anullsrc=channel_layout=stereo:sample_rate=48000" in filter_graph
+    assert "atrim=duration=5.500000" in filter_graph
+    assert "concat=n=2:v=1:a=1[vout][aout]" in filter_graph
+
+
 def test_nvenc_detection_requires_a_successful_runtime_encode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

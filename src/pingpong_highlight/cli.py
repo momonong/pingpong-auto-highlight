@@ -11,6 +11,8 @@ import qrcode
 import uvicorn
 
 from pingpong_highlight.config import Settings
+from pingpong_highlight.db import Database
+from pingpong_highlight.media_work import media_work_lock
 from pingpong_highlight.pipeline.media import has_nvdec, has_nvenc, probe_media, require_media_tools
 from pingpong_highlight.pipeline.processor import HighlightProcessor
 from pingpong_highlight.web import create_app
@@ -38,8 +40,10 @@ def _print_qr(url: str) -> None:
 
 
 def _service_url(settings: Settings, address: str) -> str:
-    base_url = settings.public_url.rstrip("/") if settings.public_url else (
-        f"http://{address}:{settings.port}"
+    base_url = (
+        settings.public_url.rstrip("/")
+        if settings.public_url
+        else (f"http://{address}:{settings.port}")
     )
     return f"{base_url}/#token={quote(settings.upload_token)}"
 
@@ -75,7 +79,7 @@ def _analyze(args: argparse.Namespace) -> int:
         print(f"找不到影片：{source}", file=sys.stderr)
         return 2
     settings = Settings.from_env(data_dir=args.data_dir)
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     output = (args.output or settings.outputs_dir / f"manual-{source.stem}-{timestamp}").resolve()
     processor = HighlightProcessor(settings)
     last_stage = ""
@@ -86,9 +90,55 @@ def _analyze(args: argparse.Namespace) -> int:
             print(f"[{value:6.1%}] {stage}")
             last_stage = stage
 
-    result = processor.run(source, output, progress)
+    with media_work_lock(settings.data_dir):
+        result = processor.run(source, output, progress)
     count = result["summary"]["point_count"]
-    print(f"完成：剪出 {count} 個精彩得分，原尺寸集錦輸出於 {output}")
+    print(f"完成：儲存 {count} 個精彩球素材，輸出於 {output}")
+    return 0
+
+
+def _rebuild_library(args: argparse.Namespace) -> int:
+    settings = Settings.from_env(data_dir=args.data_dir)
+    database = Database(settings.database_path)
+    job = database.get_job(args.job_id)
+    if job is None or job.status != "completed":
+        print(f"找不到已完成的來源工作：{args.job_id}", file=sys.stderr)
+        return 2
+    upload = database.get_upload(job.upload_id)
+    if upload is None or not upload.path.is_file():
+        print("來源影片不存在，無法重建素材庫。", file=sys.stderr)
+        return 2
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    relative_output = Path("clip-sets") / f"highlight-library-v2-{timestamp}"
+    output = settings.outputs_dir / job.id / relative_output
+    processor = HighlightProcessor(settings)
+    last_stage = ""
+
+    def progress(value: float, stage: str) -> None:
+        nonlocal last_stage
+        if stage != last_stage or value >= 1.0:
+            print(f"[{value:6.1%}] {stage}")
+            last_stage = stage
+
+    with media_work_lock(settings.data_dir):
+        result = processor.run(
+            upload.path,
+            output,
+            progress,
+            source_name=upload.filename,
+        )
+    count = result["summary"]["point_count"]
+    if count == 0:
+        print("這次沒有找到合格素材，保留目前素材庫版本。")
+        return 0
+    activated = database.activate_highlight_result(
+        job.id,
+        result,
+        file_prefix=relative_output.as_posix(),
+        library_version=str(result["algorithm_version"]),
+    )
+    print(f"完成：已啟用 {activated} 個素材，舊版片段仍保留但不再顯示。")
     return 0
 
 
@@ -130,6 +180,14 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("--output", type=Path, default=None)
     analyze.add_argument("--data-dir", type=Path, default=None)
     analyze.set_defaults(handler=_analyze)
+
+    rebuild = subparsers.add_parser(
+        "rebuild-library",
+        help="以目前模型重新擷取既有來源的精彩球素材",
+    )
+    rebuild.add_argument("job_id")
+    rebuild.add_argument("--data-dir", type=Path, default=None)
+    rebuild.set_defaults(handler=_rebuild_library)
 
     probe = subparsers.add_parser("probe", help="檢查手機影片的媒體資訊")
     probe.add_argument("video", type=Path)

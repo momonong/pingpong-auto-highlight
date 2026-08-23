@@ -18,12 +18,16 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from pingpong_highlight.compilations import CompilationManager
 from pingpong_highlight.config import Settings
 from pingpong_highlight.db import (
     AnnotationRecord,
+    CompilationRecord,
     Database,
     DriveImportRecord,
+    HighlightClipRecord,
     JobRecord,
+    StateConflict,
     UploadRecord,
 )
 from pingpong_highlight.drive import (
@@ -142,6 +146,11 @@ class AnnotationRequest(BaseModel):
     note: str = Field(default="", max_length=300)
 
 
+class CompilationRequest(BaseModel):
+    name: str = Field(default="", max_length=100)
+    highlight_ids: list[str] = Field(min_length=1, max_length=100)
+
+
 def _tus_headers(settings: Settings) -> dict[str, str]:
     return {
         "Tus-Resumable": TUS_VERSION,
@@ -180,6 +189,8 @@ def _upload_payload(record: UploadRecord) -> dict[str, Any]:
         "content_type": record.content_type,
         "status": record.status,
         "job_id": record.job_id,
+        "recorded_at": record.recorded_at,
+        "recorded_at_source": record.recorded_at_source,
         "created_at": record.created_at,
         "updated_at": record.updated_at,
     }
@@ -235,6 +246,57 @@ def _annotation_payload(record: AnnotationRecord) -> dict[str, Any]:
     }
 
 
+def _highlight_payload(record: HighlightClipRecord) -> dict[str, Any]:
+    return {
+        "id": record.id,
+        "job_id": record.job_id,
+        "upload_id": record.upload_id,
+        "source_name": record.source_name,
+        "source_created_at": record.source_created_at,
+        "source_date": record.source_date,
+        "source_date_source": record.source_date_source,
+        "start": record.start,
+        "end": record.end,
+        "duration": round(record.end - record.start, 3),
+        "rally_start": record.rally_start,
+        "rally_end": record.rally_end,
+        "score": round(record.score, 6),
+        "relative_score": round(record.relative_score, 6),
+        "source_rank": record.source_rank,
+        "reason": record.reason,
+        "library_version": record.library_version,
+        "media_url": f"/api/highlights/{record.id}/media",
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
+    }
+
+
+def _compilation_payload(
+    record: CompilationRecord,
+    highlights: list[HighlightClipRecord],
+) -> dict[str, Any]:
+    source_count = len({highlight.upload_id for highlight in highlights})
+    payload = {
+        "id": record.id,
+        "name": record.name,
+        "status": record.status,
+        "duration": record.duration,
+        "estimated_duration": round(
+            sum(highlight.end - highlight.start for highlight in highlights),
+            3,
+        ),
+        "item_count": len(highlights),
+        "source_count": source_count,
+        "error": record.error,
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
+    }
+    if record.status == "completed" and record.file_name:
+        payload["file_url"] = f"/api/compilations/{record.id}/file"
+        payload["file_name"] = record.file_name
+    return payload
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -245,6 +307,7 @@ def create_app(
     database = Database(settings.database_path)
     uploads = UploadStore(settings, database)
     jobs = JobManager(settings, database, processor)
+    compilations = CompilationManager(settings, database)
     drive_imports = DriveImportManager(
         settings,
         database,
@@ -258,9 +321,11 @@ def create_app(
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         uploads.reconcile()
         jobs.start()
+        compilations.start()
         drive_imports.start()
         yield
         drive_imports.shutdown()
+        compilations.shutdown()
         jobs.shutdown()
 
     app = FastAPI(
@@ -274,6 +339,7 @@ def create_app(
     app.state.database = database
     app.state.uploads = uploads
     app.state.jobs = jobs
+    app.state.compilations = compilations
     app.state.drive_imports = drive_imports
 
     @app.middleware("http")
@@ -329,11 +395,16 @@ def create_app(
             "chunk_size": min(8 * 1024**2, settings.max_chunk_bytes),
             "max_upload_size": settings.max_upload_bytes,
             "video_sample_fps": settings.video_sample_fps,
+            "library_minimum_point_score_ratio": (
+                settings.library_minimum_point_score_ratio
+            ),
             "minimum_point_score_ratio": settings.minimum_point_score_ratio,
             "max_points": settings.max_points,
             "reel_target_seconds": settings.reel_target_seconds,
             "clip_pre_roll_seconds": settings.clip_pre_roll_seconds,
             "clip_post_roll_seconds": settings.clip_post_roll_seconds,
+            "highlight_library": True,
+            "compilation_duration_limit": None,
         }
 
     @app.get("/api/uploads", dependencies=[Depends(authorize)])
@@ -548,6 +619,118 @@ def create_app(
         if not database.delete_annotation(job.upload_id, annotation_id):
             raise HTTPException(status_code=404, detail="Annotation not found")
         return Response(status_code=204)
+
+    @app.get("/api/highlights", dependencies=[Depends(authorize)])
+    async def list_highlights() -> dict[str, Any]:
+        highlights = database.list_highlight_clips()
+        sources: dict[str, dict[str, Any]] = {}
+        for highlight in highlights:
+            sources.setdefault(
+                highlight.job_id,
+                {
+                    "job_id": highlight.job_id,
+                    "upload_id": highlight.upload_id,
+                    "name": highlight.source_name,
+                    "created_at": highlight.source_created_at,
+                    "source_date": highlight.source_date,
+                    "source_date_source": highlight.source_date_source,
+                },
+            )
+        return {
+            "highlights": [
+                _highlight_payload(record)
+                | {
+                    "recommended": (
+                        record.relative_score >= settings.minimum_point_score_ratio
+                    )
+                }
+                for record in highlights
+            ],
+            "sources": sorted(
+                sources.values(),
+                key=lambda source: source["source_date"],
+                reverse=True,
+            ),
+        }
+
+    @app.get(
+        "/api/highlights/{highlight_id}/media",
+        dependencies=[Depends(authorize)],
+    )
+    async def stream_highlight(highlight_id: str, request: Request) -> Response:
+        highlight = database.get_highlight_clip(highlight_id)
+        if highlight is None:
+            raise HTTPException(status_code=404, detail="Highlight not found")
+        job_dir = (settings.outputs_dir / highlight.job_id).resolve()
+        path = (job_dir / highlight.clip_filename).resolve()
+        if not path.is_relative_to(job_dir) or not path.is_file():
+            raise HTTPException(status_code=404, detail="Highlight file not found")
+        return MediaFileResponse(path, request, media_type="video/mp4")
+
+    @app.get("/api/compilations", dependencies=[Depends(authorize)])
+    async def list_compilations() -> dict[str, Any]:
+        records = database.list_compilations()
+        return {
+            "compilations": [
+                _compilation_payload(
+                    record,
+                    database.list_compilation_highlights(record.id),
+                )
+                for record in records
+            ]
+        }
+
+    @app.get("/api/compilations/{compilation_id}", dependencies=[Depends(authorize)])
+    async def get_compilation(compilation_id: str) -> dict[str, Any]:
+        record = database.get_compilation(compilation_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Compilation not found")
+        return _compilation_payload(
+            record,
+            database.list_compilation_highlights(record.id),
+        )
+
+    @app.post(
+        "/api/compilations",
+        dependencies=[Depends(authorize)],
+        status_code=202,
+    )
+    async def create_compilation(payload: CompilationRequest) -> dict[str, Any]:
+        name = payload.name.strip() or f"精彩球集錦 · {len(payload.highlight_ids)} 球"
+        try:
+            record = compilations.submit(
+                name=name,
+                highlight_ids=payload.highlight_ids,
+            )
+        except StateConflict as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return _compilation_payload(
+            record,
+            database.list_compilation_highlights(record.id),
+        )
+
+    @app.get(
+        "/api/compilations/{compilation_id}/file",
+        dependencies=[Depends(authorize)],
+    )
+    async def stream_compilation(
+        compilation_id: str,
+        request: Request,
+        download: bool = False,
+    ) -> Response:
+        record = database.get_compilation(compilation_id)
+        if record is None or record.status != "completed" or not record.file_name:
+            raise HTTPException(status_code=404, detail="Compilation file not found")
+        output_dir = (settings.compilations_dir / compilation_id).resolve()
+        path = (output_dir / record.file_name).resolve()
+        if path.parent != output_dir or not path.is_file():
+            raise HTTPException(status_code=404, detail="Compilation file not found")
+        return MediaFileResponse(
+            path,
+            request,
+            media_type="video/mp4",
+            filename=record.file_name if download else None,
+        )
 
     @app.get("/api/jobs/{job_id}/files/{filename}", dependencies=[Depends(authorize)])
     async def download_file(

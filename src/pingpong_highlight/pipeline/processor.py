@@ -10,8 +10,6 @@ from pingpong_highlight.config import Settings
 from pingpong_highlight.pipeline.audio import analyze_audio
 from pingpong_highlight.pipeline.detect import DetectionConfig, detect_points
 from pingpong_highlight.pipeline.media import (
-    MediaError,
-    build_point_reel,
     export_clip,
     probe_media,
 )
@@ -60,14 +58,27 @@ class HighlightProcessor:
             audio,
             motion,
             DetectionConfig(
-                minimum_point_score_ratio=self.settings.minimum_point_score_ratio,
+                minimum_point_score_ratio=(
+                    self.settings.library_minimum_point_score_ratio
+                ),
                 max_points=self.settings.max_points,
-                target_reel_duration=self.settings.reel_target_seconds,
+                target_reel_duration=None,
                 pre_roll=self.settings.clip_pre_roll_seconds,
                 post_roll=self.settings.clip_post_roll_seconds,
             ),
         )
         points = detection.points
+        best_candidate_score = max(
+            (candidate.score for candidate in detection.candidates),
+            default=0.0,
+        )
+        recommendation_threshold = (
+            best_candidate_score * self.settings.minimum_point_score_ratio
+        )
+        recommended_count = sum(
+            candidate.score >= recommendation_threshold
+            for candidate in detection.candidates
+        )
         counted_decisions = Counter(
             candidate.selection for candidate in detection.candidates
         )
@@ -82,35 +93,19 @@ class HighlightProcessor:
         }
 
         files: list[dict[str, str]] = []
-        clip_paths: list[Path] = []
         warnings: list[str] = []
         for index, point in enumerate(points, start=1):
             report(
-                0.78 + 0.16 * ((index - 1) / max(1, len(points))),
-                f"exporting-point-{index}",
+                0.78 + 0.21 * ((index - 1) / max(1, len(points))),
+                f"saving-highlight-{index}",
             )
-            filename = f"point_{index:03d}_rank_{point.rank:02d}.mp4"
+            filename = f"highlight_{index:03d}_rank_{point.rank:03d}.mp4"
             clip_path = output_dir / filename
             export_clip(source, clip_path, point.start, point.end)
-            clip_paths.append(clip_path)
-            files.append({"name": filename, "kind": "point"})
-
-        reel_duration: float | None = None
-        reel_media = None
-        if clip_paths:
-            report(0.95, "editing-point-reel")
-            reel_path = output_dir / "best_points_reel.mp4"
-            try:
-                build_point_reel(clip_paths, reel_path)
-            except MediaError as exc:
-                warnings.append(str(exc))
-            else:
-                files.insert(0, {"name": reel_path.name, "kind": "reel"})
-                reel_media = probe_media(reel_path)
-                reel_duration = reel_media.duration
+            files.append({"name": filename, "kind": "highlight"})
 
         result: dict[str, Any] = {
-            "algorithm_version": "point-reel-v5",
+            "algorithm_version": "highlight-library-v2",
             "source_name": source_name,
             "media": media.to_dict() | {"path": source_name},
             "summary": {
@@ -120,33 +115,42 @@ class HighlightProcessor:
                     len(detection.candidates)
                     - selection_counts["below-score-threshold"]
                 ),
+                "recommended_candidate_count": recommended_count,
                 "impact_count": len(audio.events),
                 "motion_sample_count": int(motion.scores.size),
-                "reel_duration": round(reel_duration, 3) if reel_duration is not None else None,
+                "library_duration": round(sum(point.duration for point in points), 3),
+                "reel_duration": None,
                 "used_motion_only_fallback": any(
                     candidate.impact_count == 0 for candidate in detection.candidates
                 ),
             },
             "selection": {
                 "policy": "relative-score-threshold",
-                "minimum_point_score_ratio": self.settings.minimum_point_score_ratio,
+                "library_minimum_point_score_ratio": (
+                    self.settings.library_minimum_point_score_ratio
+                ),
+                "recommendation_score_ratio": (
+                    self.settings.minimum_point_score_ratio
+                ),
                 "effective_score_threshold": detection.effective_score_threshold,
-                "maximum_reel_seconds": self.settings.reel_target_seconds,
+                "recommendation_score_threshold": round(
+                    recommendation_threshold,
+                    6,
+                ) if best_candidate_score > 0 else None,
+                "maximum_reel_seconds": None,
                 "maximum_points": self.settings.max_points,
                 "decision_counts": selection_counts,
             },
             "editing": {
                 "unit": "scored-point",
-                "layout": "source-aspect",
-                "width": reel_media.width if reel_media is not None else media.width,
-                "height": reel_media.height if reel_media is not None else media.height,
-                "fps": round(reel_media.fps, 3) if reel_media is not None else round(media.fps, 3),
-                "transition": "hard-cut",
-                "transition_seconds": 0.0,
+                "layout": "reusable-source-aspect-clips",
+                "width": media.width,
+                "height": media.height,
+                "fps": round(media.fps, 3),
+                "assembly": "deferred-to-library",
                 "clip_pre_roll_seconds": self.settings.clip_pre_roll_seconds,
                 "clip_post_roll_seconds": self.settings.clip_post_roll_seconds,
-                "target_reel_seconds": self.settings.reel_target_seconds,
-                "final_point_fades_out": False,
+                "target_reel_seconds": None,
             },
             "candidates": [candidate.to_dict() for candidate in detection.candidates],
             "points": [point.to_dict() for point in points],

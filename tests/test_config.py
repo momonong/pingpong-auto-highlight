@@ -43,12 +43,14 @@ def test_threshold_selection_defaults_to_relative_score_without_point_cap(
     monkeypatch,
 ) -> None:
     monkeypatch.setenv("PINGPONG_UPLOAD_TOKEN", "fixed-token")
+    monkeypatch.delenv("PINGPONG_LIBRARY_MIN_POINT_SCORE_RATIO", raising=False)
     monkeypatch.delenv("PINGPONG_MIN_POINT_SCORE_RATIO", raising=False)
     monkeypatch.delenv("PINGPONG_MAX_POINTS", raising=False)
     monkeypatch.delenv("PINGPONG_MAX_HIGHLIGHTS", raising=False)
 
     settings = Settings.from_env(data_dir=tmp_path)
 
+    assert settings.library_minimum_point_score_ratio == 0.70
     assert settings.minimum_point_score_ratio == 0.87
     assert settings.max_points is None
 
@@ -116,6 +118,25 @@ def test_custom_score_ratio_reads_from_environment(tmp_path: Path, monkeypatch) 
     settings = Settings.from_env(data_dir=tmp_path)
 
     assert settings.minimum_point_score_ratio == 0.9
+
+
+def test_custom_library_ratio_reads_from_environment(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PINGPONG_UPLOAD_TOKEN", "fixed-token")
+    monkeypatch.setenv("PINGPONG_LIBRARY_MIN_POINT_SCORE_RATIO", "0.65")
+
+    settings = Settings.from_env(data_dir=tmp_path)
+
+    assert settings.library_minimum_point_score_ratio == 0.65
+
+
+def test_library_ratio_cannot_exceed_recommendation_ratio(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="cannot exceed"):
+        Settings(
+            data_dir=tmp_path,
+            upload_token="test",
+            library_minimum_point_score_ratio=0.9,
+            minimum_point_score_ratio=0.87,
+        )
 
 
 @pytest.mark.parametrize("ratio", [-0.01, 1.01])

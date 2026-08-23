@@ -147,16 +147,16 @@ def test_candidate_report_keeps_threshold_debugging_precision() -> None:
     assert candidate.to_dict()["score"] == 12.345678
 
 
-def test_default_selection_has_no_six_point_quota() -> None:
-    candidates = [_candidate(index * 3.0, 10.0) for index in range(7)]
+def test_default_library_selection_has_no_point_or_duration_quota() -> None:
+    candidates = [_candidate(index * 5.0, 10.0, duration=2.0) for index in range(20)]
 
     decisions, selected, _threshold = _select_candidates(
-        25.0,
+        100.0,
         candidates,
-        DetectionConfig(target_reel_duration=100.0),
+        DetectionConfig(),
     )
 
-    assert len(selected) == 7
+    assert len(selected) == 20
     assert all(candidate.selection == "selected" for candidate in decisions)
 
 
