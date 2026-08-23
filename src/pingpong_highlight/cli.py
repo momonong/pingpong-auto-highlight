@@ -25,6 +25,7 @@ from pingpong_highlight.candidate_run import (
     CandidateRunError,
     run_candidate_analysis,
 )
+from pingpong_highlight.candidate_scoring import score_candidate_run
 from pingpong_highlight.config import Settings
 from pingpong_highlight.db import Database, StateConflict
 from pingpong_highlight.media_work import archive_work_lock, media_work_lock
@@ -239,6 +240,29 @@ def _run_candidate_evaluation(args: argparse.Namespace) -> int:
     print(f"Candidate-only run：{destination}")
     print("沒有輸出 MP4，也沒有修改 active 素材庫或 runtime database。")
     return 0
+
+
+def _score_candidate_evaluation(args: argparse.Namespace) -> int:
+    settings = Settings.from_env(data_dir=args.data_dir)
+    output_root = args.output_root or (settings.data_dir / "evaluations" / "candidate-recall")
+    try:
+        destination, metrics = score_candidate_run(
+            dataset_path=args.dataset,
+            candidate_run=args.candidate_run,
+            run_id=args.run_id,
+            output_root=output_root,
+        )
+    except CandidateEvaluationError as exc:
+        print(f"無法評分 candidate run：{exc}", file=sys.stderr)
+        return 2
+    strict = metrics["aggregate"]["strict_candidate_recall"]
+    print(
+        f"Strict candidate recall：{strict['hits']}/{strict['total']} "
+        f"({strict['micro_recall']:.2%})"
+    )
+    print(f"GO/STOP：{metrics['gate']['decision']}")
+    print(f"報告：{destination / 'report.md'}")
+    return 0 if metrics["gate"]["threshold_met"] else 3
 
 
 def _human_bytes(value: int) -> str:
@@ -576,6 +600,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="只供診斷，正式 baseline 應保持 clean worktree",
     )
     run_candidates.set_defaults(handler=_run_candidate_evaluation)
+    score_candidates = evaluation_commands.add_parser(
+        "score-candidates",
+        help="驗證 immutable receipts 並以 frozen 規則量測 candidate recall",
+    )
+    score_candidates.add_argument("--dataset", type=Path, required=True)
+    score_candidates.add_argument("--candidate-run", type=Path, required=True)
+    score_candidates.add_argument("--run-id", required=True)
+    score_candidates.add_argument("--data-dir", type=Path, default=None)
+    score_candidates.add_argument("--output-root", type=Path, default=None)
+    score_candidates.set_defaults(handler=_score_candidate_evaluation)
 
     pcloud = subparsers.add_parser("pcloud", help="管理 pCloud 長期影片 archive")
     pcloud.add_argument("--data-dir", type=Path, default=None)
