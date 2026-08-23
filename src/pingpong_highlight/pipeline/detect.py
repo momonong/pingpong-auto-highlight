@@ -7,6 +7,7 @@ import numpy as np
 from pingpong_highlight.pipeline.models import (
     AudioFeatures,
     ImpactEvent,
+    ImpactGroupDiagnostic,
     MotionFeatures,
     Point,
     PointCandidate,
@@ -68,13 +69,36 @@ def _audio_candidates(
     audio: AudioFeatures,
     motion: MotionFeatures,
     config: DetectionConfig,
-) -> list[PointCandidate]:
+) -> tuple[list[PointCandidate], list[ImpactGroupDiagnostic]]:
     candidates: list[PointCandidate] = []
+    diagnostics: list[ImpactGroupDiagnostic] = []
     for group in _group_impacts(audio.events, config):
+        impact_times = tuple(event.time for event in group)
+        impact_strengths = tuple(event.strength for event in group)
         if len(group) < config.minimum_impacts:
+            diagnostics.append(
+                ImpactGroupDiagnostic(
+                    start=group[0].time,
+                    end=group[-1].time,
+                    impact_times=impact_times,
+                    impact_strengths=impact_strengths,
+                    accepted=False,
+                    decision="too-few-impacts",
+                )
+            )
             continue
         span = group[-1].time - group[0].time
         if span < config.minimum_point_span:
+            diagnostics.append(
+                ImpactGroupDiagnostic(
+                    start=group[0].time,
+                    end=group[-1].time,
+                    impact_times=impact_times,
+                    impact_strengths=impact_strengths,
+                    accepted=False,
+                    decision="span-too-short",
+                )
+            )
             continue
 
         gaps = np.diff([event.time for event in group])
@@ -82,14 +106,15 @@ def _audio_candidates(
         motion_score = _motion_level(motion, group[0].time - 0.4, group[-1].time + 0.4)
         tempo = (len(group) - 1) / max(span, 0.3)
         impact_strength = float(np.mean([event.strength for event in group]))
-        score = (
-            3.4 * np.log1p(len(group))
-            + 1.25 * min(tempo, 3.5)
-            + 1.7 * min(motion_score, 4.0)
-            + 1.2 * rhythmic
-            + 0.7 * impact_strength
-            + 0.08 * min(span, 12.0)
+        score_components = (
+            ("impact_count", float(3.4 * np.log1p(len(group)))),
+            ("tempo", float(1.25 * min(tempo, 3.5))),
+            ("motion", float(1.7 * min(motion_score, 4.0))),
+            ("rhythmicity", float(1.2 * rhythmic)),
+            ("impact_strength", float(0.7 * impact_strength)),
+            ("span", float(0.08 * min(span, 12.0))),
         )
+        score = sum(value for _name, value in score_components)
         candidates.append(
             PointCandidate(
                 start=group[0].time,
@@ -98,9 +123,26 @@ def _audio_candidates(
                 impact_count=len(group),
                 motion_score=motion_score,
                 reason=f"{len(group)} rhythmic impact transients within one point",
+                origin="audio",
+                impact_times=impact_times,
+                impact_strengths=impact_strengths,
+                tempo=tempo,
+                rhythmic_fraction=rhythmic,
+                mean_impact_strength=impact_strength,
+                score_components=score_components,
             )
         )
-    return candidates
+        diagnostics.append(
+            ImpactGroupDiagnostic(
+                start=group[0].time,
+                end=group[-1].time,
+                impact_times=impact_times,
+                impact_strengths=impact_strengths,
+                accepted=True,
+                decision="candidate",
+            )
+        )
+    return candidates, diagnostics
 
 
 def _motion_candidates(
@@ -140,6 +182,11 @@ def _motion_candidates(
                 impact_count=0,
                 motion_score=motion_score,
                 reason="sustained localized play motion (audio fallback)",
+                origin="motion",
+                score_components=(
+                    ("span", float(2.3 * np.log1p(end - start))),
+                    ("motion", float(2.0 * min(motion_score, 6.0))),
+                ),
             )
         )
     return candidates
@@ -204,11 +251,7 @@ def _select_candidates(
     score_threshold = best_score * config.minimum_point_score_ratio
     decisions = ["below-score-threshold"] * len(candidates)
     ranked_indices = sorted(
-        (
-            index
-            for index, candidate in enumerate(candidates)
-            if candidate.score >= score_threshold
-        ),
+        (index for index, candidate in enumerate(candidates) if candidate.score >= score_threshold),
         key=lambda index: (
             -candidates[index].score,
             candidates[index].start,
@@ -259,9 +302,13 @@ def detect_points(
     config: DetectionConfig | None = None,
 ) -> PointDetection:
     config = config or DetectionConfig()
-    raw_candidates = _audio_candidates(audio, motion, config)
+    audio_candidates, audio_groups = _audio_candidates(audio, motion, config)
+    motion_candidates = _motion_candidates(motion, config)
+    raw_candidates = audio_candidates
+    candidate_mode = "audio"
     if not raw_candidates:
-        raw_candidates = _motion_candidates(motion, config)
+        raw_candidates = motion_candidates
+        candidate_mode = "motion-fallback" if raw_candidates else "none"
     candidates, selected_candidates, score_threshold = _select_candidates(
         duration,
         raw_candidates,
@@ -274,4 +321,7 @@ def detect_points(
         effective_score_threshold=(
             round(score_threshold, 6) if score_threshold is not None else None
         ),
+        audio_groups=audio_groups,
+        motion_candidates=motion_candidates,
+        candidate_mode=candidate_mode,
     )
