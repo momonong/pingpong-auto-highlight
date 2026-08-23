@@ -1,5 +1,18 @@
 # Project history
 
+## August 2026: reusable highlight library and cross-source compilations
+
+The next minor release separates source analysis from final Reel assembly:
+
+- source videos now produce reusable scored highlight clips instead of one mandatory Reel;
+- a 70% source-relative library floor retains a wider candidate pool, while 87% is only a recommendation marker;
+- neither the old six-point quota nor the 55-second budget applies during extraction or compilation;
+- SQLite indexes clips across jobs, preserves inactive legacy results, and stores ordered many-to-many compilation items;
+- the desktop library filters by source, recording date, score, duration, and timeline, with top-six-per-filter and top-six-per-source batch actions;
+- compilation building runs in the background, uses NVENC when available, and normalizes missing audio with silence.
+
+Legacy jobs can expose only files that older versions actually exported. `rebuild-library` creates a separate clip-set directory and atomically activates it after a successful GPU run; it never deletes the prior clips or Reel.
+
 ## August 2026: threshold-selected point reels
 
 Version 1.3 removes the per-video six-point quota from the default selection policy:
