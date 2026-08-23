@@ -70,26 +70,31 @@ def test_end_to_end_signal_fusion_pipeline(tmp_path: Path) -> None:
     output = tmp_path / "output"
     result = HighlightProcessor(settings).run(source, output)
 
-    assert result["algorithm_version"] == "point-reel-v5"
+    assert result["algorithm_version"] == "highlight-library-v2"
     assert result["summary"]["impact_count"] >= 5
     assert result["summary"]["point_count"] >= 1
     assert result["summary"]["candidate_point_count"] == len(result["candidates"])
     assert result["selection"]["policy"] == "relative-score-threshold"
-    assert result["selection"]["minimum_point_score_ratio"] == 0.87
+    assert result["selection"]["library_minimum_point_score_ratio"] == 0.70
+    assert result["selection"]["recommendation_score_ratio"] == 0.87
+    assert result["summary"]["recommended_candidate_count"] >= 1
     assert result["selection"]["maximum_points"] is None
+    assert result["selection"]["maximum_reel_seconds"] is None
     assert result["selection"]["effective_score_threshold"] is not None
     assert any(candidate["selection"] == "selected" for candidate in result["candidates"])
     assert result["editing"]["unit"] == "scored-point"
-    assert result["editing"]["layout"] == "source-aspect"
+    assert result["editing"]["layout"] == "reusable-source-aspect-clips"
     assert result["editing"]["width"] == 480
     assert result["editing"]["height"] == 270
     assert result["editing"]["clip_pre_roll_seconds"] == 1.5
     assert result["editing"]["clip_post_roll_seconds"] == 1.5
-    assert result["editing"]["transition"] == "hard-cut"
-    assert result["editing"]["transition_seconds"] == 0.0
-    assert result["editing"]["target_reel_seconds"] == 10.0
-    assert result["editing"]["final_point_fades_out"] is False
-    assert (output / "best_points_reel.mp4").is_file()
+    assert result["editing"]["assembly"] == "deferred-to-library"
+    assert result["editing"]["target_reel_seconds"] is None
+    assert result["summary"]["library_duration"] > 0
+    highlight_files = [item for item in result["files"] if item["kind"] == "highlight"]
+    assert len(highlight_files) == result["summary"]["point_count"]
+    assert all((output / item["name"]).is_file() for item in highlight_files)
+    assert not (output / "best_points_reel.mp4").exists()
     assert (output / "analysis.json").is_file()
 
 

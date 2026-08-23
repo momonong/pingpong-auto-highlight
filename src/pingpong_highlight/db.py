@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import threading
 import uuid
@@ -16,6 +17,23 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+_FILENAME_TIMESTAMP = re.compile(r"(?:^|[_-])(\d{8})[_-](\d{6})")
+
+
+def _recorded_at_from_filename(filename: str) -> str | None:
+    match = _FILENAME_TIMESTAMP.search(filename)
+    if match is None:
+        return None
+    try:
+        recorded_at = datetime.strptime("".join(match.groups()), "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+    # Phone filenames contain wall-clock time but no timezone. Keep that value
+    # timezone-naive so the browser does not shift a late-night recording into
+    # the following day when it formats or filters the library.
+    return recorded_at.isoformat()
+
+
 @dataclass(frozen=True, slots=True)
 class UploadRecord:
     id: str
@@ -26,6 +44,8 @@ class UploadRecord:
     status: str
     path: Path
     job_id: str | None
+    recorded_at: str | None
+    recorded_at_source: str | None
     created_at: str
     updated_at: str
 
@@ -70,6 +90,42 @@ class AnnotationRecord:
     updated_at: str
 
 
+@dataclass(frozen=True, slots=True)
+class HighlightClipRecord:
+    id: str
+    job_id: str
+    upload_id: str
+    clip_filename: str
+    source_name: str
+    source_created_at: str
+    source_date: str
+    source_date_source: str
+    start: float
+    end: float
+    rally_start: float
+    rally_end: float
+    score: float
+    relative_score: float
+    source_rank: int
+    reason: str
+    library_version: str
+    active: bool
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompilationRecord:
+    id: str
+    name: str
+    status: str
+    file_name: str | None
+    duration: float | None
+    error: str | None
+    created_at: str
+    updated_at: str
+
+
 class StateConflict(RuntimeError):
     pass
 
@@ -106,6 +162,8 @@ class Database:
                     status TEXT NOT NULL,
                     path TEXT NOT NULL,
                     job_id TEXT,
+                    recorded_at TEXT,
+                    recorded_at_source TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
@@ -147,13 +205,115 @@ class Database:
                     updated_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS highlight_clips (
+                    id TEXT PRIMARY KEY,
+                    job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+                    upload_id TEXT NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
+                    clip_filename TEXT NOT NULL,
+                    start REAL NOT NULL CHECK (start >= 0),
+                    end REAL NOT NULL CHECK (end > start),
+                    rally_start REAL NOT NULL CHECK (rally_start >= 0),
+                    rally_end REAL NOT NULL CHECK (rally_end > rally_start),
+                    score REAL NOT NULL,
+                    relative_score REAL NOT NULL CHECK (
+                        relative_score >= 0 AND relative_score <= 1.000001
+                    ),
+                    source_rank INTEGER NOT NULL CHECK (source_rank > 0),
+                    reason TEXT NOT NULL DEFAULT '',
+                    library_version TEXT NOT NULL DEFAULT 'legacy-result',
+                    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(job_id, clip_filename)
+                );
+
+                CREATE TABLE IF NOT EXISTS compilations (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    file_name TEXT,
+                    duration REAL CHECK (duration IS NULL OR duration >= 0),
+                    error TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS compilation_items (
+                    compilation_id TEXT NOT NULL REFERENCES compilations(id)
+                        ON DELETE CASCADE,
+                    highlight_id TEXT NOT NULL REFERENCES highlight_clips(id),
+                    position INTEGER NOT NULL CHECK (position >= 0),
+                    PRIMARY KEY (compilation_id, position),
+                    UNIQUE (compilation_id, highlight_id)
+                );
+
                 CREATE INDEX IF NOT EXISTS jobs_status_idx ON jobs(status, created_at);
                 CREATE INDEX IF NOT EXISTS drive_imports_status_idx
                     ON drive_imports(status, created_at);
                 CREATE INDEX IF NOT EXISTS annotations_upload_time_idx
                     ON annotations(upload_id, start, created_at);
+                CREATE INDEX IF NOT EXISTS highlight_clips_quality_idx
+                    ON highlight_clips(relative_score DESC, score DESC);
+                CREATE INDEX IF NOT EXISTS highlight_clips_source_idx
+                    ON highlight_clips(job_id, source_rank);
+                CREATE INDEX IF NOT EXISTS compilations_status_idx
+                    ON compilations(status, created_at);
                 """
             )
+            upload_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(uploads)").fetchall()
+            }
+            if "recorded_at" not in upload_columns:
+                connection.execute("ALTER TABLE uploads ADD COLUMN recorded_at TEXT")
+            if "recorded_at_source" not in upload_columns:
+                connection.execute(
+                    "ALTER TABLE uploads ADD COLUMN recorded_at_source TEXT"
+                )
+            highlight_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(highlight_clips)"
+                ).fetchall()
+            }
+            if "library_version" not in highlight_columns:
+                connection.execute(
+                    """
+                    ALTER TABLE highlight_clips
+                    ADD COLUMN library_version TEXT NOT NULL DEFAULT 'legacy-result'
+                    """
+                )
+            if "active" not in highlight_columns:
+                connection.execute(
+                    """
+                    ALTER TABLE highlight_clips
+                    ADD COLUMN active INTEGER NOT NULL DEFAULT 1
+                    CHECK (active IN (0, 1))
+                    """
+                )
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS highlight_clips_active_idx
+                ON highlight_clips(active, job_id, source_rank)
+                """
+            )
+            for row in connection.execute(
+                "SELECT id, filename, recorded_at_source FROM uploads"
+            ).fetchall():
+                recorded_at = _recorded_at_from_filename(row["filename"])
+                if recorded_at is not None and row["recorded_at_source"] in {
+                    None,
+                    "filename",
+                }:
+                    connection.execute(
+                        """
+                        UPDATE uploads
+                        SET recorded_at = ?, recorded_at_source = 'filename'
+                        WHERE id = ?
+                        """,
+                        (recorded_at, row["id"]),
+                    )
+            self._backfill_highlight_clips(connection)
 
     @staticmethod
     def _upload(row: sqlite3.Row | None) -> UploadRecord | None:
@@ -168,6 +328,8 @@ class Database:
             status=row["status"],
             path=Path(row["path"]),
             job_id=row["job_id"],
+            recorded_at=row["recorded_at"],
+            recorded_at_source=row["recorded_at_source"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -221,6 +383,182 @@ class Database:
             updated_at=row["updated_at"],
         )
 
+    @staticmethod
+    def _highlight_clip(row: sqlite3.Row | None) -> HighlightClipRecord | None:
+        if row is None:
+            return None
+        return HighlightClipRecord(
+            id=row["id"],
+            job_id=row["job_id"],
+            upload_id=row["upload_id"],
+            clip_filename=row["clip_filename"],
+            source_name=row["source_name"],
+            source_created_at=row["source_created_at"],
+            source_date=row["source_date"],
+            source_date_source=row["source_date_source"],
+            start=float(row["start"]),
+            end=float(row["end"]),
+            rally_start=float(row["rally_start"]),
+            rally_end=float(row["rally_end"]),
+            score=float(row["score"]),
+            relative_score=float(row["relative_score"]),
+            source_rank=int(row["source_rank"]),
+            reason=row["reason"],
+            library_version=row["library_version"],
+            active=bool(row["active"]),
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    @staticmethod
+    def _compilation(row: sqlite3.Row | None) -> CompilationRecord | None:
+        if row is None:
+            return None
+        return CompilationRecord(
+            id=row["id"],
+            name=row["name"],
+            status=row["status"],
+            file_name=row["file_name"],
+            duration=float(row["duration"]) if row["duration"] is not None else None,
+            error=row["error"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    @staticmethod
+    def _replace_highlight_clips(
+        connection: sqlite3.Connection,
+        *,
+        job_id: str,
+        upload_id: str,
+        result: dict[str, Any],
+        timestamp: str,
+        library_version: str,
+        active: bool,
+        file_prefix: str = "",
+    ) -> None:
+        files = [
+            item
+            for item in result.get("files", [])
+            if item.get("kind") in {"highlight", "point", "clip"}
+            and isinstance(item.get("name"), str)
+        ]
+        points = result.get("points", [])
+        if not isinstance(points, list):
+            points = []
+
+        candidate_scores = [
+            float(candidate["score"])
+            for candidate in result.get("candidates", [])
+            if isinstance(candidate, dict)
+            and isinstance(candidate.get("score"), (int, float))
+        ]
+        point_scores = [
+            float(point["score"])
+            for point in points
+            if isinstance(point, dict) and isinstance(point.get("score"), (int, float))
+        ]
+        best_score = max(candidate_scores or point_scores or [0.0])
+        for index, item in enumerate(files):
+            if index >= len(points) or not isinstance(points[index], dict):
+                continue
+            point = points[index]
+            try:
+                start = float(point.get("clip_start", point.get("start")))
+                end = float(point.get("clip_end", point.get("end")))
+                rally_start = float(point.get("rally_start", start))
+                rally_end = float(point.get("rally_end", end))
+                score = float(point.get("score", 0.0))
+                source_rank = int(point.get("rank") or index + 1)
+            except (KeyError, TypeError, ValueError):
+                continue
+            if not (0 <= start < end and 0 <= rally_start < rally_end):
+                continue
+
+            relative_clip = Path(file_prefix) / item["name"]
+            if relative_clip.is_absolute() or ".." in relative_clip.parts:
+                continue
+            clip_filename = relative_clip.as_posix()
+            clip_id = uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"highlightcraft:{job_id}:{clip_filename}",
+            ).hex
+            relative_score = score / best_score if best_score > 0 else 0.0
+            relative_score = max(0.0, min(1.0, relative_score))
+            connection.execute(
+                """
+                INSERT INTO highlight_clips (
+                    id, job_id, upload_id, clip_filename, start, end,
+                    rally_start, rally_end, score, relative_score, source_rank,
+                    reason, library_version, active, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(job_id, clip_filename) DO UPDATE SET
+                    start = excluded.start,
+                    end = excluded.end,
+                    rally_start = excluded.rally_start,
+                    rally_end = excluded.rally_end,
+                    score = excluded.score,
+                    relative_score = excluded.relative_score,
+                    source_rank = excluded.source_rank,
+                    reason = excluded.reason,
+                    library_version = excluded.library_version,
+                    active = excluded.active,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    clip_id,
+                    job_id,
+                    upload_id,
+                    clip_filename,
+                    start,
+                    end,
+                    rally_start,
+                    rally_end,
+                    score,
+                    relative_score,
+                    source_rank,
+                    str(point.get("reason", "")),
+                    library_version,
+                    int(active),
+                    timestamp,
+                    timestamp,
+                ),
+            )
+
+    def _backfill_highlight_clips(self, connection: sqlite3.Connection) -> None:
+        rows = connection.execute(
+            """
+            SELECT jobs.id, jobs.upload_id, jobs.result_json, jobs.updated_at
+            FROM jobs
+            WHERE jobs.status = 'completed' AND jobs.result_json IS NOT NULL
+            """
+        ).fetchall()
+        for row in rows:
+            try:
+                result = json.loads(row["result_json"])
+            except (TypeError, json.JSONDecodeError):
+                continue
+            result_version = str(result.get("algorithm_version") or "")
+            is_library_result = result_version.startswith("highlight-library-")
+            has_rebuilt_active = connection.execute(
+                """
+                SELECT 1 FROM highlight_clips
+                WHERE job_id = ? AND active = 1 AND clip_filename LIKE 'clip-sets/%'
+                LIMIT 1
+                """,
+                (row["id"],),
+            ).fetchone()
+            self._replace_highlight_clips(
+                connection,
+                job_id=row["id"],
+                upload_id=row["upload_id"],
+                result=result,
+                timestamp=row["updated_at"],
+                library_version=result_version if is_library_result else "legacy-result",
+                active=has_rebuilt_active is None,
+            )
+
     def create_upload(
         self,
         upload_id: str,
@@ -230,14 +568,26 @@ class Database:
         path: Path,
     ) -> UploadRecord:
         timestamp = _now()
+        recorded_at = _recorded_at_from_filename(filename)
         with self._lock, self._connect() as connection:
             connection.execute(
                 """
                 INSERT INTO uploads
-                    (id, filename, size, offset, content_type, status, path, created_at, updated_at)
-                VALUES (?, ?, ?, 0, ?, 'uploading', ?, ?, ?)
+                    (id, filename, size, offset, content_type, status, path,
+                     recorded_at, recorded_at_source, created_at, updated_at)
+                VALUES (?, ?, ?, 0, ?, 'uploading', ?, ?, ?, ?, ?)
                 """,
-                (upload_id, filename, size, content_type, str(path), timestamp, timestamp),
+                (
+                    upload_id,
+                    filename,
+                    size,
+                    content_type,
+                    str(path),
+                    recorded_at,
+                    "filename" if recorded_at is not None else None,
+                    timestamp,
+                    timestamp,
+                ),
             )
         record = self.get_upload(upload_id)
         assert record is not None
@@ -254,6 +604,7 @@ class Database:
         drive_import_id: str | None = None,
     ) -> tuple[UploadRecord, JobRecord]:
         timestamp = _now()
+        recorded_at = _recorded_at_from_filename(filename)
         job_id = uuid.uuid4().hex
         with self._lock, self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -261,8 +612,8 @@ class Database:
                 """
                 INSERT INTO uploads
                     (id, filename, size, offset, content_type, status, path, job_id,
-                     created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)
+                     recorded_at, recorded_at_source, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     upload_id,
@@ -272,6 +623,8 @@ class Database:
                     content_type,
                     str(path),
                     job_id,
+                    recorded_at,
+                    "filename" if recorded_at is not None else None,
                     timestamp,
                     timestamp,
                 ),
@@ -663,6 +1016,73 @@ class Database:
                 "UPDATE uploads SET status = 'completed', updated_at = ? WHERE job_id = ?",
                 (timestamp, job_id),
             )
+            row = connection.execute(
+                "SELECT upload_id FROM jobs WHERE id = ?",
+                (job_id,),
+            ).fetchone()
+            if row is not None:
+                connection.execute(
+                    "UPDATE highlight_clips SET active = 0 WHERE job_id = ?",
+                    (job_id,),
+                )
+                self._replace_highlight_clips(
+                    connection,
+                    job_id=job_id,
+                    upload_id=row["upload_id"],
+                    result=result,
+                    timestamp=timestamp,
+                    library_version=str(
+                        result.get("algorithm_version") or "job-result"
+                    ),
+                    active=True,
+                )
+
+    def activate_highlight_result(
+        self,
+        job_id: str,
+        result: dict[str, Any],
+        *,
+        file_prefix: str,
+        library_version: str,
+    ) -> int:
+        prefix = Path(file_prefix)
+        if prefix.is_absolute() or ".." in prefix.parts:
+            raise StateConflict("Highlight file prefix must stay inside the job output")
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT upload_id FROM jobs WHERE id = ? AND status = 'completed'",
+                (job_id,),
+            ).fetchone()
+            if row is None:
+                raise StateConflict("Completed source job not found")
+            connection.execute(
+                "UPDATE highlight_clips SET active = 0 WHERE job_id = ?",
+                (job_id,),
+            )
+            self._replace_highlight_clips(
+                connection,
+                job_id=job_id,
+                upload_id=row["upload_id"],
+                result=result,
+                timestamp=timestamp,
+                library_version=library_version,
+                active=True,
+                file_prefix=file_prefix,
+            )
+            count = int(
+                connection.execute(
+                    """
+                    SELECT COUNT(*) FROM highlight_clips
+                    WHERE job_id = ? AND active = 1
+                    """,
+                    (job_id,),
+                ).fetchone()[0]
+            )
+            if count == 0:
+                raise StateConflict("The analysis produced no highlight clips to activate")
+        return count
 
     def fail_job(self, job_id: str, error: str) -> None:
         timestamp = _now()
@@ -678,4 +1098,202 @@ class Database:
             connection.execute(
                 "UPDATE uploads SET status = 'failed', updated_at = ? WHERE job_id = ?",
                 (timestamp, job_id),
+            )
+
+    def list_highlight_clips(self) -> list[HighlightClipRecord]:
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT highlight_clips.*, uploads.filename AS source_name,
+                       uploads.created_at AS source_created_at,
+                       COALESCE(uploads.recorded_at, uploads.created_at) AS source_date,
+                       COALESCE(uploads.recorded_at_source, 'uploaded') AS source_date_source
+                FROM highlight_clips
+                JOIN uploads ON uploads.id = highlight_clips.upload_id
+                JOIN jobs ON jobs.id = highlight_clips.job_id
+                WHERE jobs.status = 'completed' AND highlight_clips.active = 1
+                ORDER BY highlight_clips.relative_score DESC,
+                         highlight_clips.score DESC,
+                         uploads.created_at DESC,
+                         highlight_clips.start
+                """
+            ).fetchall()
+        return [
+            record
+            for row in rows
+            if (record := self._highlight_clip(row)) is not None
+        ]
+
+    def get_highlight_clip(self, highlight_id: str) -> HighlightClipRecord | None:
+        with self._lock, self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT highlight_clips.*, uploads.filename AS source_name,
+                       uploads.created_at AS source_created_at,
+                       COALESCE(uploads.recorded_at, uploads.created_at) AS source_date,
+                       COALESCE(uploads.recorded_at_source, 'uploaded') AS source_date_source
+                FROM highlight_clips
+                JOIN uploads ON uploads.id = highlight_clips.upload_id
+                WHERE highlight_clips.id = ?
+                """,
+                (highlight_id,),
+            ).fetchone()
+        return self._highlight_clip(row)
+
+    def create_compilation(
+        self,
+        *,
+        name: str,
+        highlight_ids: list[str],
+    ) -> CompilationRecord:
+        ordered_ids = list(dict.fromkeys(highlight_ids))
+        if not ordered_ids:
+            raise StateConflict("A compilation needs at least one highlight")
+        compilation_id = uuid.uuid4().hex
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            placeholders = ",".join("?" for _ in ordered_ids)
+            rows = connection.execute(
+                f"SELECT id FROM highlight_clips WHERE id IN ({placeholders})",
+                ordered_ids,
+            ).fetchall()
+            available = {row["id"] for row in rows}
+            missing = [
+                highlight_id
+                for highlight_id in ordered_ids
+                if highlight_id not in available
+            ]
+            if missing:
+                raise StateConflict("One or more selected highlights no longer exist")
+            connection.execute(
+                """
+                INSERT INTO compilations
+                    (id, name, status, created_at, updated_at)
+                VALUES (?, ?, 'queued', ?, ?)
+                """,
+                (compilation_id, name, timestamp, timestamp),
+            )
+            connection.executemany(
+                """
+                INSERT INTO compilation_items
+                    (compilation_id, highlight_id, position)
+                VALUES (?, ?, ?)
+                """,
+                [
+                    (compilation_id, highlight_id, position)
+                    for position, highlight_id in enumerate(ordered_ids)
+                ],
+            )
+            row = connection.execute(
+                "SELECT * FROM compilations WHERE id = ?",
+                (compilation_id,),
+            ).fetchone()
+        record = self._compilation(row)
+        assert record is not None
+        return record
+
+    def get_compilation(self, compilation_id: str) -> CompilationRecord | None:
+        with self._lock, self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM compilations WHERE id = ?",
+                (compilation_id,),
+            ).fetchone()
+        return self._compilation(row)
+
+    def list_compilations(self, limit: int = 50) -> list[CompilationRecord]:
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM compilations ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [
+            record for row in rows if (record := self._compilation(row)) is not None
+        ]
+
+    def list_compilation_highlights(
+        self,
+        compilation_id: str,
+    ) -> list[HighlightClipRecord]:
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT highlight_clips.*, uploads.filename AS source_name,
+                       uploads.created_at AS source_created_at,
+                       COALESCE(uploads.recorded_at, uploads.created_at) AS source_date,
+                       COALESCE(uploads.recorded_at_source, 'uploaded') AS source_date_source
+                FROM compilation_items
+                JOIN highlight_clips
+                    ON highlight_clips.id = compilation_items.highlight_id
+                JOIN uploads ON uploads.id = highlight_clips.upload_id
+                WHERE compilation_items.compilation_id = ?
+                ORDER BY compilation_items.position
+                """,
+                (compilation_id,),
+            ).fetchall()
+        return [
+            record
+            for row in rows
+            if (record := self._highlight_clip(row)) is not None
+        ]
+
+    def list_queued_compilations(self) -> list[CompilationRecord]:
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM compilations WHERE status = 'queued' ORDER BY created_at"
+            ).fetchall()
+        return [
+            record for row in rows if (record := self._compilation(row)) is not None
+        ]
+
+    def requeue_interrupted_compilations(self) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE compilations
+                SET status = 'queued', error = NULL, updated_at = ?
+                WHERE status = 'processing'
+                """,
+                (_now(),),
+            )
+
+    def claim_compilation(self, compilation_id: str) -> bool:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE compilations
+                SET status = 'processing', error = NULL, updated_at = ?
+                WHERE id = ? AND status = 'queued'
+                """,
+                (_now(), compilation_id),
+            )
+        return cursor.rowcount == 1
+
+    def finish_compilation(
+        self,
+        compilation_id: str,
+        *,
+        file_name: str,
+        duration: float,
+    ) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE compilations
+                SET status = 'completed', file_name = ?, duration = ?, error = NULL,
+                    updated_at = ?
+                WHERE id = ? AND status = 'processing'
+                """,
+                (file_name, duration, _now(), compilation_id),
+            )
+
+    def fail_compilation(self, compilation_id: str, error: str) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE compilations
+                SET status = 'failed', error = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (error[:1000], _now(), compilation_id),
             )

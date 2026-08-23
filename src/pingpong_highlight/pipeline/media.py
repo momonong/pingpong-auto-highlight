@@ -484,6 +484,8 @@ def _point_reel_command(
     with_audio: bool,
     encoder: str,
     use_nvdec: bool = False,
+    audio_presence: list[bool] | None = None,
+    durations: list[float] | None = None,
 ) -> list[str]:
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
     for clip in clips:
@@ -494,6 +496,8 @@ def _point_reel_command(
     filters: list[str] = []
     fps = min(max(fps, 1.0), MAX_PLAYBACK_FPS)
     fps_value = f"{fps:.6f}"
+    audio_presence = audio_presence or [with_audio] * len(clips)
+    durations = durations or [0.0] * len(clips)
     for index in range(len(clips)):
         filters.append(
             f"[{index}:v:0]settb=AVTB,setpts=PTS-STARTPTS,fps={fps_value},"
@@ -502,10 +506,16 @@ def _point_reel_command(
             f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,"
             f"setsar=1,format=yuv420p[v{index}]"
         )
-        if with_audio:
+        if with_audio and audio_presence[index]:
             filters.append(
                 f"[{index}:a:0]aresample=48000,"
                 "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
+                f"asetpts=PTS-STARTPTS[a{index}]"
+            )
+        elif with_audio:
+            filters.append(
+                "anullsrc=channel_layout=stereo:sample_rate=48000,"
+                f"atrim=duration={durations[index]:.6f},"
                 f"asetpts=PTS-STARTPTS[a{index}]"
             )
 
@@ -569,7 +579,7 @@ def build_point_reel(
     fps = min(first.fps if first.fps > 0 else MAX_PLAYBACK_FPS, MAX_PLAYBACK_FPS)
     if width <= 0 or height <= 0:
         raise MediaError("Point clips do not have valid output dimensions")
-    with_audio = all(item.has_audio for item in media)
+    with_audio = any(item.has_audio for item in media)
     destination.parent.mkdir(parents=True, exist_ok=True)
     encoders = ["h264_nvenc", "libx264"] if has_nvenc() else ["libx264"]
     nvdec_available = has_nvdec()
@@ -584,6 +594,8 @@ def build_point_reel(
             with_audio=with_audio,
             encoder=encoder,
             use_nvdec=encoder == "h264_nvenc" and nvdec_available,
+            audio_presence=[item.has_audio for item in media],
+            durations=[item.duration for item in media],
         )
         result = _run(command)
         if result.returncode == 0:

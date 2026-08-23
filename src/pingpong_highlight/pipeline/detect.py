@@ -26,15 +26,15 @@ class DetectionConfig:
     post_roll: float = 1.5
     minimum_point_score_ratio: float = 0.87
     max_points: int | None = None
-    target_reel_duration: float = 55.0
+    target_reel_duration: float | None = None
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.minimum_point_score_ratio <= 1.0:
             raise ValueError("minimum_point_score_ratio must be between 0 and 1")
         if self.max_points is not None and self.max_points <= 0:
             raise ValueError("max_points must be positive or None")
-        if self.target_reel_duration <= 0:
-            raise ValueError("target_reel_duration must be positive")
+        if self.target_reel_duration is not None and self.target_reel_duration <= 0:
+            raise ValueError("target_reel_duration must be positive or None")
 
 
 def _motion_level(motion: MotionFeatures, start: float, end: float) -> float:
@@ -224,7 +224,10 @@ def _select_candidates(
             continue
 
         added_duration = _candidate_clip_duration(duration, candidates[index], config)
-        if reel_duration + added_duration > config.target_reel_duration:
+        if (
+            config.target_reel_duration is not None
+            and reel_duration + added_duration > config.target_reel_duration
+        ):
             decisions[index] = "duration-budget"
             continue
 

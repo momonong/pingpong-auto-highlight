@@ -7,7 +7,7 @@
 3. 分析以時間戳而非 frame number 為真實來源，正常處理手機常見的 HEVC、VFR 與 rotation metadata。
 4. 第一個 baseline 不依賴固定鏡位、球桌方框或數 GB 模型權重。
 5. 每次結果留下可比較的 `analysis.json`，後續模型迭代能量化，而不是憑感覺調參數。
-6. 產品輸出以一個 scored point 為剪輯單位，再組成短 Reel；不把多分混成一個長候選段。
+6. 產品輸出以一個 scored point 為可重用素材單位；來源影片、素材與自訂集錦是分離的多階段關係。
 
 ## Components
 
@@ -23,8 +23,8 @@
 
 - `uploads.py` 只用隨機 ID 當磁碟檔名，原始 filename 僅作 metadata，避免 path traversal。
 - chunk 先寫獨立暫存檔並驗證 checksum，再 append 到 `.part`。完整收到後才以 atomic rename 變成分析輸入。
-- `db.py` 以 SQLite WAL 保存 upload offset、job 狀態、進度與結果。
-- `jobs.py` 預設單 worker，避免多份影片互搶 GPU／磁碟頻寬。重啟時會把 `processing` 工作重新排入 `queued`。
+- `db.py` 以 SQLite WAL 保存 upload offset、job 狀態、highlight clips、ordered compilation items、進度與結果。
+- `jobs.py` 預設單 worker；來源分析與 compilation builder 另共用同一把 media work lock，避免同時搶 GPU／磁碟頻寬。重啟時會把中斷工作重新排隊。
 
 目前內建 store 以單一 uvicorn process 為假設。若公開部署或多機擴充，API contract 可保留，傳輸層改接官方 `tusd`，輸入放 S3-compatible object storage，工作佇列改用 Redis／Postgres。
 
@@ -51,17 +51,17 @@ Docker 預設掛入 NVIDIA 的 `compute,utility,video` capabilities。NVDEC runt
 
 相鄰 impact events 依合理回球間隔組成 point candidate；impact count、tempo、節奏一致性、span 與局部 motion 共同形成 ranking score。沒有可靠 audio candidate 時才使用 motion-only fallback。
 
-point candidate 不會再彼此合併。系統先以同片最佳分數為基準套用相對門檻，再依分數由高到低放入 Reel 秒數預算；預設不設固定球數，也不會為了湊數回填。`max_points` 只保留為選用的安全上限。相鄰的已入選得分若 padding 重疊，兩者會平分中間的安靜區域，避免下一次發球或上一分反應同時出現在兩個片段；被門檻或預算淘汰的候選不會縮短入選片段的前後脈絡。最後依原片時間排序播放，rank 仍表示精彩度順序。FFmpeg 會把片段邊界對齊 frame／audio packet，因此成品 probe 長度可能和理論預算有極小差異。
+point candidate 不會再彼此合併。系統以同片最佳分數為基準，預設把達 70% 的候選各自存入素材庫；87% 只標成推薦。來源擷取不再套 Reel 秒數預算，預設也不設固定球數，`max_points` 僅保留為選用安全上限。相鄰的已保存得分若 padding 重疊，兩者會平分中間的安靜區域，避免下一次發球或上一分反應同時出現在兩個片段。素材依原片時間輸出，rank 仍表示該來源內的分數順序。
 
-目前相對門檻是 heuristic retention rule，不是校準過的精彩機率。`analysis.json` 會保存所有候選的核心區間、分數、有效門檻，以及 `selected`、`below-score-threshold`、`duration-budget`、`point-cap` 決策，供後續以完整正／負標記校準。
+目前相對分數是 heuristic，不是跨來源校準過的精彩機率。`analysis.json` 會保存所有候選的核心區間、分數、素材門檻、推薦門檻，以及 `selected`、`below-score-threshold`、`point-cap` 決策，供後續以完整正／負標記校準。
 
 ### Export
 
 舊版的 `-c copy` 只能在 keyframe 附近切割。現在每個 point 都經 accurate seek 後重編碼成 H.264/AAC，加 `faststart` 方便手機播放。GPU runtime 可用時，輸入優先經 NVDEC 解碼並以 NVENC 編碼；能力檢查會實際試編一個 frame，避免只因 FFmpeg 列出 `h264_nvenc` 就誤判。任何 GPU 編解碼失敗仍會用 CPU／`libx264` 重試。
 
-`build_point_reel()` 以第一個單分片段的解析度與畫面比例作為成品規格，將正規化後的影音 stream 以 FFmpeg `concat` filter 直接剪接，不重疊或淡化相鄰得分。直式、裁切與字幕屬於發佈衍生版本，不改變核心分析輸出；`build_social_reel()` 保留為後續 renderer，但不在預設流程使用。
+`build_point_reel()` 只在使用者提交 ordered compilation items 後執行。它以第一個素材的解析度與畫面比例作為成品規格，將不同來源的影音 stream 正規化後以 FFmpeg `concat` filter 直接剪接；缺音軌的單一素材會補等長靜音，不會讓整支跨來源集錦失去聲音。輸出不設預設時長上限。網站分析、背景集錦與 CLI 重建會透過 data directory 內的跨程序 lock file 共用同一個 GPU media slot。直式、裁切與字幕屬於後續發佈衍生版本。
 
-完成頁以同一個受 token 保護的檔案端點提供兩種回應：inline response 供 `<video>` range playback，`download=true` 則加入 attachment header。手機可以先預覽，再使用一般下載或 Web Share 儲存；單分片段與分析報告收在次要展開區。
+`highlight_clips` 保存穩定 clip ID、來源時間、來源內分數與 active library version。舊版結果可回填，但未曾輸出的舊候選必須明確重跑；新版 clip set 全部成功後才切換 active，舊檔不刪除。`compilations` 與 `compilation_items` 保存跨來源選取及明確順序，背景 manager 建立 H.264/AAC 成品。所有素材與集錦端點都受 token 保護並支援 HTTP Range。
 
 ## Failure and recovery model
 
@@ -76,7 +76,7 @@ point candidate 不會再彼此合併。系統先以同片最佳分數為基準�
 | 服務在分析途中停止 | job 重新排隊並從頭分析；不會重傳原片 |
 | NVDEC 不可用或不支援來源格式 | 同一支影片自動改用 CPU 解碼 |
 | NVENC 不可用 | 同一 clip 自動改用 `libx264` |
-| Reel filter 或編碼失敗 | 保留已輸出的單分片段並在報告記錄 warning |
+| Compilation filter 或編碼失敗 | 素材不受影響，工作標記 failed 並保留錯誤 |
 | 無音軌 | motion-only fallback，報告會標記 |
 
 ## Intentional non-goals for this baseline

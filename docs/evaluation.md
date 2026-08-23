@@ -20,8 +20,8 @@
 3. Boundary error：預測開始／結束與真實時間的絕對誤差中位數。
 4. Compression ratio：輸出總長度 ÷ 原片長度。
 5. Threshold precision／recall：在固定 validation threshold 下，入選中有多少值得保留，以及人工精彩球有多少被選到。
-6. Selection volume：每片入選球數、零球率與總長；分別按短／中／長片回報，避免固定 Top-k 掩蓋長度偏差。
-7. Reel pacing：成品總長、每分平均長度與直接剪接後是否仍看得懂得分結果。
+6. Library volume：每片保存候選數、推薦數、零候選率、素材總長與磁碟量；分別按短／中／長片回報，避免固定 Top-k 掩蓋長度偏差。
+7. Compilation utility：使用者實際選入率、跨來源比例、成品總長、每分平均長度與直接剪接後是否仍看得懂得分結果。
 8. Runtime factor：分析秒數 ÷ 影片秒數，以及 peak RAM／VRAM。
 
 產品初期應優先 point recall，因為漏掉好球無法挽回；ranking precision 可以先透過 review UI 讓人快速刪除。建議 baseline gate：精彩 point recall ≥ 0.90、point purity ≥ 0.85、開始邊界誤差中位數 ≤ 1.5 秒。

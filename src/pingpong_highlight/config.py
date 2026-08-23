@@ -41,6 +41,7 @@ class Settings:
     video_sample_fps: float = 8.0
     analysis_frame_size: int = 320
     audio_sample_rate: int = 16_000
+    library_minimum_point_score_ratio: float = 0.70
     minimum_point_score_ratio: float = 0.87
     max_points: int | None = None
     reel_target_seconds: float = 55.0
@@ -49,8 +50,17 @@ class Settings:
     worker_count: int = 1
 
     def __post_init__(self) -> None:
+        if not 0.0 <= self.library_minimum_point_score_ratio <= 1.0:
+            raise ValueError(
+                "library_minimum_point_score_ratio must be between 0 and 1"
+            )
         if not 0.0 <= self.minimum_point_score_ratio <= 1.0:
             raise ValueError("minimum_point_score_ratio must be between 0 and 1")
+        if self.library_minimum_point_score_ratio > self.minimum_point_score_ratio:
+            raise ValueError(
+                "library_minimum_point_score_ratio cannot exceed "
+                "minimum_point_score_ratio"
+            )
         if self.max_points is not None and self.max_points < 0:
             raise ValueError("max_points must be zero, positive, or None")
         if self.max_points == 0:
@@ -71,6 +81,10 @@ class Settings:
         return self.data_dir / "work"
 
     @property
+    def compilations_dir(self) -> Path:
+        return self.data_dir / "compilations"
+
+    @property
     def drive_imports_dir(self) -> Path:
         return self.data_dir / "drive-imports"
 
@@ -84,6 +98,7 @@ class Settings:
             self.uploads_dir,
             self.outputs_dir,
             self.work_dir,
+            self.compilations_dir,
             self.drive_imports_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
@@ -118,6 +133,10 @@ class Settings:
             video_sample_fps=_env_float("PINGPONG_VIDEO_SAMPLE_FPS", 8.0),
             analysis_frame_size=_env_int("PINGPONG_ANALYSIS_FRAME_SIZE", 320),
             audio_sample_rate=_env_int("PINGPONG_AUDIO_SAMPLE_RATE", 16_000),
+            library_minimum_point_score_ratio=_env_float(
+                "PINGPONG_LIBRARY_MIN_POINT_SCORE_RATIO",
+                0.70,
+            ),
             minimum_point_score_ratio=_env_float(
                 "PINGPONG_MIN_POINT_SCORE_RATIO",
                 0.87,
