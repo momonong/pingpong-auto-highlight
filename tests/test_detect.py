@@ -2,12 +2,28 @@ from __future__ import annotations
 
 import numpy as np
 
-from pingpong_highlight.pipeline.detect import DetectionConfig, detect_points
+from pingpong_highlight.pipeline.detect import (
+    DetectionConfig,
+    _select_candidates,
+    detect_points,
+)
 from pingpong_highlight.pipeline.models import (
     AudioFeatures,
     ImpactEvent,
     MotionFeatures,
+    PointCandidate,
 )
+
+
+def _candidate(start: float, score: float, duration: float = 1.0) -> PointCandidate:
+    return PointCandidate(
+        start=start,
+        end=start + duration,
+        score=score,
+        impact_count=3,
+        motion_score=1.0,
+        reason="test candidate",
+    )
 
 
 def test_audio_events_form_ranked_padded_point() -> None:
@@ -40,6 +56,7 @@ def test_separate_points_are_ranked_but_returned_chronologically() -> None:
         20.0,
         AudioFeatures(np.empty(0), np.empty(0), events),
         MotionFeatures.empty(),
+        DetectionConfig(minimum_point_score_ratio=0.0),
     )
 
     assert len(detection.points) == 2
@@ -60,7 +77,7 @@ def test_nearby_points_share_the_quiet_gap_instead_of_merging() -> None:
     )
 
     assert len(detection.candidates) == 2
-    assert detection.candidates[0].end == detection.candidates[1].start == 4.6
+    assert detection.points[0].end == detection.points[1].start == 4.6
 
 
 def test_motion_only_fallback_works_without_audio() -> None:
@@ -91,7 +108,7 @@ def test_reel_budget_counts_full_padded_duration_for_direct_cuts() -> None:
         DetectionConfig(
             max_points=2,
             target_reel_duration=7.5,
-            minimum_points_before_budget=1,
+            minimum_point_score_ratio=0.0,
             pre_roll=1.5,
             post_roll=1.5,
         ),
@@ -100,3 +117,86 @@ def test_reel_budget_counts_full_padded_duration_for_direct_cuts() -> None:
     assert len(detection.candidates) == 2
     assert len(detection.points) == 1
     assert detection.points[0].duration == 3.8
+
+
+def test_relative_threshold_accepts_equality_and_rejects_lower_scores() -> None:
+    candidates = [
+        _candidate(1.0, 10.0),
+        _candidate(4.0, 8.7),
+        _candidate(7.0, 8.699),
+    ]
+
+    decisions, selected, threshold = _select_candidates(
+        20.0,
+        candidates,
+        DetectionConfig(minimum_point_score_ratio=0.87, target_reel_duration=20.0),
+    )
+
+    assert threshold == 8.7
+    assert [candidate.score for candidate in selected] == [10.0, 8.7]
+    assert [candidate.selection for candidate in decisions] == [
+        "selected",
+        "selected",
+        "below-score-threshold",
+    ]
+
+
+def test_default_selection_has_no_six_point_quota() -> None:
+    candidates = [_candidate(index * 3.0, 10.0) for index in range(7)]
+
+    decisions, selected, _threshold = _select_candidates(
+        25.0,
+        candidates,
+        DetectionConfig(target_reel_duration=100.0),
+    )
+
+    assert len(selected) == 7
+    assert all(candidate.selection == "selected" for candidate in decisions)
+
+
+def test_explicit_point_cap_remains_an_optional_safety_limit() -> None:
+    candidates = [_candidate(index * 3.0, 10.0) for index in range(4)]
+
+    decisions, selected, _threshold = _select_candidates(
+        20.0,
+        candidates,
+        DetectionConfig(max_points=2, target_reel_duration=20.0),
+    )
+
+    assert len(selected) == 2
+    assert [candidate.selection for candidate in decisions] == [
+        "selected",
+        "selected",
+        "point-cap",
+        "point-cap",
+    ]
+
+
+def test_budget_does_not_force_a_minimum_number_of_points() -> None:
+    decisions, selected, _threshold = _select_candidates(
+        10.0,
+        [_candidate(1.0, 10.0, duration=4.0)],
+        DetectionConfig(target_reel_duration=3.0),
+    )
+
+    assert selected == []
+    assert decisions[0].selection == "duration-budget"
+
+
+def test_rejected_neighbour_does_not_trim_selected_point_context() -> None:
+    events = [
+        *[ImpactEvent(time=time, strength=1.0) for time in (3.0, 3.4, 3.8)],
+        *[ImpactEvent(time=time, strength=0.1) for time in (5.4, 5.8, 6.2)],
+    ]
+
+    detection = detect_points(
+        10.0,
+        AudioFeatures(np.empty(0), np.empty(0), events),
+        MotionFeatures.empty(),
+        DetectionConfig(minimum_point_score_ratio=0.99),
+    )
+
+    assert len(detection.candidates) == 2
+    assert len(detection.points) == 1
+    assert detection.points[0].rally_end == 3.8
+    assert detection.points[0].end == 5.3

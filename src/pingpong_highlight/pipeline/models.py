@@ -85,7 +85,37 @@ class Point:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class PointCandidate:
+    start: float
+    end: float
+    score: float
+    impact_count: int
+    motion_score: float
+    reason: str
+    selection: str = "candidate"
+    rank: int | None = None
+
+    @property
+    def duration(self) -> float:
+        return self.end - self.start
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rally_start": round(self.start, 3),
+            "rally_end": round(self.end, 3),
+            "rally_duration": round(self.duration, 3),
+            "score": round(self.score, 3),
+            "impact_count": self.impact_count,
+            "motion_score": round(self.motion_score, 3),
+            "reason": self.reason,
+            "selection": self.selection,
+            "rank": self.rank,
+        }
+
+
 @dataclass(slots=True)
 class PointDetection:
-    candidates: list[Point]
+    candidates: list[PointCandidate]
     points: list[Point]
+    effective_score_threshold: float | None = None

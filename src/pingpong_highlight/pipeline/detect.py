@@ -9,6 +9,7 @@ from pingpong_highlight.pipeline.models import (
     ImpactEvent,
     MotionFeatures,
     Point,
+    PointCandidate,
     PointDetection,
 )
 
@@ -23,19 +24,17 @@ class DetectionConfig:
     maximum_point_span: float = 18.0
     pre_roll: float = 1.5
     post_roll: float = 1.5
-    max_points: int = 6
+    minimum_point_score_ratio: float = 0.87
+    max_points: int | None = None
     target_reel_duration: float = 55.0
-    minimum_points_before_budget: int = 3
 
-
-@dataclass(slots=True)
-class _Candidate:
-    start: float
-    end: float
-    score: float
-    impact_count: int
-    motion_score: float
-    reason: str
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.minimum_point_score_ratio <= 1.0:
+            raise ValueError("minimum_point_score_ratio must be between 0 and 1")
+        if self.max_points is not None and self.max_points <= 0:
+            raise ValueError("max_points must be positive or None")
+        if self.target_reel_duration <= 0:
+            raise ValueError("target_reel_duration must be positive")
 
 
 def _motion_level(motion: MotionFeatures, start: float, end: float) -> float:
@@ -69,8 +68,8 @@ def _audio_candidates(
     audio: AudioFeatures,
     motion: MotionFeatures,
     config: DetectionConfig,
-) -> list[_Candidate]:
-    candidates: list[_Candidate] = []
+) -> list[PointCandidate]:
+    candidates: list[PointCandidate] = []
     for group in _group_impacts(audio.events, config):
         if len(group) < config.minimum_impacts:
             continue
@@ -92,7 +91,7 @@ def _audio_candidates(
             + 0.08 * min(span, 12.0)
         )
         candidates.append(
-            _Candidate(
+            PointCandidate(
                 start=group[0].time,
                 end=group[-1].time,
                 score=float(score),
@@ -104,7 +103,10 @@ def _audio_candidates(
     return candidates
 
 
-def _motion_candidates(motion: MotionFeatures, config: DetectionConfig) -> list[_Candidate]:
+def _motion_candidates(
+    motion: MotionFeatures,
+    config: DetectionConfig,
+) -> list[PointCandidate]:
     if motion.scores.size == 0:
         return []
     active_indices = np.flatnonzero(motion.scores >= 0.75)
@@ -121,7 +123,7 @@ def _motion_candidates(motion: MotionFeatures, config: DetectionConfig) -> list[
         else:
             group.append(int(index))
 
-    candidates: list[_Candidate] = []
+    candidates: list[PointCandidate] = []
     for group in groups:
         start = float(motion.times[group[0]])
         end = float(motion.times[group[-1]])
@@ -131,7 +133,7 @@ def _motion_candidates(motion: MotionFeatures, config: DetectionConfig) -> list[
         motion_score = float(0.5 * np.mean(values) + 0.5 * np.percentile(values, 90))
         score = 2.3 * np.log1p(end - start) + 2.0 * min(motion_score, 6.0)
         candidates.append(
-            _Candidate(
+            PointCandidate(
                 start=start,
                 end=end,
                 score=float(score),
@@ -145,7 +147,7 @@ def _motion_candidates(motion: MotionFeatures, config: DetectionConfig) -> list[
 
 def _pad_candidates(
     duration: float,
-    candidates: list[_Candidate],
+    candidates: list[PointCandidate],
     config: DetectionConfig,
 ) -> list[Point]:
     ordered = sorted(candidates, key=lambda candidate: candidate.start)
@@ -174,27 +176,77 @@ def _pad_candidates(
                 reason=candidate.reason,
                 rally_start=round(candidate.start, 3),
                 rally_end=round(candidate.end, 3),
+                rank=candidate.rank or 0,
             )
         )
     return points
 
 
-def _select_points(candidates: list[Point], config: DetectionConfig) -> list[Point]:
-    ranked = sorted(candidates, key=lambda point: point.score, reverse=True)
-    selected: list[Point] = []
+def _candidate_clip_duration(
+    duration: float,
+    candidate: PointCandidate,
+    config: DetectionConfig,
+) -> float:
+    start = max(0.0, candidate.start - config.pre_roll)
+    end = min(duration, candidate.end + config.post_roll)
+    return max(0.0, end - start)
+
+
+def _select_candidates(
+    duration: float,
+    candidates: list[PointCandidate],
+    config: DetectionConfig,
+) -> tuple[list[PointCandidate], list[PointCandidate], float | None]:
+    if not candidates:
+        return [], [], None
+
+    best_score = max(candidate.score for candidate in candidates)
+    score_threshold = best_score * config.minimum_point_score_ratio
+    decisions = ["below-score-threshold"] * len(candidates)
+    ranked_indices = sorted(
+        (
+            index
+            for index, candidate in enumerate(candidates)
+            if candidate.score >= score_threshold
+        ),
+        key=lambda index: (
+            -candidates[index].score,
+            candidates[index].start,
+            candidates[index].end,
+        ),
+    )
+
+    selected_indices: list[int] = []
     reel_duration = 0.0
-    for point in ranked:
-        if len(selected) >= config.max_points:
-            break
-        added_duration = point.duration
-        exceeds_budget = reel_duration + added_duration > config.target_reel_duration
-        if exceeds_budget and len(selected) >= config.minimum_points_before_budget:
+    for index in ranked_indices:
+        if config.max_points is not None and len(selected_indices) >= config.max_points:
+            decisions[index] = "point-cap"
             continue
-        selected.append(point)
+
+        added_duration = _candidate_clip_duration(duration, candidates[index], config)
+        if reel_duration + added_duration > config.target_reel_duration:
+            decisions[index] = "duration-budget"
+            continue
+
+        decisions[index] = "selected"
+        selected_indices.append(index)
         reel_duration += added_duration
 
-    ranked_selected = [replace(point, rank=rank) for rank, point in enumerate(selected, start=1)]
-    return sorted(ranked_selected, key=lambda point: point.start)
+    rank_by_index = {index: rank for rank, index in enumerate(selected_indices, start=1)}
+    decided_candidates = [
+        replace(
+            candidate,
+            selection=decisions[index],
+            rank=rank_by_index.get(index),
+        )
+        for index, candidate in enumerate(candidates)
+    ]
+    selected_candidates = [decided_candidates[index] for index in selected_indices]
+    return (
+        sorted(decided_candidates, key=lambda candidate: candidate.start),
+        selected_candidates,
+        score_threshold,
+    )
 
 
 def detect_points(
@@ -207,5 +259,16 @@ def detect_points(
     raw_candidates = _audio_candidates(audio, motion, config)
     if not raw_candidates:
         raw_candidates = _motion_candidates(motion, config)
-    candidates = _pad_candidates(duration, raw_candidates, config)
-    return PointDetection(candidates=candidates, points=_select_points(candidates, config))
+    candidates, selected_candidates, score_threshold = _select_candidates(
+        duration,
+        raw_candidates,
+        config,
+    )
+    points = _pad_candidates(duration, selected_candidates, config)
+    return PointDetection(
+        candidates=candidates,
+        points=points,
+        effective_score_threshold=(
+            round(score_threshold, 3) if score_threshold is not None else None
+        ),
+    )

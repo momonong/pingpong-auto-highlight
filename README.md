@@ -6,9 +6,9 @@
 
 ## 成品形式
 
-- 預設選出最多 6 個精彩得分，而不是輸出一段長時間區間。
+- 每支影片只收錄分數至少達到該片最佳候選 87% 的得分；球數可以不同，不再為了湊滿 6 球而回填。
 - 每一分預設在實際回合前後各保留 1.5 秒脈絡。
-- 集錦預設控制在約 55 秒內。
+- 選片預算控制在 55 秒內；若沒有辨識到可用的得分候選，就只保留分析報告。
 - 預設保留原片的寬高比例、方向與畫面內容。
 - 相鄰得分直接剪接，保留桌球回合俐落、清楚的節奏。
 - 同時保留每一分的獨立 MP4，方便人工檢查或重新排序。
@@ -368,7 +368,7 @@ pingpong-highlight analyze "D:\videos\match.mov"
 
 - `best_points_reel.mp4`：保留原片比例的得分集錦；
 - `point_###_rank_##.mp4`：各個得分片段；
-- `analysis.json`：切點、排名、媒體資訊與剪接設定。
+- `analysis.json`：所有候選、入選／淘汰原因、有效門檻、切點、排名、媒體資訊與剪接設定。
 
 ## 流程
 
@@ -378,7 +378,7 @@ flowchart LR
     D["Google Drive 公開影片"] -->|"電腦背景續傳"| B
     B --> C["時間戳式音訊與畫面分析"]
     C --> D["逐分切點"]
-    D --> E["精彩度排序與時長預算"]
+    D --> E["相對精彩度門檻與 55 秒上限"]
     E --> F["單分精準重編碼"]
     F --> G["原片比例與直接剪接"]
     G --> H["得分 Reel"]
@@ -397,12 +397,15 @@ flowchart LR
 | `PINGPONG_MAX_UPLOAD_BYTES` | 100 GiB | 單檔上限 |
 | `PINGPONG_DOWNLOAD_MIN_FREE_BYTES` | 2 GiB | Drive 匯入時保留的最低可用空間 |
 | `PINGPONG_VIDEO_SAMPLE_FPS` | 8 | 畫面分析取樣率 |
-| `PINGPONG_MAX_POINTS` | 6 | 集錦最多收錄幾分 |
-| `PINGPONG_REEL_TARGET_SECONDS` | 55 | 集錦目標長度 |
+| `PINGPONG_MIN_POINT_SCORE_RATIO` | 0.87 | 候選至少需達到同片最佳分數的比例；目前是 heuristic 的暫定值，不是機率 |
+| `PINGPONG_MAX_POINTS` | 0 | 選用的球數安全上限；`0` 表示不限制 |
+| `PINGPONG_REEL_TARGET_SECONDS` | 55 | 單支集錦的選片秒數預算（保留舊變數名稱） |
 | `PINGPONG_CLIP_PRE_ROLL_SECONDS` | 1.5 | 每球在實際回合前保留的秒數 |
 | `PINGPONG_CLIP_POST_ROLL_SECONDS` | 1.5 | 每球在實際回合後保留的秒數 |
 
-舊的 `PINGPONG_MAX_HIGHLIGHTS` 仍可作為 `PINGPONG_MAX_POINTS` 的備援值。
+選球順序是先套精彩度門檻，再依分數由高到低放入 55 秒預算；不會為了達到最低球數而回填。舊的 `PINGPONG_MAX_HIGHLIGHTS` 仍可作為 `PINGPONG_MAX_POINTS` 的備援值。若既有 `.env` 寫了 `PINGPONG_MAX_POINTS=6`，它會繼續作為明確的安全上限；改成 `0` 才是新版預設的不限制球數。
+
+相對門檻可適應不同球館、收音與鏡位造成的分數尺度差異，但只要偵測到候選，就一定會保留該片最高分的一球。要可靠判斷「整支影片都不夠精彩」並輸出零球，仍需先補齊明確的負向標記，再把 heuristic 分數換成校準過的模型機率。
 
 ## GPU 訓練環境（uv）
 

@@ -88,8 +88,12 @@ def test_gpu_commands_request_cuda_before_video_input(tmp_path: Path) -> None:
     assert clip.index("-hwaccel") < clip.index("-i")
     assert "h264_nvenc" in clip
     assert clip[clip.index("-vf") + 1] == (
-        "fps=30,scale=in_range=auto:out_range=tv,format=yuv420p"
+        "settb=AVTB,setpts=PTS-STARTPTS,fps=30,"
+        "scale=in_range=auto:out_range=tv,format=yuv420p"
     )
+    assert clip[clip.index("-af") + 1] == "asetpts=PTS-STARTPTS"
+    assert "-avoid_negative_ts" not in clip
+    assert clip[clip.index("-movflags") + 1] == "+faststart+negative_cts_offsets"
 
 
 def test_browser_output_caps_fps_and_bitrate() -> None:
@@ -141,7 +145,8 @@ def test_browser_output_caps_fps_and_bitrate() -> None:
         fps=24.0,
     )
     assert low_fps_clip[low_fps_clip.index("-vf") + 1] == (
-        "fps=24,scale=in_range=auto:out_range=tv,format=yuv420p"
+        "settb=AVTB,setpts=PTS-STARTPTS,fps=24,"
+        "scale=in_range=auto:out_range=tv,format=yuv420p"
     )
 
 
@@ -363,6 +368,45 @@ def test_point_reel_preserves_source_geometry(tmp_path: Path) -> None:
     assert "xfade" not in filter_graph
     assert "acrossfade" not in filter_graph
     assert command[command.index("-pix_fmt") + 1] == "yuv420p"
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required")
+def test_point_reel_normalizes_large_input_timestamps(tmp_path: Path) -> None:
+    source = tmp_path / "high-offset.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc2=size=320x180:rate=30:duration=1",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=700:sample_rate=48000:duration=1",
+            "-shortest",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-output_ts_offset",
+            "1000",
+            str(source),
+        ],
+        check=True,
+    )
+
+    reel = tmp_path / "reel.mp4"
+    build_point_reel([source, source], reel)
+
+    info = probe_media(reel)
+    assert info.duration == pytest.approx(2.0, abs=0.25)
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required")

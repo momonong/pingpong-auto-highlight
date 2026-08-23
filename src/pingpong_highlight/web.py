@@ -329,6 +329,7 @@ def create_app(
             "chunk_size": min(8 * 1024**2, settings.max_chunk_bytes),
             "max_upload_size": settings.max_upload_bytes,
             "video_sample_fps": settings.video_sample_fps,
+            "minimum_point_score_ratio": settings.minimum_point_score_ratio,
             "max_points": settings.max_points,
             "reel_target_seconds": settings.reel_target_seconds,
             "clip_pre_roll_seconds": settings.clip_pre_roll_seconds,
