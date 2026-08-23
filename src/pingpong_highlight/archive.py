@@ -661,7 +661,10 @@ class RclonePCloudBackend:
             raise ArchiveError(f"pCloud copyfile failed ({result}): {detail[:500]}")
 
     def delete_staging(self, remote_path: str) -> None:
-        self._run("deletefile", self._remote(remote_path))
+        # pCloud may make a staging object disappear immediately after the
+        # provider-side copy. Cleanup is intentionally idempotent: an object
+        # that is already absent is the same successful end state.
+        self._run("deletefile", self._remote(remote_path), missing_ok=True)
 
 
 class PCloudArchiver:

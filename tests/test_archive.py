@@ -586,6 +586,32 @@ def test_rclone_staging_copy_uses_ignore_existing(
     assert "--immutable" not in calls[0]
 
 
+def test_rclone_staging_cleanup_treats_already_missing_as_success(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings = _settings(tmp_path)
+    calls: list[list[str]] = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(
+            command,
+            4,
+            "",
+            "object not found",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    RclonePCloudBackend(settings).delete_staging(
+        "HighlightCraft/archive-v1/_staging/object/manifest.json"
+    )
+
+    assert len(calls) == 1
+    assert "deletefile" in calls[0]
+
+
 def test_directory_id_uses_pcloud_listfolder_metadata(
     tmp_path: Path,
     monkeypatch,
