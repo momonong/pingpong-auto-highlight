@@ -35,7 +35,19 @@
 7. Compilation utility：使用者實際選入率、跨來源比例、成品總長、每分平均長度與直接剪接後是否仍看得懂得分結果。
 8. Runtime factor：分析秒數 ÷ 影片秒數，以及 peak RAM／VRAM。
 
-產品初期應優先 point recall，因為漏掉好球無法挽回；ranking precision 可以先透過 review UI 讓人快速刪除。建議未來 baseline target：精彩 point recall ≥ 0.90、point purity ≥ 0.85、開始邊界誤差中位數 ≤ 1.5 秒；在 test split 和標註完整性建立前，這些數字只是驗收門檻，不是目前成績。
+產品初期應優先 point recall，因為漏掉好球無法挽回；ranking precision 可以先透過 review UI 讓人快速刪除。建議未來 held-out baseline target：精彩 point recall ≥ 0.90、point purity ≥ 0.85、開始邊界誤差中位數 ≤ 1.5 秒；在 test split 和標註完整性建立前，這些數字只是驗收門檻，不是目前成績。
+
+## Current objective and GO/STOP gate (2026-08-24)
+
+目前第一個工程目標是 **strict candidate recall ≥ 0.80**：先保存門檻、Top-k 與時長預算之前的完整 point candidates，再以來源影片分組，計算每筆人工 `highlight` 的 core interval 是否被某個 candidate 覆蓋至少 50%。這個 0.80 是用來定位瓶頸的第一關，不是對外宣稱的模型準確率，也不取代未來 held-out 0.90 point-recall 目標。
+
+Definition of Done：
+
+1. 每支評估影片的所有 candidates、時間範圍、signal features、score 與演算法版本可重現保存；不能只留下最後 Top-6。
+2. 人工標註 snapshot、checksum、來源分組與 overlap 規則被凍結，報告同時列 micro 與 per-source recall。
+3. 不以每片固定球數或硬湊時長影響 candidate recall；threshold 與 ranking 只在後續層評估。
+4. strict candidate recall 達 0.80 才 GO 到 ranking 改進；未達則 STOP，不先訓練 ranker，而是檢查 impact detection、point grouping 與候選邊界。
+5. precision 目標要等 `review_complete` 與明確 `exclude` 標籤存在後才鎖定；在此之前空白區段不是負樣本。
 
 ## Iteration order
 
