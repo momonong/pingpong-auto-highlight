@@ -5,6 +5,7 @@ import json
 import math
 import os
 import uuid
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -15,8 +16,16 @@ from pingpong_highlight.candidate_evaluation import (
     _aggregate_metrics,
     _json_bytes,
     _metric_source,
-    _report_markdown,
 )
+
+CANDIDATE_BURDEN_GUARDRAILS = {
+    "aggregate_candidates_per_minute": 6.0,
+    "source_candidates_per_minute": 8.0,
+    "aggregate_union_core_coverage": 0.50,
+    "source_union_core_coverage": 0.75,
+    "maximum_core_duration_seconds": 20.0,
+    "maximum_unresolved_overlap_ms": 0,
+}
 
 
 def _sha256_file(path: Path, *, chunk_size: int = 8 * 1024**2) -> str:
@@ -138,6 +147,247 @@ def _normalize_candidates(
     return sorted(output, key=lambda row: (row["start_ms"], row["end_ms"], row["id"]))
 
 
+def _measure_candidate_burden(
+    candidates: Sequence[Mapping[str, Any]],
+    *,
+    duration_us: int,
+) -> tuple[dict[str, Any], dict[str, int | float]]:
+    if duration_us <= 0:
+        raise CandidateEvaluationError("Candidate burden requires a positive source duration")
+    intervals = sorted(
+        (int(row["start_ms"]), int(row["end_ms"])) for row in candidates
+    )
+    for start_ms, end_ms in intervals:
+        if start_ms < 0 or end_ms <= start_ms or end_ms * 1000 > duration_us + 1000:
+            raise CandidateEvaluationError("Candidate burden interval is outside its source")
+
+    total_core_ms = sum(end_ms - start_ms for start_ms, end_ms in intervals)
+    union_core_ms = 0
+    if intervals:
+        union_start, union_end = intervals[0]
+        for start_ms, end_ms in intervals[1:]:
+            if start_ms <= union_end:
+                union_end = max(union_end, end_ms)
+            else:
+                union_core_ms += union_end - union_start
+                union_start, union_end = start_ms, end_ms
+        union_core_ms += union_end - union_start
+
+    overlapping_pair_count = 0
+    for index, (_start_ms, end_ms) in enumerate(intervals):
+        for next_start_ms, _next_end_ms in intervals[index + 1 :]:
+            if next_start_ms >= end_ms:
+                break
+            overlapping_pair_count += 1
+
+    duration_minutes = duration_us / 60_000_000
+    duration_ms = duration_us / 1000
+    count = len(intervals)
+    excess_ms = total_core_ms - union_core_ms
+    raw: dict[str, int | float] = {
+        "candidate_count": count,
+        "duration_us": duration_us,
+        "candidates_per_minute": count / duration_minutes,
+        "total_core_ms": total_core_ms,
+        "union_core_ms": union_core_ms,
+        "union_core_coverage": union_core_ms / duration_ms,
+        "max_core_ms": max((end - start for start, end in intervals), default=0),
+        "overlapping_pair_count": overlapping_pair_count,
+        "overlap_excess_ms": excess_ms,
+    }
+    display = {
+        "candidate_count": count,
+        "source_minutes": round(duration_minutes, 6),
+        "candidates_per_minute": round(float(raw["candidates_per_minute"]), 6),
+        "total_core_seconds": round(total_core_ms / 1000, 6),
+        "union_core_seconds": round(union_core_ms / 1000, 6),
+        "union_core_coverage": round(float(raw["union_core_coverage"]), 8),
+        "max_core_duration_seconds": round(float(raw["max_core_ms"]) / 1000, 6),
+        "duplicate_overlap": {
+            "overlapping_pair_count": overlapping_pair_count,
+            "overlap_excess_seconds": round(excess_ms / 1000, 6),
+            "overlap_excess_fraction_of_total_core": (
+                round(excess_ms / total_core_ms, 8) if total_core_ms else 0.0
+            ),
+        },
+    }
+    return display, raw
+
+
+def _aggregate_candidate_burden(
+    raw_sources: Sequence[Mapping[str, int | float]],
+) -> tuple[dict[str, Any], dict[str, int | float]]:
+    duration_us = sum(int(row["duration_us"]) for row in raw_sources)
+    if duration_us <= 0:
+        raise CandidateEvaluationError("Aggregate candidate burden has no source duration")
+    count = sum(int(row["candidate_count"]) for row in raw_sources)
+    total_core_ms = sum(int(row["total_core_ms"]) for row in raw_sources)
+    union_core_ms = sum(int(row["union_core_ms"]) for row in raw_sources)
+    overlap_excess_ms = sum(int(row["overlap_excess_ms"]) for row in raw_sources)
+    overlapping_pair_count = sum(int(row["overlapping_pair_count"]) for row in raw_sources)
+    duration_minutes = duration_us / 60_000_000
+    raw: dict[str, int | float] = {
+        "candidate_count": count,
+        "duration_us": duration_us,
+        "candidates_per_minute": count / duration_minutes,
+        "total_core_ms": total_core_ms,
+        "union_core_ms": union_core_ms,
+        "union_core_coverage": union_core_ms / (duration_us / 1000),
+        "max_core_ms": max((int(row["max_core_ms"]) for row in raw_sources), default=0),
+        "overlapping_pair_count": overlapping_pair_count,
+        "overlap_excess_ms": overlap_excess_ms,
+    }
+    display = {
+        "candidate_count": count,
+        "source_minutes": round(duration_minutes, 6),
+        "candidates_per_minute": round(float(raw["candidates_per_minute"]), 6),
+        "total_core_seconds": round(total_core_ms / 1000, 6),
+        "union_core_seconds": round(union_core_ms / 1000, 6),
+        "union_core_coverage": round(float(raw["union_core_coverage"]), 8),
+        "max_core_duration_seconds": round(float(raw["max_core_ms"]) / 1000, 6),
+        "duplicate_overlap": {
+            "overlapping_pair_count": overlapping_pair_count,
+            "overlap_excess_seconds": round(overlap_excess_ms / 1000, 6),
+            "overlap_excess_fraction_of_total_core": (
+                round(overlap_excess_ms / total_core_ms, 8) if total_core_ms else 0.0
+            ),
+        },
+    }
+    return display, raw
+
+
+def _burden_gate(
+    aggregate: Mapping[str, int | float],
+    sources: Sequence[tuple[str, Mapping[str, int | float]]],
+) -> dict[str, Any]:
+    limits = CANDIDATE_BURDEN_GUARDRAILS
+    checks = [
+        {
+            "name": "aggregate_candidates_per_minute",
+            "observed": round(float(aggregate["candidates_per_minute"]), 6),
+            "limit": limits["aggregate_candidates_per_minute"],
+            "passed": (
+                float(aggregate["candidates_per_minute"])
+                <= limits["aggregate_candidates_per_minute"]
+            ),
+        },
+        {
+            "name": "aggregate_union_core_coverage",
+            "observed": round(float(aggregate["union_core_coverage"]), 8),
+            "limit": limits["aggregate_union_core_coverage"],
+            "passed": (
+                float(aggregate["union_core_coverage"])
+                <= limits["aggregate_union_core_coverage"]
+            ),
+        },
+        {
+            "name": "maximum_core_duration_seconds",
+            "observed": round(float(aggregate["max_core_ms"]) / 1000, 6),
+            "limit": limits["maximum_core_duration_seconds"],
+            "passed": (
+                int(aggregate["max_core_ms"])
+                <= limits["maximum_core_duration_seconds"] * 1000
+            ),
+        },
+        {
+            "name": "unresolved_overlap_ms",
+            "observed": int(aggregate["overlap_excess_ms"]),
+            "limit": limits["maximum_unresolved_overlap_ms"],
+            "passed": (
+                int(aggregate["overlap_excess_ms"])
+                <= limits["maximum_unresolved_overlap_ms"]
+                and int(aggregate["overlapping_pair_count"]) == 0
+            ),
+        },
+    ]
+    source_checks: list[dict[str, Any]] = []
+    for upload_id, source in sources:
+        cpm_passed = (
+            float(source["candidates_per_minute"])
+            <= limits["source_candidates_per_minute"]
+        )
+        coverage_passed = (
+            float(source["union_core_coverage"])
+            <= limits["source_union_core_coverage"]
+        )
+        source_checks.append(
+            {
+                "upload_id": upload_id,
+                "candidates_per_minute": round(
+                    float(source["candidates_per_minute"]),
+                    6,
+                ),
+                "candidates_per_minute_limit": limits["source_candidates_per_minute"],
+                "candidates_per_minute_passed": cpm_passed,
+                "union_core_coverage": round(float(source["union_core_coverage"]), 8),
+                "union_core_coverage_limit": limits["source_union_core_coverage"],
+                "union_core_coverage_passed": coverage_passed,
+                "passed": cpm_passed and coverage_passed,
+            }
+        )
+    return {
+        "contract_version": 1,
+        "limits": limits,
+        "checks": checks,
+        "source_checks": source_checks,
+        "threshold_met": all(check["passed"] for check in checks)
+        and all(check["passed"] for check in source_checks),
+    }
+
+
+def _formal_report_markdown(metrics: Mapping[str, Any]) -> str:
+    strict = metrics["aggregate"]["strict_candidate_recall"]
+    burden = metrics["aggregate"]["candidate_burden"]
+    gate = metrics["gate"]
+    lines = [
+        "# Formal candidate evaluation",
+        "",
+        f"Created: `{metrics['created_at']}`",
+        "",
+        "## Decision",
+        "",
+        f"- Decision: **{gate['decision']}**",
+        f"- Evidence status: `{gate['evidence_status']}`",
+        f"- Strict candidate recall: **{strict['hits']}/{strict['total']} "
+        f"({strict['micro_recall']:.2%})**; target **{gate['target']:.0%}**",
+        f"- Candidate burden: **{burden['candidates_per_minute']:.3f}/min**, "
+        f"**{burden['union_core_coverage']:.2%}** timeline coverage",
+        f"- Burden guardrails: **{'PASS' if gate['burden_threshold_met'] else 'FAIL'}**",
+        "- Precision: unavailable; positive-only annotations cannot identify false positives.",
+        "",
+        "## Per source",
+        "",
+        "| Source | Strict | Candidates | CPM | Core coverage | Max core |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
+    for source in metrics["sources"]:
+        recall = source["strict_candidate_recall"]
+        source_burden = source["candidate_burden"]
+        lines.append(
+            f"| {source['filename']} | {recall['hits']}/{recall['total']} "
+            f"({recall['recall']:.2%}) | {source['candidate_count']} | "
+            f"{source_burden['candidates_per_minute']:.3f} | "
+            f"{source_burden['union_core_coverage']:.2%} | "
+            f"{source_burden['max_core_duration_seconds']:.3f}s |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Evidence boundary",
+            "",
+            "The immutable candidate manifest, source artifacts, raw signal files, dataset, "
+            "configuration, clean Git receipt, and GPU receipt were verified before scoring. "
+            "Matching is source-local, chronological, one-to-one, and requires a candidate "
+            "core to cover at least 50% of a human highlight.",
+            "",
+            "All sources are development data used during detector iteration. This is a "
+            "development regression result, not held-out accuracy or a precision claim.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _load_candidate_sources(
     run_root: Path,
     manifest: dict[str, Any],
@@ -152,6 +402,8 @@ def _load_candidate_sources(
         raise CandidateEvaluationError("Candidate run generation receipt is invalid")
     if manifest.get("git", {}).get("clean") is not True:
         raise CandidateEvaluationError("Candidate run was not generated from a clean worktree")
+    if manifest.get("gpu", {}).get("nvdec_available") is not True:
+        raise CandidateEvaluationError("Formal candidate scoring requires a GPU/NVDEC run")
     run_dataset = manifest.get("dataset")
     if not isinstance(run_dataset, dict):
         raise CandidateEvaluationError("Candidate run has no dataset receipt")
@@ -162,6 +414,8 @@ def _load_candidate_sources(
     configuration = manifest.get("configuration")
     if not isinstance(configuration, dict):
         raise CandidateEvaluationError("Candidate run has no configuration")
+    if configuration.get("require_nvdec") is not True:
+        raise CandidateEvaluationError("Formal candidate scoring requires strict NVDEC execution")
     if (
         manifest.get("configuration_sha256")
         != hashlib.sha256(_json_bytes(configuration)).hexdigest()
@@ -201,6 +455,16 @@ def _load_candidate_sources(
             artifact_path,
             "candidate source artifact",
         )
+        if artifact.get("schema_version") != manifest.get("schema_version"):
+            raise CandidateEvaluationError("Candidate source schema version mismatch")
+        if artifact.get("artifact_type") != "candidate-generation-source":
+            raise CandidateEvaluationError("Candidate source artifact type mismatch")
+        if artifact.get("algorithm_version") != manifest.get("algorithm_version"):
+            raise CandidateEvaluationError("Candidate source algorithm version mismatch")
+        if artifact.get("run_id") != manifest.get("run_id"):
+            raise CandidateEvaluationError("Candidate source run identity mismatch")
+        if artifact.get("configuration") != configuration:
+            raise CandidateEvaluationError("Candidate source configuration mismatch")
         source_receipt = artifact.get("source")
         receipt = artifact.get("receipt")
         dataset_source = dataset_by_upload[upload_id]
@@ -210,14 +474,25 @@ def _load_candidate_sources(
             raise CandidateEvaluationError("Candidate source upload identity mismatch")
         if source_receipt.get("filename") != dataset_source["filename"]:
             raise CandidateEvaluationError("Candidate source filename mismatch")
+        if source_receipt.get("job_id") != dataset_source["job_id"]:
+            raise CandidateEvaluationError("Candidate source job identity mismatch")
         if source_receipt.get("source_sha256") != dataset_source["source_sha256"]:
             raise CandidateEvaluationError("Candidate source SHA-256 mismatch")
         if int(source_receipt.get("byte_size", -1)) != int(dataset_source["byte_size"]):
             raise CandidateEvaluationError("Candidate source size mismatch")
         if receipt.get("dataset_sha256") != dataset_sha256:
             raise CandidateEvaluationError("Candidate source dataset receipt mismatch")
+        if (
+            receipt.get("annotation_snapshot_sha256")
+            != dataset["annotation_snapshot_sha256"]
+        ):
+            raise CandidateEvaluationError("Candidate source annotation receipt mismatch")
         if receipt.get("configuration_sha256") != manifest["configuration_sha256"]:
             raise CandidateEvaluationError("Candidate source configuration receipt mismatch")
+        if receipt.get("git") != manifest.get("git"):
+            raise CandidateEvaluationError("Candidate source Git receipt mismatch")
+        if receipt.get("gpu") != manifest.get("gpu"):
+            raise CandidateEvaluationError("Candidate source GPU receipt mismatch")
         duration = float(source_receipt.get("duration", 0))
         expected_duration = int(dataset_source["duration_us"]) / 1_000_000
         if not math.isclose(duration, expected_duration, abs_tol=0.001):
@@ -262,6 +537,21 @@ def score_candidate_run(
     """Validate and score an immutable candidate-only run."""
 
     dataset, dataset_sha256 = _validate_dataset(dataset_path)
+    source_count = len(dataset["sources"])
+    if source_count == 0:
+        raise CandidateEvaluationError("Formal candidate scoring requires at least one source")
+    if {source.get("split") for source in dataset["sources"]} != {"development"}:
+        raise CandidateEvaluationError(
+            "Formal scoring contract v1 accepts development sources only"
+        )
+    if dataset.get("precision_eligible") is not False or any(
+        annotation.get("label") != "highlight"
+        for source in dataset["sources"]
+        for annotation in source.get("annotations", [])
+    ):
+        raise CandidateEvaluationError(
+            "Formal scoring contract v1 accepts positive-only recall datasets"
+        )
     run_root = candidate_run.expanduser().resolve()
     manifest_path = run_root / "manifest.json" if run_root.is_dir() else run_root
     manifest, candidate_manifest_sha256 = _load_json(
@@ -277,7 +567,7 @@ def score_candidate_run(
     )
 
     source_metrics: list[dict[str, Any]] = []
-    total_duration_minutes = 0.0
+    source_burden_raw: list[tuple[str, dict[str, int | float]]] = []
     for source in dataset["sources"]:
         upload_id = str(source["upload_id"])
         positives = [
@@ -296,24 +586,32 @@ def score_candidate_run(
             positives,
             candidate_sources[upload_id]["candidates"],
         )
-        source_metric["candidate_burden_per_minute"] = round(
-            source_metric["candidate_count"] / (duration_seconds / 60),
-            6,
+        burden, burden_raw = _measure_candidate_burden(
+            candidate_sources[upload_id]["candidates"],
+            duration_us=int(source["duration_us"]),
         )
+        source_metric["candidate_burden"] = burden
         source_metrics.append(source_metric)
-        total_duration_minutes += duration_seconds / 60
+        source_burden_raw.append((upload_id, burden_raw))
 
     aggregate = _aggregate_metrics(source_metrics)
-    aggregate["candidate_burden"] = {
-        "candidate_count": sum(row["candidate_count"] for row in source_metrics),
-        "source_minutes": round(total_duration_minutes, 6),
-        "candidates_per_minute": round(
-            sum(row["candidate_count"] for row in source_metrics) / total_duration_minutes,
-            6,
-        ),
-    }
+    aggregate_burden, aggregate_burden_raw = _aggregate_candidate_burden(
+        [row for _upload_id, row in source_burden_raw]
+    )
+    aggregate["candidate_burden"] = aggregate_burden
+    burden_gate = _burden_gate(aggregate_burden_raw, source_burden_raw)
     observed = aggregate["strict_candidate_recall"]["micro_recall"]
-    target_met = observed >= 0.80
+    recall_target_met = observed >= 0.80
+    burden_target_met = bool(burden_gate["threshold_met"])
+    if not recall_target_met:
+        decision = "STOP_DETECTOR"
+        next_component = "impact-detection-point-grouping-and-core-boundaries"
+    elif not burden_target_met:
+        decision = "STOP_CANDIDATE_BURDEN"
+        next_component = "candidate-consolidation-and-core-boundaries"
+    else:
+        decision = "GO_RANKING"
+        next_component = "ranking"
     created_at = datetime.now(UTC).isoformat()
     metrics = {
         "schema_version": EVALUATION_SCHEMA_VERSION,
@@ -329,6 +627,7 @@ def score_candidate_run(
             ),
             "ranking_scope": "score ranks are recomputed across all candidates within each source",
             "precision": None,
+            "precision_status": "abstained_missing_explicit_negatives",
             "precision_reason": (
                 "Positive-only annotations cannot identify false positives; unmatched candidates "
                 "remain unknown."
@@ -348,18 +647,20 @@ def score_candidate_run(
             "metric": "strict_candidate_recall",
             "target": 0.80,
             "observed": observed,
-            "threshold_met": target_met,
-            "evidence_status": "valid-development-baseline",
-            "decision": "GO_RANKING" if target_met else "STOP_DETECTOR",
-            "next_component": (
-                "ranking" if target_met else "impact-detection-point-grouping-and-core-boundaries"
-            ),
-            "ranker_authorized": target_met,
+            "recall_threshold_met": recall_target_met,
+            "burden_threshold_met": burden_target_met,
+            "threshold_met": recall_target_met and burden_target_met,
+            "evidence_status": "valid-development-regression",
+            "decision": decision,
+            "next_component": next_component,
+            "ranker_authorized": recall_target_met and burden_target_met,
+            "candidate_burden": burden_gate,
         },
         "aggregate": aggregate,
         "sources": source_metrics,
         "warnings": [
-            "All five sources are development data; this report is not held-out model accuracy.",
+            f"All {source_count} sources are development data; this report is not held-out "
+            "model accuracy.",
             "Precision, AP, AUROC, NDCG, FPR, and point purity are unavailable "
             "without explicit negatives.",
         ],
@@ -376,7 +677,7 @@ def score_candidate_run(
     try:
         payloads = {
             "metrics.json": _json_bytes(metrics, pretty=True),
-            "report.md": _report_markdown(metrics).encode("utf-8"),
+            "report.md": _formal_report_markdown(metrics).encode("utf-8"),
         }
         hashes: dict[str, str] = {}
         for filename, payload in payloads.items():

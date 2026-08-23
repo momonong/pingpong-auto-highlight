@@ -95,7 +95,19 @@ def analyze_motion(
     fps: float = 8.0,
     frame_size: int = 320,
     progress: ProgressCallback | None = None,
+    require_nvdec: bool = False,
 ) -> MotionFeatures:
+    if require_nvdec:
+        if not has_nvdec():
+            raise MediaError("NVDEC is required but is not available")
+        return _analyze_motion_once(
+            path,
+            media,
+            fps=fps,
+            frame_size=frame_size,
+            progress=progress,
+            use_nvdec=True,
+        )
     if has_nvdec():
         try:
             return _analyze_motion_once(

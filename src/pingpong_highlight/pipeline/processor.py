@@ -105,7 +105,7 @@ class HighlightProcessor:
             files.append({"name": filename, "kind": "highlight"})
 
         result: dict[str, Any] = {
-            "algorithm_version": "highlight-library-v2",
+            "algorithm_version": "highlight-library-v3",
             "source_name": source_name,
             "media": media.to_dict() | {"path": source_name},
             "summary": {
@@ -120,7 +120,7 @@ class HighlightProcessor:
                 "motion_sample_count": int(motion.scores.size),
                 "library_duration": round(sum(point.duration for point in points), 3),
                 "reel_duration": None,
-                "used_motion_only_fallback": any(
+                "used_motion_only_rescue": any(
                     candidate.impact_count == 0 for candidate in detection.candidates
                 ),
             },

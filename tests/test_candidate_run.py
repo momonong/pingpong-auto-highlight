@@ -136,8 +136,8 @@ def _patch_analysis(monkeypatch, *, fail_name: str | None = None) -> list[str]:
         calls.append(f"audio:{path.name}")
         progress(1.0)
         return AudioFeatures(
-            times=np.array([1.0, 2.0, 3.0]),
-            scores=np.array([1.0, 4.0, 1.0]),
+            times=np.array([1.5, 2.0, 2.25, 2.5, 2.75, 3.0, 3.5]),
+            scores=np.array([0.0, 4.0, 0.0, 4.0, 0.0, 4.0, 0.0]),
             events=[
                 ImpactEvent(time=2.0, strength=1.0),
                 ImpactEvent(time=2.5, strength=1.0),
@@ -152,12 +152,14 @@ def _patch_analysis(monkeypatch, *, fail_name: str | None = None) -> list[str]:
         fps: float,
         frame_size: int,
         progress,
+        require_nvdec: bool,
     ) -> MotionFeatures:
         calls.append(f"motion:{path.name}")
         if path.name == fail_name:
             raise RuntimeError("interrupted test run")
         assert fps == 8.0
         assert frame_size == 320
+        assert require_nvdec is True
         progress(1.0)
         return MotionFeatures(
             times=np.arange(0, 10, 0.125),
@@ -195,7 +197,7 @@ def test_candidate_only_run_persists_receipt_signals_and_diagnostics(
     assert artifact["summary"]["candidate_count"] == 1
     assert artifact["audio_groups"][0]["decision"] == "candidate"
     assert artifact["candidates"][0]["score_components"]
-    assert signals["audio_scores"].tolist() == [1.0, 4.0, 1.0]
+    assert signals["audio_scores"].tolist() == [0.0, 4.0, 0.0, 4.0, 0.0, 4.0, 0.0]
     assert calls == ["audio:upload-0.mp4", "motion:upload-0.mp4"]
     assert list(settings.outputs_dir.rglob("*.mp4")) == []
     assert not (tmp_path / "runs" / ".candidate-test.partial").exists()
@@ -259,3 +261,26 @@ def test_candidate_run_rejects_dirty_worktree_by_default(
             run_id="dirty-test",
             output_root=tmp_path / "runs",
         )
+
+
+def test_resume_invariant_binds_gpu_execution_receipt() -> None:
+    common = {
+        "dataset_sha256": "a" * 64,
+        "annotation_snapshot_sha256": "b" * 64,
+        "configuration_sha256": "c" * 64,
+        "git_receipt": {
+            "commit": "d" * 40,
+            "status_sha256": "e" * 64,
+        },
+    }
+
+    first = candidate_run_module._state_invariant(
+        **common,
+        gpu_receipt={"nvdec_available": True, "device": "GPU A", "driver": "1"},
+    )
+    second = candidate_run_module._state_invariant(
+        **common,
+        gpu_receipt={"nvdec_available": True, "device": "GPU B", "driver": "2"},
+    )
+
+    assert first != second

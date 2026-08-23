@@ -126,7 +126,7 @@ def _rebuild_library(args: argparse.Namespace) -> int:
         return 2
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    relative_output = Path("clip-sets") / f"highlight-library-v2-{timestamp}"
+    relative_output = Path("clip-sets") / f"highlight-library-v3-{timestamp}"
     output = settings.outputs_dir / job.id / relative_output
     processor = HighlightProcessor(settings)
     last_stage = ""

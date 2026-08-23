@@ -22,7 +22,7 @@ from pingpong_highlight.pipeline.media import has_nvdec, probe_media
 from pingpong_highlight.pipeline.motion import analyze_motion
 
 CANDIDATE_RUN_SCHEMA_VERSION = 1
-CANDIDATE_ALGORITHM_VERSION = "candidate-generation-v3"
+CANDIDATE_ALGORITHM_VERSION = "candidate-generation-v4"
 
 
 class CandidateRunError(RuntimeError):
@@ -201,7 +201,11 @@ def _live_source(data_dir: Path, upload_id: str) -> dict[str, Any]:
     return dict(row)
 
 
-def _configuration(settings: Settings) -> tuple[dict[str, Any], DetectionConfig]:
+def _configuration(
+    settings: Settings,
+    *,
+    require_gpu: bool,
+) -> tuple[dict[str, Any], DetectionConfig]:
     detection = DetectionConfig(
         minimum_point_score_ratio=settings.library_minimum_point_score_ratio,
         max_points=None,
@@ -214,9 +218,11 @@ def _configuration(settings: Settings) -> tuple[dict[str, Any], DetectionConfig]
         "audio_sample_rate": settings.audio_sample_rate,
         "video_sample_fps": settings.video_sample_fps,
         "analysis_frame_size": settings.analysis_frame_size,
+        "require_nvdec": require_gpu,
         "detection": asdict(detection),
         "candidate_policy": (
-            "audio candidates when any accepted audio group exists; otherwise motion fallback"
+            "two-tier sparse audio groups with quiet-run splitting, motion boundary evidence, "
+            "and isolated motion rescue; no candidate quota"
         ),
     }
     return configuration, detection
@@ -247,6 +253,7 @@ def _state_invariant(
     annotation_snapshot_sha256: str,
     configuration_sha256: str,
     git_receipt: dict[str, Any],
+    gpu_receipt: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "dataset_sha256": dataset_sha256,
@@ -254,6 +261,7 @@ def _state_invariant(
         "configuration_sha256": configuration_sha256,
         "git_commit": git_receipt["commit"],
         "git_status_sha256": git_receipt["status_sha256"],
+        "gpu_receipt_sha256": _sha256_bytes(_json_bytes(gpu_receipt)),
     }
 
 
@@ -331,13 +339,14 @@ def run_candidate_analysis(
     gpu_receipt = _gpu_receipt()
     if require_gpu and not gpu_receipt["nvdec_available"]:
         raise CandidateRunError("NVIDIA NVDEC is required for candidate analysis")
-    configuration, detection_config = _configuration(settings)
+    configuration, detection_config = _configuration(settings, require_gpu=require_gpu)
     configuration_sha256 = _sha256_bytes(_json_bytes(configuration))
     invariant = _state_invariant(
         dataset_sha256=dataset_sha256,
         annotation_snapshot_sha256=dataset["annotation_snapshot_sha256"],
         configuration_sha256=configuration_sha256,
         git_receipt=git_receipt,
+        gpu_receipt=gpu_receipt,
     )
 
     root = (
@@ -422,6 +431,7 @@ def run_candidate_analysis(
                 fps=settings.video_sample_fps,
                 frame_size=settings.analysis_frame_size,
                 progress=motion_progress,
+                require_nvdec=require_gpu,
             )
             detection = detect_points(
                 media.duration,
@@ -527,7 +537,7 @@ def run_candidate_analysis(
         "configuration": configuration,
         "configuration_sha256": configuration_sha256,
         "git": git_receipt,
-        "gpu": gpu_receipt,
+        "gpu": state["gpu"],
         "generation_receipt_valid": git_receipt["clean"],
         "sources": [completed[key] for key in sorted(completed)],
     }
