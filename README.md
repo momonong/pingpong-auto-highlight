@@ -11,11 +11,39 @@
 - 分析階段沒有六球或 55 秒上限；長影片可以保存更多素材，短影片也不會為了湊數加入弱球。
 - 預設保留原片的寬高比例、方向與畫面內容。
 - 桌面素材庫可依來源、拍攝日期、相對分數與片段長度篩選排序；可取目前前六，也可讓每個來源各取前六。
-- 勾選任意數量、調整順序後才建立集錦；超過一分鐘只提示，不阻止輸出，相鄰得分以 hard cut 直接剪接。
+- 每支集錦可勾選最多 100 球、調整順序後才輸出；超過一分鐘只提示，不阻止輸出，相鄰得分以 hard cut 直接剪接。
 
-舊版已完成 Reel 仍以收合卡片保留。新版工作完成後會把每一球送入素材庫；自訂集錦另列在輸出區，點開時才載入播放器。
+舊版已完成 Reel 仍以收合卡片保留。新版工作完成後會把達 70% 保存門檻的每一球送入素材庫；自訂集錦另列在輸出區，點開時才載入播放器。
 
 直式、裁切、字幕等社群發佈格式屬於後續輸出，不會在分析階段綁死。
+
+## 資料存在哪裡
+
+系統採用「SQLite 存索引與狀態、檔案系統存影片」的混合方式，不會把大型 MP4 塞進資料庫：
+
+- `data/state.sqlite3`：上傳與 Drive 匯入進度、job 狀態、人工標記、逐球片段索引、active 版本與集錦順序。
+- `data/uploads/`：手機直傳或 Google Drive 匯入後的原片副本。
+- `data/outputs/<job-id>/`：各來源的分析 JSON、逐球 MP4，以及重建產生的版本化 `clip-sets/`。
+- `data/compilations/<compilation-id>/highlight_compilation.mp4`：跨來源選取、排序後的最後自訂集錦。
+
+Docker 會把主機的 `./data` bind mount 到容器的 `/data`，因此重建 image 或 container 不會清掉資料；但持久化不等於備份，磁碟損壞或手動刪除仍會失去唯一副本。SQLite 與影片路徑彼此相依，備份或搬機時必須一起複製權威 runtime set；也不要直接從檔案總管刪除 active 影片。完整目錄、資料表關聯、保留策略與備份方式見 [docs/storage.md](docs/storage.md)。
+
+### 長期改用 pCloud？
+
+可以串，而且推薦把它定位成「長期 archive／手機 inbox」，本機只做 GPU 運算與保留近期 hot cache。不要把正在使用的 SQLite 或 FFmpeg 工作目錄直接放在 pCloud Drive/WebDAV mount：雲端 mount 的鎖定、seek、延遲寫回與斷線語意都不適合 live database 和長影片處理。
+
+最小可行版本會在電腦用 [rclone pCloud backend](https://rclone.org/pcloud/) 完成一次 OAuth 授權，將驗證完成的原片、分析結果、素材、集錦與 SQLite snapshot 單向 `copy` 到專用 `/HighlightCraft/`；之後再加 pCloud `inbox/` 匯入與按需下載。遠端 size/hash 驗證成功且 SQLite 記錄已提交前，不會自動刪本機檔案。這項整合目前是已記錄的下一階段設計，尚未在本版執行；詳見 [pCloud 長期保存方案](docs/storage.md#pcloud-長期保存方案規劃中尚未實作)。
+
+## 快速選擇啟動方式
+
+| 需求 | 建議唯一入口 | 誰能連入 |
+|---|---|---|
+| 只在這台電腦用 | `./scripts/start-localhost.sh` | 本機 |
+| 同一個 Wi-Fi 的手機也要用 | `docker compose up -d --build` | LAN |
+| 手機從外網使用 | `./scripts/start-ngrok-tunnel.sh` | 持有私人 token 網址的人 |
+| 明確使用最後公開版 | 在對應啟動器加 `-UsePublishedImage` | 依所選模式；目前 1.3.0 不含新素材庫 |
+
+這三個入口預設都從目前 source 使用 NVIDIA NVDEC/NVENC；只有 GPU runtime 確實不可用時才加 `-CpuOnly`。切換或重建前先等所有 upload、Drive import、來源分析與 compilation 完成。
 
 ## 只在這台電腦使用（localhost，不走 tunnel）
 
@@ -55,14 +83,16 @@
 
    完整網址包含本機存取權杖，頁面第一次讀取後會把它從網址列移除。`data/local-access-url.txt` 只存在本機且不會進 Git，仍不應貼到公開場所。
 
-啟動器會先確認目前沒有上傳、Drive 下載或剪輯正在進行，才停止 ngrok／Cloudflare Tunnel 並切換服務；若還有工作，它會拒絕重啟並告訴你先等候或刪除已放棄的未完成上傳。原片、成品、處理紀錄及人工標記都留在 `./data`，切換模式不會刪除。
+啟動器會先檢查未完成上傳、Drive 下載與來源分析，才停止 ngrok／Cloudflare Tunnel 並切換服務；若還有這些工作，它會拒絕重啟。現行檢查尚未涵蓋 queued/processing compilation，因此切換前也要在頁面確認沒有集錦正在建立。原片、成品、處理紀錄及人工標記都留在 `./data`，切換模式本身不會刪除。
 
 預設仍使用 NVIDIA GPU。只有 NVIDIA Docker runtime 暫時不可用時，才加上 `-CpuOnly`。想確認服務及 GPU：
 
 ```powershell
-docker compose -f compose.yaml -f compose.release.yaml -f compose.localhost.yaml ps
-docker compose -f compose.yaml -f compose.release.yaml -f compose.localhost.yaml exec pingpong-highlight pingpong-highlight doctor
+docker compose -f compose.yaml -f compose.localhost.yaml ps
+docker compose -f compose.yaml -f compose.localhost.yaml exec pingpong-highlight pingpong-highlight doctor
 ```
+
+只有用 `-UsePublishedImage` 啟動時，才在上述兩個命令中一併加入 `-f compose.release.yaml`。
 
 `pingpong-highlight` 應顯示 `healthy`，`NVIDIA NVDEC` 與 `NVIDIA NVENC` 都應顯示 `可用`。停止 localhost 服務但保留所有資料：
 
@@ -86,7 +116,7 @@ docker compose -f compose.yaml -f compose.localhost.yaml stop pingpong-highlight
    如果之後移動了專案資料夾，請把路徑換成新的位置。
 
 3. 第一次使用時，先在 [ngrok Dashboard](https://dashboard.ngrok.com/get-started/your-authtoken) 建立帳號並複製 authtoken。它相當於 ngrok 帳號密碼，請只貼進下一步的本機隱藏提示，不要貼到聊天、README 或公開場所。
-4. 啟動剪輯服務與手機外網入口：
+4. 先確認既有頁面沒有 upload、Drive import、來源分析或 compilation 正在進行，再啟動剪輯服務與手機外網入口；啟動器可能更新並 recreate app container：
 
    ```bash
    ./scripts/start-ngrok-tunnel.sh
@@ -124,7 +154,7 @@ docker compose -f compose.yaml -f compose.localhost.yaml stop pingpong-highlight
 
    `NVIDIA NVDEC` 與 `NVIDIA NVENC` 都應顯示 `可用`。
 
-使用期間請讓電腦保持喚醒，並維持 Docker Desktop 與網路連線。影片仍在上傳時，不要重啟 Docker、`ngrok` 或電腦；上傳完成後，手機頁面可以關閉，電腦會繼續分析與剪輯。
+使用期間請讓電腦保持喚醒，並維持 Docker Desktop 與網路連線。任何 upload、Drive import、來源分析或 compilation 活動時都不要重啟 Docker、tunnel 或電腦；只有上傳／Drive 送入原片完成後，手機頁面可以關閉，電腦會繼續分析與剪輯。
 
 ### 用 Google Drive 加入影片（大檔案建議）
 
@@ -144,16 +174,16 @@ Drive 匯入的狀態與暫存檔都在 `./data`。網路中斷或服務重啟�
 
 桌面版會把所有來源的候選片段放在同一個素材庫。可用檔名搜尋，或依來源影片、拍攝日期、來源內相對分數與片段長度篩選排序。Pixel 類型的 `PXL_YYYYMMDD_HHMMSS...` 檔名會解析成拍攝日期；無法解析時才使用加入系統的日期。
 
-來源篩選可以複選，因此可只勾兩場，再按「加入目前篩選的各來源前 6 球」一次取出 12 球；也可逐場篩選，既有勾選不會消失。右側工作台支援上下調整順序，並顯示估計總長；超過 60 秒仍可照常建立。集錦、原片分析與 CLI 重建共用同一個跨程序 GPU media queue，避免同時搶顯存。
+來源篩選可以複選，因此可只勾兩場，再按「加入目前篩選的各來源前 6 球」一次取出 12 球；也可逐場篩選，既有勾選不會消失。右側工作台支援上下調整順序，並顯示估計總長；超過 60 秒仍可照常建立。送出前的勾選與順序只存在目前頁面的記憶體，重新整理會清除；送出後才寫入 SQLite。成品以第一個片段的解析度、比例與 FPS 作 canvas，其他比例會 letterbox，因此第一球與排序也會影響輸出規格。集錦、原片分析與 CLI 重建共用同一個跨程序 GPU media queue，避免同時搶顯存。
 
 舊版工作只能匯入當年實際輸出的片段；被舊版 55 秒預算捨棄的候選並不存在。要用目前的寬鬆素材門檻安全重建某一支舊片，可執行：
 
 ```powershell
-docker exec pingpong-auto-highlight-pingpong-highlight-1 `
+docker compose exec pingpong-highlight `
   pingpong-highlight rebuild-library <job-id> --data-dir /data
 ```
 
-新版輸出會放在該 job 的獨立 `clip-sets/` 子資料夾，全部成功後才切換為素材庫的 active 版本。舊片段與舊 Reel 不會被刪除，既有人工標記也不受影響。若網站正在分析或建立集錦，這個命令會等待共用 GPU 鎖，不會與服務同時執行重型媒體工作。
+`rebuild-library` 只存在目前 source checkout，公開的 1.3.0 image 不支援。`<job-id>` 是 `/api/jobs` 回傳的內部工作 ID；目前 UI 尚未提供複製按鈕。新版輸出會放在該 job 的獨立 `clip-sets/` 子資料夾，全部成功且至少有一球符合門檻後才切換為素材庫的 active 版本。Ctrl+C、失敗或零合格素材都保留原 active 版本，但可能留下未啟用的 timestamp 目錄；反覆重建會增加磁碟用量，目前不會自動清理。舊片段、舊 Reel 與人工標記都不受影響。若網站正在分析或建立集錦，命令會等待共用 GPU 鎖，不會同時執行重型媒體工作。
 
 ### 人工標記精彩球（桌面開發工具）
 
@@ -163,17 +193,17 @@ docker exec pingpong-auto-highlight-pingpong-highlight-1 `
 
 1. 播放或拖曳原片，在該回合實際開始的位置按 `I` 設起點。
 2. 到該分結束時按 `O` 設終點，再按 `Enter` 儲存；全程不需要抄寫或輸入時間碼。
-3. 選「值得收錄」；如果它是模型選到但你不喜歡的球，改選「不該收錄」。精彩標籤可以複選，例如同時選「相持」與「搶攻」；只有不在常用選項裡的內容才需要點「其他…」手動輸入，也可以完全不選。
-4. `Space` 控制播放／暫停，方向鍵前後 1 秒，`Shift` 加方向鍵前後 5 秒，`Esc` 關閉工作區。標記會綁定原片與時間碼，存在 `data/state.sqlite3`，重新整理、更新容器或重跑模型都不會消失。
+3. 選「值得收錄」；如果它是系統自動選到但你不喜歡的球，改選「不該收錄」。精彩標籤可以複選，例如同時選「相持」與「搶攻」；只有不在常用選項裡的內容才需要點「其他…」手動輸入，也可以完全不選。
+4. `Space` 控制播放／暫停，方向鍵前後 1 秒，`Shift` 加方向鍵前後 5 秒，`Esc` 關閉工作區。標記會綁定原片與時間碼，存在 `data/state.sqlite3`，重新整理、更新容器或重跑分析都不會消失。
 
-第一輪建議選 2–3 支不同角度、距離或光線的影片，把其中所有你會放進集錦的球標完；另留 1 支完全不參與調整，最後才用來驗證是否真的改善。先累積約 15–30 個「值得收錄」的球就足以開始比較；不必一次標完整個影片裡所有普通球。
+第一輪建議選 2–3 支不同角度、距離或光線的影片，把其中所有你會放進集錦的球標完；另留 1 支完全不參與調整，最後才用來驗證是否真的改善。約 15–30 個「值得收錄」的球已可開始做錯誤分析與版本比較，但正樣本本身不足以訓練可靠分類器；未完整審閱的空白區段也不能自動當作負樣本。正式訓練前仍要補明確的「不該收錄」與每支來源的審閱完成狀態。
 
 即使頁面重新整理或公開網址改變，電腦已收到的分塊也不會遺失。請回到持有原始影片的手機，重新選擇同一支影片；只要伺服器上剛好有一筆檔名與大小相同的未完成紀錄，系統就會從保存的 offset 續傳。其他裝置可同步查看進度，但無法代替來源手機提供原始檔案。若同一影片不小心留下多筆紀錄，頁面會先要求刪除重複項目，避免再建立第四筆；「刪除這筆上傳」只會刪除電腦上的未完成分塊，不會影響手機原片。
 
 ngrok 額度用完或公開網址失效時，請等正在進行的上傳與剪輯完成，再切回有完整本機網址與安全檢查的 localhost-only 模式：
 
 ```bash
-./scripts/start-localhost.sh -UsePublishedImage
+./scripts/start-localhost.sh
 ```
 
 停止全部服務但保留 `data` 裡的原片、進度與成品：
@@ -204,7 +234,7 @@ docker compose logs -f pingpong-highlight
 
 把 `.env` 裡的 `PINGPONG_PUBLIC_URL` 改成電腦目前的 Wi‑Fi IP，例如 `http://192.168.1.19:8000`。啟動後，log 會顯示完整手機網址與 QR code；`restart: unless-stopped` 會讓容器在 Docker 重新啟動後自動恢復。
 
-上傳原片、Drive 下載暫存、續傳資訊、工作狀態與成品都掛載在電腦的 `./data`，重新 build 或刪除容器不會遺失。要更新程式時再執行一次：
+上傳原片、Drive 下載暫存、續傳資訊、工作狀態與成品都掛載在電腦的 `./data`，重新 build 或刪除容器不會遺失。`up -d --build` 仍可能 recreate 正在工作的 app；更新前先確認沒有 upload、Drive import、來源分析或 compilation 處於活動狀態，再執行：
 
 ```powershell
 docker compose up -d --build
@@ -237,15 +267,15 @@ docker compose down                  # 停止服務；保留 ./data
 
 ## 影片播放效能
 
-`localhost` 只表示瀏覽器與服務在同一台電腦，不代表影片不需要經過 HTTP、Docker bind mount 與瀏覽器解碼。HighlightCraft 1.2.3 的影片端點使用可感知斷線的 HTTP Range 串流與較大的讀取區塊；播放器收合或拖曳造成舊請求中斷時，伺服器會立即停止讀檔，不會在背景繼續把整支原片讀完。完成影片可保留在瀏覽器私有快取，重播與倒退也不必每次重新傳輸。
+`localhost` 只表示瀏覽器與服務在同一台電腦，不代表影片不需要經過 HTTP、Docker bind mount 與瀏覽器解碼。目前影片端點使用可感知斷線的 HTTP Range 串流與較大的讀取區塊；播放器收合或拖曳造成舊請求中斷時，伺服器會立即停止讀檔，不會在背景繼續把整支原片讀完。完成影片可保留在瀏覽器私有快取，重播與倒退也不必每次重新傳輸。
 
-新產生的 H.264 成品最多使用 30 fps、約兩秒一個 GOP，並限制目標與峰值碼率。1.2.3 以前已完成的 MP4 不會被自動覆寫；它們仍可透過新版串流順暢播放，但若希望把舊的 120 fps／高碼率檔案縮小，需要重新處理原片。
+新產生的 H.264 成品最多使用 30 fps、約兩秒一個 GOP，並限制目標與峰值碼率。播放優化前已完成的 MP4 不會被自動覆寫；它們仍可透過目前的串流端點播放，但若希望把舊的 120 fps／高碼率檔案縮小，需要重新處理原片。
 
 正式提供多人或外網使用時，不應讓免費 tunnel 兼任大量影片配送。建議讓 HighlightCraft 保留驗證、工作狀態與剪輯 API，把完成影片交給支援 Range／sendfile 的反向代理，或使用有權限控制的 object storage／CDN；這樣同時改善並行播放、流量成本與跨地區延遲。
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.3.0`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+目前最後公開的 Docker Hub image 是 `docker.io/momonong/pingpong-auto-highlight:1.3.0`；它不包含這個 checkout 尚未另行發佈的新素材庫／集錦變更，需要這些功能時請從目前 source build。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
 新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。取得這份 repository 後，在 Git Bash 執行：
 
@@ -269,7 +299,9 @@ docker compose -f compose.yaml -f compose.release.yaml exec pingpong-highlight p
 
 ### 發佈新版本到 Docker Hub
 
-只有在變更已提交、合併到乾淨的 `main`，且 Docker Desktop 已登入 `momonong` 時才執行：
+目前 checkout 的 package metadata 仍是 `1.3.0`，但 public `1.3.0` 不含新素材庫。**在同步 bump 下一個版本、建立對應 Git tag，並加上防止覆寫既有 version tag 的 publisher 檢查前，不要執行以下發佈器**；否則可能讓同一個 1.3.0 tag 指向不同內容。
+
+完成上述 release hardening 後，也只有在變更已提交、合併到乾淨且與 remote 同步的 `main`，Docker Desktop 已登入 `momonong` 時才執行：
 
 ```bash
 ./scripts/publish-dockerhub.sh
@@ -323,7 +355,9 @@ PowerShell 也可以使用同一套流程：
 .\scripts\start-cloudflare-tunnel.ps1
 ```
 
-腳本會啟動本機服務、保留健康的既有 tunnel、在 tunnel 失效時自動建立新的臨時 HTTPS 網址、確認公開 health check，最後顯示一條可直接在手機開啟、含有存取權杖的專用網址。不要把完整網址轉傳給別人。網址裡的 upload token 放在 `#` 後方，不會隨第一次 HTTP 請求送到 Cloudflare；頁面讀取後也會立刻從網址列移除。
+先確認頁面沒有 upload、Drive import、來源分析或 compilation 正在進行，再執行切換腳本；目前 Cloudflare／ngrok 啟動器不會完整阻止 active work 被 container recreate。腳本會啟動本機服務、保留健康的既有 tunnel、在 tunnel 失效時自動建立新的臨時 HTTPS 網址、確認公開 health check，最後顯示一條可直接在手機開啟、含有存取權杖的專用網址。不要把完整網址轉傳給別人。網址裡的 upload token 放在 `#` 後方，不會隨第一次 HTTP 請求送到 Cloudflare；頁面讀取後也會立刻從網址列移除。
+
+目前 `compose.cloudflare.yaml` 沒有覆寫 base service 的 host binding，所以 Cloudflare 模式同時仍以 `${PINGPONG_PORT}` 開放在整個 LAN；它不是 tunnel-only 模式。ngrok 與 localhost overlay 則會明確綁 `127.0.0.1`。在 Cloudflare overlay 補上 loopback binding 前，請把這個 LAN exposure 納入防火牆與 token 管理。
 
 這台電腦與 Docker Desktop 必須保持開啟。Quick Tunnel 是測試用途，沒有固定網址或 uptime SLA；`cloudflared` 容器重建後需重新執行腳本並使用新網址。最新網址也會保存在本機的 `data/remote-access-url.txt`。新網址仍可藉由檔名與檔案大小接回唯一一筆未完成上傳；若之後要固定書籤或避免網址變動，再改用 Cloudflare named tunnel。
 
@@ -349,14 +383,12 @@ docker compose -f compose.yaml -f compose.cloudflare.yaml stop cloudflared
 
 ## 本機 Python 開發
 
-需要 Python 3.11 以上、`ffmpeg` 與 `ffprobe`。
+需要 Python 3.11 以上、`uv`、`ffmpeg` 與 `ffprobe`。依 committed lockfile 建立開發環境：
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-pingpong-highlight doctor
-pingpong-highlight serve
+uv sync --frozen --extra dev
+uv run --frozen pingpong-highlight doctor
+uv run --frozen pingpong-highlight serve
 ```
 
 終端機會顯示手機網址與 QR code。手機和電腦連到同一個區域網路後，用手機開啟網址並選擇影片。上傳採用可續傳分塊；中斷後重新選擇同一檔案即可接續。
@@ -365,21 +397,23 @@ pingpong-highlight serve
 
 完整操作流程：
 
-1. 電腦執行 `pingpong-highlight serve`，保持終端機與電腦開啟。
+1. 電腦執行 `uv run --frozen pingpong-highlight serve`，保持終端機與電腦開啟。
 2. 手機掃描 QR code，從相簿選擇原始影片，或貼上公開 Google Drive 影片連結。
 3. 手機直傳需等上傳完成才能關頁；Drive 連結送出後即可關頁，電腦會在背景下載並處理。
 4. 回到同一網址，在桌面素材庫篩選並勾選想要的精彩球。
 5. 自由排序後建立集錦，再預覽或下載 MP4。
 
-成品也會保留在電腦的 `data/outputs/<job-id>/`。LAN 模式不需要雲端帳號或訂閱；Quick Tunnel 模式的傳輸會經過 Cloudflare，但分析、剪輯與持久儲存仍只在這台電腦進行。
+各來源的分析結果與逐球素材會保留在 `data/outputs/<job-id>/`，最後建立的自訂集錦則在 `data/compilations/<compilation-id>/highlight_compilation.mp4`。LAN 模式不需要雲端帳號或訂閱；Quick Tunnel 模式的傳輸會經過 Cloudflare，但分析、剪輯與持久儲存仍只在這台電腦進行。
 
 也可以直接分析電腦上的影片：
 
 ```powershell
-pingpong-highlight analyze "D:\videos\match.mov"
+uv run --frozen pingpong-highlight analyze "D:\videos\match.mov"
 ```
 
-每次工作會輸出：
+這是 standalone 的手動分析：預設輸出到 `data/outputs/manual-*`，不會建立 upload/job，也不會把片段登錄到網頁素材庫。要讓既有網站來源以目前演算法重建可篩選的素材，請使用前述 `rebuild-library <job-id>`。
+
+每次分析會輸出：
 
 - `highlight_###_rank_###.mp4`：達素材門檻的各個候選片段；
 - `analysis.json`：所有候選、素材與推薦門檻、切點、排名和媒體資訊；
@@ -390,10 +424,10 @@ pingpong-highlight analyze "D:\videos\match.mov"
 ```mermaid
 flowchart LR
     A["手機影片"] -->|"可續傳分塊上傳"| B["電腦本地儲存"]
-    D["Google Drive 公開影片"] -->|"電腦背景續傳"| B
+    GD["Google Drive 公開影片"] -->|"電腦背景續傳"| B
     B --> C["時間戳式音訊與畫面分析"]
-    C --> D["逐分切點"]
-    D --> E["70% 素材門檻與來源內排名"]
+    C --> P["逐分切點"]
+    P --> E["70% 素材門檻與來源內排名"]
     E --> F["獨立精彩球素材庫"]
     F --> G["跨影片篩選、勾選與排序"]
     G --> H["任意長度自訂集錦"]
@@ -405,7 +439,7 @@ flowchart LR
 
 | 環境變數 | 預設值 | 用途 |
 | --- | ---: | --- |
-| `PINGPONG_DATA_DIR` | `./data` | 上傳、工作狀態與輸出資料夾 |
+| `PINGPONG_DATA_DIR` | `./data` | SQLite、原片、素材與集錦共用的持久化根目錄 |
 | `PINGPONG_HOST` | `0.0.0.0` | LAN 服務位址 |
 | `PINGPONG_PORT` | `8000` | LAN 服務連接埠 |
 | `PINGPONG_PUBLIC_URL` | 自動偵測 | QR code 與手機要開啟的公開基底網址；Docker 建議明確設定 |
@@ -418,6 +452,8 @@ flowchart LR
 | `PINGPONG_REEL_TARGET_SECONDS` | 55 | 舊版相容設定；新版素材擷取與自訂集錦不套用此上限 |
 | `PINGPONG_CLIP_PRE_ROLL_SECONDS` | 1.5 | 每球在實際回合前保留的秒數 |
 | `PINGPONG_CLIP_POST_ROLL_SECONDS` | 1.5 | 每球在實際回合後保留的秒數 |
+
+這張表同時包含 local Python 與 container 設定。Docker Compose 目前把容器內 `PINGPONG_DATA_DIR=/data`、`PINGPONG_HOST=0.0.0.0` 固定，主機儲存路徑則固定 bind mount `./data`；在 `.env` 改 `PINGPONG_DATA_DIR` 不會把影片搬到外接硬碟。`PINGPONG_MAX_UPLOAD_BYTES` 與 `PINGPONG_VIDEO_SAMPLE_FPS` 目前也沒有由 `compose.yaml` 轉送，只對直接執行 Python 或自行擴充 Compose environment 生效。其餘列在 `compose.yaml` 的變數可由 `.env` 覆寫。
 
 候選先套 70% 素材保存門檻，再依來源內分數排名並各自輸出；不套 Reel 秒數預算，也不會為了達到最低球數而回填。87% 只影響「推薦」標記。舊的 `PINGPONG_MAX_HIGHLIGHTS` 仍可作為 `PINGPONG_MAX_POINTS` 的備援值。若既有 `.env` 寫了 `PINGPONG_MAX_POINTS=6`，它仍會成為明確安全上限；改成 `0` 才是不限制素材數。
 
@@ -437,8 +473,13 @@ uv run --frozen --group train python -c "import torch; assert torch.cuda.is_avai
 ## 驗證
 
 ```powershell
-.\.venv\Scripts\ruff.exe check .
-.\.venv\Scripts\python.exe -m pytest -q
+uv run --frozen --extra dev ruff check .
+uv run --frozen --extra dev pytest -q
 ```
 
-架構與評估方式見 [docs/architecture.md](docs/architecture.md) 與 [docs/evaluation.md](docs/evaluation.md)。
+延伸文件：
+
+- [系統架構](docs/architecture.md)
+- [儲存與資料生命週期](docs/storage.md)
+- [評估方式與證據界線](docs/evaluation.md)
+- [版本歷史](docs/history.md)

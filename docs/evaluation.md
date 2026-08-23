@@ -1,13 +1,24 @@
 # Evaluation and model roadmap
 
+## Current evidence boundary (2026-08-23)
+
+目前 runtime database 有 5 支來源、56 筆人工 annotation；56 筆全部是 `highlight`，沒有明確的 `exclude`，schema 也還沒有每支來源的 `review_complete`。素材庫另有 135 筆 heuristic clip metadata，其中 102 筆是目前 active 的 v2 候選。這兩者不能混為一談：
+
+- `annotations` 是人工選擇，存在 `data/state.sqlite3`。
+- `highlight_clips` 與 `analysis.json` 是演算法預測／診斷輸出，不是 ground truth。
+- 沒有 annotation 的時間不能視為「不精彩」，因為無法知道使用者是看過後否決，還是尚未審閱。
+
+這份資料已足以檢查漏抓案例、邊界與來源差異，也足以驗證素材庫工作流；仍不足以宣稱 accuracy、校準跨來源 threshold，或訓練可靠的二元分類器。以下是下一階段評估設計，而不是目前已達成的結果。
+
 ## What to label first
 
-先收集 20–30 支你真的會拍的影片，刻意涵蓋直式／橫式、桌側／底線／斜角、遠近、安靜與吵雜球館。第一輪不用畫每一顆球的 bounding box，只需為每支影片標記：
+長期目標是收集 20–30 支你真的會拍的影片，刻意涵蓋直式／橫式、桌側／底線／斜角、遠近、安靜與吵雜球館。第一輪不用畫每一顆球的 bounding box；目前標記介面實際能保存：
 
-- 每一分的發球、最後一拍與得分結束時間；
-- 是否值得保留（yes / maybe / no）；
-- 失敗原因標籤，例如附近球桌、拍手、鏡頭晃動、球員被遮擋；
-- 若有偏好，再記 `long_rally`、`fast_exchange`、`winner_reaction`、`great_save`。
+- 一個得分的 `start`／`end` 範圍；
+- `highlight`（值得收錄）或 `exclude`（不該收錄）；
+- 可選的備註字串，包含常用精彩類型或自由文字。
+
+下一版資料契約應再加入每支來源的 `review_complete`，並把 failure reason 與偏好 tags 拆成結構化欄位。若需要 separately 評估發球、最後一拍與反應邊界，也要新增明確欄位；目前 schema 不能從單一 start/end 推回這三個時間點。
 
 用影片分組切 train／validation／test；同一場球切出的片段不能跨集合，否則背景和拍攝角度會造成資料洩漏。
 
@@ -24,7 +35,7 @@
 7. Compilation utility：使用者實際選入率、跨來源比例、成品總長、每分平均長度與直接剪接後是否仍看得懂得分結果。
 8. Runtime factor：分析秒數 ÷ 影片秒數，以及 peak RAM／VRAM。
 
-產品初期應優先 point recall，因為漏掉好球無法挽回；ranking precision 可以先透過 review UI 讓人快速刪除。建議 baseline gate：精彩 point recall ≥ 0.90、point purity ≥ 0.85、開始邊界誤差中位數 ≤ 1.5 秒。
+產品初期應優先 point recall，因為漏掉好球無法挽回；ranking precision 可以先透過 review UI 讓人快速刪除。建議未來 baseline target：精彩 point recall ≥ 0.90、point purity ≥ 0.85、開始邊界誤差中位數 ≤ 1.5 秒；在 test split 和標註完整性建立前，這些數字只是驗收門檻，不是目前成績。
 
 ## Iteration order
 
@@ -46,8 +57,10 @@
 
 ### 4. Learn personal point ranking
 
-保留使用者「加入 Reel／略過／調整邊界」行為，訓練 ranking model，而不是把精彩定義寫死。ranking 與 point segmentation 分離：前者可以個人化，後者仍追求客觀 recall。
+保留使用者「加入集錦／略過／調整邊界」行為，訓練 ranking model，而不是把精彩定義寫死。ranking 與 point segmentation 分離：前者可以個人化，後者仍追求客觀 recall。目前只有送出 compilation 後的 clip IDs／順序保存在 `compilation_items`；編輯中未送出的選擇只在瀏覽器記憶體，也還沒有把「略過」或排序行為匯出成正式 training examples。
 
 ## Reproducible experiment record
 
 每次實驗記錄 Git commit、algorithm version、設定、test video IDs、metrics 與輸出報告。不得用 test set 調 threshold；確認 validation 改善後才跑一次 test。這會讓 side project 從 demo 變成能持續進步的系統。
+
+實驗輸出應放在與 runtime 媒體可區分的位置；不要把 `data/outputs/` 的 active clips 當成 frozen evaluation set。每次評估至少保存 annotation snapshot／checksum、來源分組、候選生成版本與設定，才能重現結果並避免重建素材庫後悄悄改變測試資料。

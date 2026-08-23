@@ -1,19 +1,21 @@
 # Project history
 
-## August 2026: reusable highlight library and cross-source compilations
+## August 2026: reusable highlight library and cross-source compilations (unreleased after 1.3.0)
 
-The next minor release separates source analysis from final Reel assembly:
+Current local `main` separates source analysis from final Reel assembly. This work has not yet been published as a new immutable Docker tag; public image `1.3.0` predates it:
 
 - source videos now produce reusable scored highlight clips instead of one mandatory Reel;
 - a 70% source-relative library floor retains a wider candidate pool, while 87% is only a recommendation marker;
 - neither the old six-point quota nor the 55-second budget applies during extraction or compilation;
-- SQLite indexes clips across jobs, preserves inactive legacy results, and stores ordered many-to-many compilation items;
+- SQLite indexes clip metadata and file paths across jobs, preserves inactive legacy results, and stores ordered many-to-many compilation items; MP4 bytes remain regular files under `data/`;
 - the desktop library filters by source, recording date, score, duration, and timeline, with top-six-per-filter and top-six-per-source batch actions;
 - compilation building runs in the background, uses NVENC when available, and normalizes missing audio with silence.
 
-Legacy jobs can expose only files that older versions actually exported. `rebuild-library` creates a separate clip-set directory and atomically activates it after a successful GPU run; it never deletes the prior clips or Reel.
+Legacy jobs can expose only files that older versions actually exported. `rebuild-library` creates a separate clip-set directory and atomically activates it after a successful run; NVDEC/NVENC accelerate media I/O while the current heuristic scoring remains CPU-side. It never deletes the prior clips or Reel.
 
-## August 2026: threshold-selected point reels
+The 2026-08-23 persistence audit documented the hybrid SQLite/filesystem boundary and found 5 source videos (15.20 GiB), 56 human annotations, and 135 clip rows: 102 active v2, 30 inactive legacy, and 3 inactive v1. All 56 annotations are positive `highlight` labels, so this is useful error-analysis data but not yet a complete supervised training set. No custom compilation had been submitted at that snapshot. A pCloud adapter is documented as a future local-cache/archive design; no pCloud credentials, upload worker, remote catalog, or automatic local eviction exist in this version. Package metadata still reports 1.3.0, so the next release must bump every version surface and refuse to overwrite the existing public tag before publishing.
+
+## August 2026: threshold-selected point reels (version 1.3, superseded extraction policy)
 
 Version 1.3 removes the per-video six-point quota from the default selection policy:
 
@@ -25,6 +27,8 @@ Version 1.3 removes the per-video six-point quota from the default selection pol
 - five real GPU reruns selected 22 points instead of the previous fixed 30, with every Reel fully decoding and no pipeline warnings.
 
 The relative score rule is an interim heuristic rather than a calibrated probability. It adapts to source-level score shifts but still retains the strongest candidate whenever a source has any candidate at all.
+
+The later reusable-library design above supersedes the 87%-plus-55-second extraction rule: 70% now controls material preservation, 87% is only a recommendation marker, and final duration is chosen at compilation time.
 
 ## February 2026: first prototype
 
