@@ -12,6 +12,7 @@ from typing import BinaryIO
 from pingpong_highlight.pipeline.models import MediaInfo
 
 MAX_PLAYBACK_FPS = 30.0
+MP4_STREAMING_MOVFLAGS = "+faststart+negative_cts_offsets"
 
 
 class MediaError(RuntimeError):
@@ -310,7 +311,12 @@ def _clip_command(
             "-sn",
             "-dn",
             "-vf",
-            f"fps={fps:g},scale=in_range=auto:out_range=tv,format=yuv420p",
+            (
+                f"settb=AVTB,setpts=PTS-STARTPTS,fps={fps:g},"
+                "scale=in_range=auto:out_range=tv,format=yuv420p"
+            ),
+            "-af",
+            "asetpts=PTS-STARTPTS",
         ]
     )
     command.extend(
@@ -328,9 +334,7 @@ def _clip_command(
             "-b:a",
             "160k",
             "-movflags",
-            "+faststart",
-            "-avoid_negative_ts",
-            "make_zero",
+            MP4_STREAMING_MOVFLAGS,
             str(destination),
         ]
     )
@@ -439,7 +443,7 @@ def concatenate_clips(clips: list[Path], destination: Path, manifest: Path) -> N
             "-c",
             "copy",
             "-movflags",
-            "+faststart",
+            MP4_STREAMING_MOVFLAGS,
             str(destination),
         ]
     )
@@ -492,7 +496,7 @@ def _point_reel_command(
     fps_value = f"{fps:.6f}"
     for index in range(len(clips)):
         filters.append(
-            f"[{index}:v:0]fps={fps_value},settb=AVTB,setpts=PTS-STARTPTS,"
+            f"[{index}:v:0]settb=AVTB,setpts=PTS-STARTPTS,fps={fps_value},"
             f"scale={width}:{height}:force_original_aspect_ratio=decrease:"
             "in_range=auto:out_range=tv,"
             f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,"
@@ -533,7 +537,7 @@ def _point_reel_command(
             "-r",
             fps_value,
             "-movflags",
-            "+faststart",
+            MP4_STREAMING_MOVFLAGS,
             "-shortest",
             str(destination),
         ]
@@ -620,7 +624,7 @@ def _social_reel_command(
         filters.extend(
             [
                 (
-                    f"[{index}:v:0]fps={fps},settb=AVTB,setpts=PTS-STARTPTS,"
+                    f"[{index}:v:0]settb=AVTB,setpts=PTS-STARTPTS,fps={fps},"
                     f"split=2[bgsrc{index}][fgsrc{index}]"
                 ),
                 (
@@ -674,7 +678,7 @@ def _social_reel_command(
             "-r",
             str(fps),
             "-movflags",
-            "+faststart",
+            MP4_STREAMING_MOVFLAGS,
             "-shortest",
             str(destination),
         ]
