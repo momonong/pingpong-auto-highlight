@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0d12" />
-    <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" />
+    <meta name="description" content="把桌球比賽影片整理成可篩選、排序與自由組片的精彩球素材庫。" />
     <title>HighlightCraft — 桌球精彩集錦</title>
-    <link rel="stylesheet" href="/static/styles.css?v=1.3.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=1.3.0-highlight-library-v2" />
   </head>
   <body>
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -23,10 +23,10 @@
     <main class="shell">
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow"><span>TABLE TENNIS</span><i></i><span>POINT REEL</span></p>
-          <h1>把整場球，<br /><em>剪成值得重播的幾分。</em></h1>
+          <p class="eyebrow"><span>TABLE TENNIS</span><i></i><span>HIGHLIGHT LIBRARY</span></p>
+          <h1>把整場球，<br /><em>存成隨時能重組的精彩瞬間。</em></h1>
           <p class="hero-lead">
-            手機直接傳原片，電腦自動找出每一分、挑選精彩球，再用原始比例剪成一支流暢集錦。
+            手機加入原片，電腦找出值得保留的每一球。跨場篩選、自由排序，再組成你真正想要的集錦。
           </p>
           <div class="hero-pills" aria-label="產品特色">
             <span>逐分切點</span><span>原尺寸輸出</span><span>本機處理</span>
@@ -42,8 +42,8 @@
             <span class="court-shadow"></span>
           </div>
           <div class="visual-footer">
-            <span><small>SELECTED POINTS</small><b>06</b></span>
-            <span><small>TARGET REEL</small><b>00:55</b></span>
+            <span><small>SAVED HIGHLIGHTS</small><b>ALL</b></span>
+            <span><small>REEL LIMIT</small><b>YOURS</b></span>
           </div>
           <span class="floating-tag tag-one">TOPSPIN</span>
           <span class="floating-tag tag-two">+ GREAT RALLY</span>
@@ -88,7 +88,7 @@
           </label>
 
           <button id="uploadButton" class="primary" type="button" disabled>
-            <span>開始上傳與製作</span><i aria-hidden="true">↗</i>
+            <span>開始上傳與分析</span><i aria-hidden="true">↗</i>
           </button>
 
           <div id="transferPanel" class="transfer" hidden aria-live="polite">
@@ -141,8 +141,8 @@
         <article class="panel jobs-card">
           <div class="panel-heading jobs-heading">
             <div>
-              <span class="section-kicker">02 / YOUR REELS</span>
-              <h2>上傳、處理與成品</h2>
+              <span class="section-kicker">02 / SOURCE ANALYSIS</span>
+              <h2>上傳、分析與素材</h2>
               <p id="jobCount">等待第一支影片</p>
             </div>
             <button id="refreshButton" class="icon-button" type="button" aria-label="重新整理">
@@ -154,13 +154,115 @@
             <div class="empty-reel" aria-hidden="true">
               <span></span><span></span><span></span><i></i>
             </div>
-            <strong>上傳進度與第一支集錦會出現在這裡</strong>
-            <p>傳送中可跨裝置監看；完成後可直接預覽、下載，或用手機分享。</p>
+            <strong>上傳進度與分析結果會出現在這裡</strong>
+            <p>傳送中可跨裝置監看；完成後，精彩球會進入下方素材庫。</p>
           </div>
           <div id="importList" class="job-list import-list" aria-live="polite"></div>
           <div id="uploadList" class="job-list upload-list" aria-live="polite"></div>
           <div id="jobList" class="job-list" aria-live="polite"></div>
         </article>
+      </section>
+
+      <section
+        id="highlightLibraryBlock"
+        class="panel highlight-library-block"
+        aria-labelledby="highlightLibraryTitle"
+      >
+        <div class="highlight-library-heading">
+          <div>
+            <span class="section-kicker">03 / DESKTOP HIGHLIGHT LIBRARY</span>
+            <h2 id="highlightLibraryTitle">精彩球素材庫</h2>
+            <p>從所有影片挑球，不再受單支影片或一分鐘限制。優先使用檔名中的拍攝日期，沒有時才用加入日期。</p>
+          </div>
+          <div class="highlight-library-total">
+            <strong id="highlightLibraryTotal">0</strong><span>個可用片段</span>
+          </div>
+        </div>
+
+        <div class="highlight-library-controls">
+          <label>
+            <span>搜尋來源</span>
+            <input id="highlightLibrarySearch" type="search" placeholder="檔名…" autocomplete="off" />
+          </label>
+          <details id="highlightLibrarySourceFilter" class="highlight-library-source-filter">
+            <summary><span>來源影片</span><b id="highlightLibrarySourceSummary">全部來源</b></summary>
+            <div id="highlightLibrarySourceOptions" class="highlight-library-source-options">
+              <p>可複選；沒有勾選時顯示全部來源。</p>
+            </div>
+          </details>
+          <label>
+            <span>拍攝日期之後</span>
+            <input id="highlightLibraryAfter" type="date" />
+          </label>
+          <label>
+            <span>最低相對分數</span>
+            <select id="highlightLibraryMinimum">
+              <option value="0">全部候選素材</option>
+              <option value="0.87">推薦素材（87% 以上）</option>
+              <option value="0.9">90% 以上</option>
+              <option value="0.95">95% 以上</option>
+            </select>
+          </label>
+          <label>
+            <span>排序</span>
+            <select id="highlightLibrarySort">
+              <option value="quality">來源內精彩度</option>
+              <option value="newest">拍攝日期：最新</option>
+              <option value="oldest">拍攝日期：最早</option>
+              <option value="duration">片段長度</option>
+              <option value="timeline">原片時間軸</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="highlight-library-batch">
+          <div>
+            <b id="highlightLibraryVisible" aria-live="polite">0 個結果</b>
+            <span>相對分數只代表同一來源內的模型排名，尚不是跨場校準機率。</span>
+          </div>
+          <div>
+            <button id="highlightLibraryTopSix" type="button">選目前前 6 球</button>
+            <button id="highlightLibraryEachTopSix" type="button">加入目前篩選的各來源前 6 球</button>
+            <button id="highlightLibraryClearFilters" class="quiet" type="button">清除篩選</button>
+          </div>
+        </div>
+
+        <div class="highlight-library-layout">
+          <section class="highlight-browser" aria-label="精彩球結果">
+            <div id="highlightLibraryEmpty" class="highlight-library-empty">
+              <b>素材庫目前是空的</b>
+              <span>新影片完成分析後，所有達門檻的精彩球會各自存進來。</span>
+            </div>
+            <div id="highlightLibraryGrid" class="highlight-library-grid"></div>
+          </section>
+
+          <aside class="compilation-builder">
+            <span class="section-kicker">COMPILATION BUILDER</span>
+            <div class="compilation-builder-summary">
+              <strong id="compilationSelectionCount">0 球</strong>
+              <span id="compilationSelectionDuration">約 0:00</span>
+            </div>
+            <p>已選內容會跨篩選保留；可先取第一場前 6，再切到第二場取前 6。超過一分鐘也會照樣輸出。</p>
+            <label for="compilationName">集錦名稱</label>
+            <input id="compilationName" type="text" maxlength="100" placeholder="例如：週末兩場 Top 6" autocomplete="off" />
+            <div id="compilationSelectionList" class="compilation-selection-list">
+              <p>從左邊勾選精彩球。</p>
+            </div>
+            <div class="compilation-builder-actions">
+              <button id="compilationClear" class="quiet" type="button" disabled>清除</button>
+              <button id="compilationCreate" type="button" disabled>建立集錦</button>
+            </div>
+            <p id="compilationMessage" class="compilation-message" hidden aria-live="polite"></p>
+          </aside>
+        </div>
+
+        <section class="compilation-shelf" aria-labelledby="compilationShelfTitle">
+          <div>
+            <span class="section-kicker">OUTPUTS</span>
+            <h3 id="compilationShelfTitle">已建立的集錦</h3>
+          </div>
+          <div id="compilationList" class="compilation-list"><p>還沒有自訂集錦。</p></div>
+        </section>
       </section>
 
       <section
@@ -194,8 +296,8 @@
 
       <section class="process-strip" aria-label="集錦製作流程">
         <div><span>01</span><p><b>讀懂每一分</b><small>從發球到得分各自成段</small></p></div>
-        <div><span>02</span><p><b>挑出精彩球</b><small>依節奏、動態與回合排序</small></p></div>
-        <div><span>03</span><p><b>串成一支 Reel</b><small>保留原比例，俐落直接剪接</small></p></div>
+        <div><span>02</span><p><b>存進素材庫</b><small>每一球獨立保存，不限制球數</small></p></div>
+        <div><span>03</span><p><b>自由組成集錦</b><small>跨影片挑選、排序與直接剪接</small></p></div>
       </section>
     </main>
 
@@ -203,6 +305,27 @@
       <span>HIGHLIGHTCRAFT / LOCAL COURT LAB</span>
       <span>PRIVATE BY DEFAULT · MADE FOR YOUR BEST MOMENTS</span>
     </footer>
+
+    <section
+      id="highlightPreview"
+      class="highlight-preview"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="highlightPreviewTitle"
+      hidden
+    >
+      <div class="highlight-preview-shell">
+        <header>
+          <div>
+            <span class="section-kicker">HIGHLIGHT PREVIEW</span>
+            <h2 id="highlightPreviewTitle">精彩球預覽</h2>
+            <p id="highlightPreviewMeta"></p>
+          </div>
+          <button id="highlightPreviewClose" type="button" aria-label="關閉精彩球預覽">×</button>
+        </header>
+        <video id="highlightPreviewVideo" controls playsinline preload="none"></video>
+      </div>
+    </section>
 
     <section
       id="annotationWorkspace"
@@ -300,6 +423,6 @@
       </div>
     </section>
 
-    <script src="/static/app.js?v=1.3.0" defer></script>
+    <script src="/static/app.js?v=1.3.0-highlight-library-v2" defer></script>
   </body>
 </html>

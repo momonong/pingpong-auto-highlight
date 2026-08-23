@@ -24,6 +24,33 @@ const elements = {
   importList: document.querySelector("#importList"),
   uploadList: document.querySelector("#uploadList"),
   jobList: document.querySelector("#jobList"),
+  highlightLibraryTotal: document.querySelector("#highlightLibraryTotal"),
+  highlightLibrarySearch: document.querySelector("#highlightLibrarySearch"),
+  highlightLibrarySourceFilter: document.querySelector("#highlightLibrarySourceFilter"),
+  highlightLibrarySourceSummary: document.querySelector("#highlightLibrarySourceSummary"),
+  highlightLibrarySourceOptions: document.querySelector("#highlightLibrarySourceOptions"),
+  highlightLibraryAfter: document.querySelector("#highlightLibraryAfter"),
+  highlightLibraryMinimum: document.querySelector("#highlightLibraryMinimum"),
+  highlightLibrarySort: document.querySelector("#highlightLibrarySort"),
+  highlightLibraryVisible: document.querySelector("#highlightLibraryVisible"),
+  highlightLibraryTopSix: document.querySelector("#highlightLibraryTopSix"),
+  highlightLibraryEachTopSix: document.querySelector("#highlightLibraryEachTopSix"),
+  highlightLibraryClearFilters: document.querySelector("#highlightLibraryClearFilters"),
+  highlightLibraryEmpty: document.querySelector("#highlightLibraryEmpty"),
+  highlightLibraryGrid: document.querySelector("#highlightLibraryGrid"),
+  compilationSelectionCount: document.querySelector("#compilationSelectionCount"),
+  compilationSelectionDuration: document.querySelector("#compilationSelectionDuration"),
+  compilationName: document.querySelector("#compilationName"),
+  compilationSelectionList: document.querySelector("#compilationSelectionList"),
+  compilationClear: document.querySelector("#compilationClear"),
+  compilationCreate: document.querySelector("#compilationCreate"),
+  compilationMessage: document.querySelector("#compilationMessage"),
+  compilationList: document.querySelector("#compilationList"),
+  highlightPreview: document.querySelector("#highlightPreview"),
+  highlightPreviewClose: document.querySelector("#highlightPreviewClose"),
+  highlightPreviewTitle: document.querySelector("#highlightPreviewTitle"),
+  highlightPreviewMeta: document.querySelector("#highlightPreviewMeta"),
+  highlightPreviewVideo: document.querySelector("#highlightPreviewVideo"),
   annotationDevCount: document.querySelector("#annotationDevCount"),
   annotationDevEmpty: document.querySelector("#annotationDevEmpty"),
   annotationDevList: document.querySelector("#annotationDevList"),
@@ -73,14 +100,26 @@ let paused = false;
 let uploadRunning = false;
 let wakeLock = null;
 let activityLoading = false;
+let libraryActivityLoading = false;
 let authReady = false;
 let driveSubmitting = false;
 let lastImportsSignature = "";
 let lastUploadsSignature = "";
 let lastJobsSignature = "";
 let lastAnnotationDevSignature = "";
+let lastLibrarySignature = "";
+let lastCompilationsSignature = "";
+let libraryHighlights = [];
+let librarySources = [];
+let libraryCompilations = [];
+let selectedHighlightIds = [];
+let selectedLibrarySourceIds = new Set();
+let compilationSubmitting = false;
+let highlightPreviewReturnFocus = null;
 const jobRenderSignatures = new Map();
 const expandedResultJobIds = new Set();
+const compilationRenderSignatures = new Map();
+const expandedCompilationIds = new Set();
 let annotationWorkspaceJobId = "";
 let annotationWorkspaceStart = null;
 let annotationWorkspaceEnd = null;
@@ -90,6 +129,7 @@ let annotationWorkspaceComposing = false;
 const annotationNoteMaxLength = 300;
 
 const uploadActiveWindowMs = 60 * 1000;
+const desktopLibraryMedia = window.matchMedia("(min-width: 901px)");
 
 function accessTokenFrom(value) {
   const input = String(value || "").trim();
@@ -381,6 +421,9 @@ async function startUpload() {
 }
 
 function jobStage(job) {
+  if (job.stage.startsWith("saving-highlight-")) {
+    return `儲存第 ${job.stage.split("-").at(-1)} 個精彩球素材`;
+  }
   if (job.stage.startsWith("exporting-point-")) {
     return `輸出第 ${job.stage.split("-").at(-1)} 個得分`;
   }
@@ -430,15 +473,19 @@ async function shareOrSave(button) {
 
 function renderResultPanel(result, jobId, sourceName) {
   const reel = result.files.find((file) => file.kind === "reel");
-  const pointFiles = result.files.filter((file) => file.kind === "point" || file.kind === "clip");
+  const pointFiles = result.files.filter(
+    (file) => file.kind === "highlight" || file.kind === "point" || file.kind === "clip",
+  );
   const analysis = result.files.find((file) => file.kind === "analysis");
   if (!reel) {
-    return `<div class="downloads">${result.files
-      .map((file) => {
-        const url = fileAccessUrl(file.url, { download: true });
-        return `<a href="${escapeHtml(url)}" download>${escapeHtml(file.name)}</a>`;
-      })
-      .join("")}</div>`;
+    const analysisLink = analysis
+      ? `<a href="${escapeHtml(fileAccessUrl(analysis.url, { download: true }))}" download>下載分析報告</a>`
+      : "";
+    return `<div class="library-result-notice">
+      <b>${pointFiles.length} 個精彩球已存入素材庫</b>
+      <span>請用電腦開啟下方素材庫，跨影片篩選、排序，再決定要組成哪一支集錦。</span>
+      ${analysisLink}
+    </div>`;
   }
 
   const previewUrl = fileAccessUrl(reel.url);
@@ -483,6 +530,320 @@ function renderResultPanel(result, jobId, sourceName) {
       </details>
     </div>
   </details>`;
+}
+
+function formatLibraryDate(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "日期未知";
+  return date.toLocaleDateString("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+function localDateKey(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value).slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function filteredLibraryHighlights() {
+  const query = elements.highlightLibrarySearch.value.trim().toLocaleLowerCase("zh-TW");
+  const after = elements.highlightLibraryAfter.value;
+  const minimum = Number(elements.highlightLibraryMinimum.value) || 0;
+  const filtered = libraryHighlights.filter((highlight) => {
+    if (query && !String(highlight.source_name).toLocaleLowerCase("zh-TW").includes(query)) {
+      return false;
+    }
+    if (selectedLibrarySourceIds.size && !selectedLibrarySourceIds.has(highlight.job_id)) {
+      return false;
+    }
+    if (after && localDateKey(highlight.source_date) < after) return false;
+    return Number(highlight.relative_score) >= minimum;
+  });
+
+  const sort = elements.highlightLibrarySort.value;
+  return filtered.sort((left, right) => {
+    if (sort === "newest") {
+      return Date.parse(right.source_date) - Date.parse(left.source_date);
+    }
+    if (sort === "oldest") {
+      return Date.parse(left.source_date) - Date.parse(right.source_date);
+    }
+    if (sort === "duration") return right.duration - left.duration;
+    if (sort === "timeline") {
+      return left.job_id.localeCompare(right.job_id) || left.start - right.start;
+    }
+    return (
+      right.relative_score - left.relative_score ||
+      right.score - left.score ||
+      left.source_rank - right.source_rank
+    );
+  });
+}
+
+function selectedHighlights() {
+  const byId = new Map(libraryHighlights.map((highlight) => [highlight.id, highlight]));
+  return selectedHighlightIds.map((id) => byId.get(id)).filter(Boolean);
+}
+
+function showCompilationMessage(message, isError = false) {
+  elements.compilationMessage.textContent = message;
+  elements.compilationMessage.hidden = !message;
+  elements.compilationMessage.classList.toggle("error", isError);
+}
+
+function renderCompilationSelection() {
+  const selected = selectedHighlights();
+  const duration = selected.reduce((total, highlight) => total + highlight.duration, 0);
+  elements.compilationSelectionCount.textContent = `${selected.length} 球`;
+  elements.compilationSelectionDuration.textContent = `約 ${formatDuration(duration)}`;
+  const selectionTooLarge = selected.length > 100;
+  elements.compilationClear.disabled = selected.length === 0 || compilationSubmitting;
+  elements.compilationCreate.disabled =
+    selected.length === 0 || selectionTooLarge || compilationSubmitting;
+  if (selectionTooLarge) {
+    showCompilationMessage("一次最多可建立 100 球；請先移除部分素材。", true);
+  } else if (elements.compilationMessage.textContent.startsWith("一次最多可建立 100 球")) {
+    showCompilationMessage("");
+  }
+  if (!selected.length) {
+    elements.compilationSelectionList.innerHTML = "<p>從左邊勾選精彩球。</p>";
+    return;
+  }
+  elements.compilationSelectionList.innerHTML = selected
+    .map(
+      (highlight, index) => `<article class="compilation-selection-item" data-highlight-id="${escapeHtml(highlight.id)}">
+        <span>${String(index + 1).padStart(2, "0")}</span>
+        <div><b>${escapeHtml(highlight.source_name)}</b><small>#${highlight.source_rank} · ${formatTimestamp(highlight.start)} · ${highlight.duration.toFixed(1)} 秒</small></div>
+        <div class="compilation-selection-actions">
+          <button type="button" data-selection-move="-1" aria-label="往前移"${index === 0 ? " disabled" : ""}>↑</button>
+          <button type="button" data-selection-move="1" aria-label="往後移"${index === selected.length - 1 ? " disabled" : ""}>↓</button>
+          <button type="button" data-selection-remove aria-label="移除">×</button>
+        </div>
+      </article>`,
+    )
+    .join("");
+}
+
+function renderHighlightSourceOptions() {
+  const availableIds = new Set(librarySources.map((source) => source.job_id));
+  selectedLibrarySourceIds = new Set(
+    [...selectedLibrarySourceIds].filter((jobId) => availableIds.has(jobId)),
+  );
+  elements.highlightLibrarySourceSummary.textContent = selectedLibrarySourceIds.size
+    ? `${selectedLibrarySourceIds.size} 個來源`
+    : "全部來源";
+  elements.highlightLibrarySourceOptions.innerHTML = `<p>可複選；沒有勾選時顯示全部來源。</p>${librarySources
+    .map(
+      (source) => `<label><input type="checkbox" value="${escapeHtml(source.job_id)}"${selectedLibrarySourceIds.has(source.job_id) ? " checked" : ""} /><span><b>${escapeHtml(source.name)}</b><small>${formatLibraryDate(source.source_date)} · ${escapeHtml(source.job_id.slice(0, 6))}</small></span></label>`,
+    )
+    .join("")}`;
+}
+
+function renderHighlightLibrary() {
+  const availableIds = new Set(libraryHighlights.map((highlight) => highlight.id));
+  selectedHighlightIds = selectedHighlightIds.filter((id) => availableIds.has(id));
+  const visible = filteredLibraryHighlights();
+  const selectedIds = new Set(selectedHighlightIds);
+  elements.highlightLibraryTotal.textContent = String(libraryHighlights.length);
+  elements.highlightLibraryVisible.textContent = `${visible.length} 個結果`;
+  elements.highlightLibraryEmpty.hidden = visible.length > 0;
+  if (!visible.length) {
+    const emptyTitle = elements.highlightLibraryEmpty.querySelector("b");
+    const emptyDetail = elements.highlightLibraryEmpty.querySelector("span");
+    if (libraryHighlights.length) {
+      emptyTitle.textContent = "沒有符合目前篩選的素材";
+      emptyDetail.textContent = "放寬來源、日期或相對分數條件，就能再次顯示既有片段。";
+    } else {
+      emptyTitle.textContent = "素材庫目前是空的";
+      emptyDetail.textContent = "新影片完成分析後，所有達門檻的精彩球會各自存進來。";
+    }
+  }
+  elements.highlightLibraryGrid.innerHTML = visible
+    .map((highlight) => {
+      const selected = selectedIds.has(highlight.id);
+      const relativePercent = Math.round(highlight.relative_score * 100);
+      return `<article class="highlight-card${selected ? " selected" : ""}" data-highlight-id="${escapeHtml(highlight.id)}">
+        <div class="highlight-card-top">
+          <div class="highlight-card-score"><b>${relativePercent}</b><small>REL / 100</small></div>
+          <div class="highlight-card-source"><b title="${escapeHtml(highlight.source_name)}">${escapeHtml(highlight.source_name)}</b><span>${formatLibraryDate(highlight.source_date)} · 來源排名 #${highlight.source_rank}${highlight.recommended ? " · 推薦" : ""}</span></div>
+        </div>
+        <div class="highlight-card-meta"><span>原片 ${formatTimestamp(highlight.start)}</span><span>${highlight.duration.toFixed(1)} 秒</span></div>
+        <div class="highlight-card-actions">
+          <label class="highlight-card-select"><input type="checkbox" data-library-select${selected ? " checked" : ""} /> 加入集錦</label>
+          <button type="button" data-highlight-preview>預覽</button>
+        </div>
+      </article>`;
+    })
+    .join("");
+  renderCompilationSelection();
+}
+
+function renderCompilation(compilation) {
+  const statusLabels = {
+    queued: "等待 GPU",
+    processing: "GPU 剪輯中",
+    completed: "完成",
+    failed: "失敗",
+  };
+  const detail = `${compilation.item_count} 球 · ${compilation.source_count} 個來源 · ${formatDuration(compilation.duration ?? compilation.estimated_duration)}`;
+  const error = compilation.error
+    ? `<small class="error">${escapeHtml(compilation.error)}</small>`
+    : "";
+  if (compilation.status !== "completed" || !compilation.file_url) {
+    return `<article class="compilation-output" data-compilation-id="${escapeHtml(compilation.id)}"><div class="compilation-output-pending"><div><b>${escapeHtml(compilation.name)}</b><small>${detail}</small>${error}</div><span class="compilation-status">${escapeHtml(statusLabels[compilation.status] || compilation.status)}</span></div></article>`;
+  }
+  const previewUrl = fileAccessUrl(compilation.file_url);
+  const downloadUrl = fileAccessUrl(compilation.file_url, { download: true });
+  const open = expandedCompilationIds.has(compilation.id) ? " open" : "";
+  return `<details class="compilation-output" data-compilation-id="${escapeHtml(compilation.id)}"${open}>
+    <summary><div><b>${escapeHtml(compilation.name)}</b><small>${detail}</small></div><span class="compilation-status">完成</span></summary>
+    <div class="compilation-output-body">
+      <video controls playsinline preload="none"><source data-src="${escapeHtml(previewUrl)}" type="video/mp4" /></video>
+      <div class="compilation-output-actions"><a href="${escapeHtml(downloadUrl)}" download>下載 MP4</a></div>
+    </div>
+  </details>`;
+}
+
+function createCompilationElement(compilation) {
+  const template = document.createElement("template");
+  template.innerHTML = renderCompilation(compilation).trim();
+  return template.content.firstElementChild;
+}
+
+function hydrateCompilation(details) {
+  const video = details.querySelector("video");
+  const source = video?.querySelector("source[data-src]");
+  if (!video || !source || source.hasAttribute("src")) return;
+  source.src = source.dataset.src;
+  video.load();
+}
+
+function dehydrateCompilation(details) {
+  const video = details.querySelector("video");
+  const source = video?.querySelector("source[src]");
+  if (!video || !source) return;
+  video.pause();
+  source.removeAttribute("src");
+  video.load();
+}
+
+function renderCompilations() {
+  if (!libraryCompilations.length) {
+    elements.compilationList.innerHTML = "<p>還沒有自訂集錦。</p>";
+    compilationRenderSignatures.clear();
+    expandedCompilationIds.clear();
+    return;
+  }
+
+  elements.compilationList.querySelector(":scope > p")?.remove();
+  const existingNodes = new Map(
+    [...elements.compilationList.children]
+      .filter((node) => node.dataset.compilationId)
+      .map((node) => [node.dataset.compilationId, node]),
+  );
+  const liveIds = new Set();
+
+  libraryCompilations.forEach((compilation, index) => {
+    const id = String(compilation.id);
+    const signature = JSON.stringify(compilation);
+    liveIds.add(id);
+    let node = existingNodes.get(id);
+    if (!node || compilationRenderSignatures.get(id) !== signature) {
+      const replacement = createCompilationElement(compilation);
+      if (node) node.replaceWith(replacement);
+      node = replacement;
+      compilationRenderSignatures.set(id, signature);
+    }
+    const nodeAtIndex = elements.compilationList.children[index];
+    if (nodeAtIndex !== node) {
+      elements.compilationList.insertBefore(node, nodeAtIndex || null);
+    }
+    if (node.matches("details[open]")) hydrateCompilation(node);
+  });
+
+  existingNodes.forEach((node, id) => {
+    if (!liveIds.has(id)) node.remove();
+  });
+  compilationRenderSignatures.forEach((_, id) => {
+    if (!liveIds.has(id)) compilationRenderSignatures.delete(id);
+  });
+  expandedCompilationIds.forEach((id) => {
+    if (!liveIds.has(id)) expandedCompilationIds.delete(id);
+  });
+}
+
+function addHighlightsToSelection(highlights) {
+  const selected = new Set(selectedHighlightIds);
+  for (const highlight of highlights) {
+    if (!selected.has(highlight.id)) {
+      selected.add(highlight.id);
+      selectedHighlightIds.push(highlight.id);
+    }
+  }
+  renderHighlightLibrary();
+}
+
+function openHighlightPreview(highlightId, returnFocus = null) {
+  const highlight = libraryHighlights.find((item) => item.id === highlightId);
+  if (!highlight) return;
+  elements.highlightPreviewTitle.textContent = `來源排名 #${highlight.source_rank}`;
+  elements.highlightPreviewMeta.textContent = `${highlight.source_name} · ${formatTimestamp(highlight.start)} · 相對分數 ${Math.round(highlight.relative_score * 100)}`;
+  elements.highlightPreviewVideo.src = fileAccessUrl(highlight.media_url);
+  highlightPreviewReturnFocus = returnFocus;
+  elements.highlightPreview.hidden = false;
+  document.body.classList.add("highlight-preview-open");
+  elements.highlightPreviewVideo.load();
+  elements.highlightPreviewVideo.play().catch(() => {});
+  elements.highlightPreviewClose.focus({ preventScroll: true });
+}
+
+function closeHighlightPreview() {
+  if (elements.highlightPreview.hidden) return;
+  elements.highlightPreviewVideo.pause();
+  elements.highlightPreviewVideo.removeAttribute("src");
+  elements.highlightPreviewVideo.load();
+  elements.highlightPreview.hidden = true;
+  document.body.classList.remove("highlight-preview-open");
+  highlightPreviewReturnFocus?.focus({ preventScroll: true });
+  highlightPreviewReturnFocus = null;
+}
+
+async function createCompilation() {
+  if (!selectedHighlightIds.length || selectedHighlightIds.length > 100 || compilationSubmitting) {
+    return;
+  }
+  const original = elements.compilationCreate.textContent;
+  compilationSubmitting = true;
+  elements.compilationCreate.disabled = true;
+  elements.compilationCreate.textContent = "排入 GPU…";
+  showCompilationMessage("");
+  try {
+    const response = await apiFetch("/api/compilations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: elements.compilationName.value.trim(),
+        highlight_ids: selectedHighlightIds,
+      }),
+    });
+    const compilation = await response.json();
+    showCompilationMessage(`「${compilation.name}」已排入 GPU，沒有一分鐘硬性限制。`);
+    elements.compilationName.value = "";
+    await loadActivity();
+  } catch (error) {
+    showCompilationMessage(error.message, true);
+  } finally {
+    compilationSubmitting = false;
+    elements.compilationCreate.textContent = original;
+    elements.compilationCreate.disabled = selectedHighlightIds.length === 0;
+    renderCompilationSelection();
+  }
 }
 
 function annotationWorkspaceIsOpen() {
@@ -1103,6 +1464,45 @@ function renderActivity(imports, uploads, jobs) {
   }
 }
 
+async function loadLibraryActivity() {
+  if (!token || !desktopLibraryMedia.matches || libraryActivityLoading) return;
+  libraryActivityLoading = true;
+  try {
+    const [highlightsResponse, compilationsResponse] = await Promise.all([
+      apiFetch("/api/highlights"),
+      apiFetch("/api/compilations"),
+    ]);
+    const [highlightsPayload, compilationsPayload] = await Promise.all([
+      highlightsResponse.json(),
+      compilationsResponse.json(),
+    ]);
+    const librarySignature = JSON.stringify(highlightsPayload);
+    if (librarySignature !== lastLibrarySignature) {
+      lastLibrarySignature = librarySignature;
+      libraryHighlights = highlightsPayload.highlights || [];
+      librarySources = highlightsPayload.sources || [];
+      renderHighlightSourceOptions();
+      renderHighlightLibrary();
+    }
+    const compilationsSignature = JSON.stringify(compilationsPayload);
+    if (compilationsSignature !== lastCompilationsSignature) {
+      lastCompilationsSignature = compilationsSignature;
+      libraryCompilations = compilationsPayload.compilations || [];
+      renderCompilations();
+    }
+    elements.highlightLibraryVisible.removeAttribute("title");
+  } catch (error) {
+    if (String(error.message).includes("401")) {
+      elements.tokenWarning.hidden = false;
+    } else {
+      elements.highlightLibraryVisible.textContent = "素材庫暫時無法更新";
+      elements.highlightLibraryVisible.title = error.message;
+    }
+  } finally {
+    libraryActivityLoading = false;
+  }
+}
+
 async function loadActivity() {
   if (!token || activityLoading) return;
   activityLoading = true;
@@ -1118,6 +1518,7 @@ async function loadActivity() {
       jobsResponse.json(),
     ]);
     renderActivity(imports, uploads, jobs);
+    void loadLibraryActivity();
   } catch (error) {
     if (String(error.message).includes("401")) elements.tokenWarning.hidden = false;
   } finally {
@@ -1190,6 +1591,122 @@ elements.jobList.addEventListener(
   },
   true,
 );
+for (const control of [
+  elements.highlightLibrarySearch,
+  elements.highlightLibraryAfter,
+  elements.highlightLibraryMinimum,
+  elements.highlightLibrarySort,
+]) {
+  control.addEventListener(control.tagName === "INPUT" ? "input" : "change", renderHighlightLibrary);
+}
+elements.highlightLibraryTopSix.addEventListener("click", () => {
+  addHighlightsToSelection(filteredLibraryHighlights().slice(0, 6));
+});
+elements.highlightLibraryEachTopSix.addEventListener("click", () => {
+  const grouped = new Map();
+  for (const highlight of filteredLibraryHighlights()) {
+    if (!grouped.has(highlight.job_id)) grouped.set(highlight.job_id, []);
+    grouped.get(highlight.job_id).push(highlight);
+  }
+  const selected = [];
+  for (const highlights of grouped.values()) {
+    selected.push(...highlights.sort((left, right) => left.source_rank - right.source_rank).slice(0, 6));
+  }
+  addHighlightsToSelection(selected);
+});
+elements.highlightLibraryClearFilters.addEventListener("click", () => {
+  elements.highlightLibrarySearch.value = "";
+  selectedLibrarySourceIds = new Set();
+  renderHighlightSourceOptions();
+  elements.highlightLibraryAfter.value = "";
+  elements.highlightLibraryMinimum.value = "0";
+  elements.highlightLibrarySort.value = "quality";
+  renderHighlightLibrary();
+});
+elements.highlightLibrarySourceOptions.addEventListener("change", (event) => {
+  const checkbox = event.target.closest('input[type="checkbox"]');
+  if (!checkbox) return;
+  if (checkbox.checked) {
+    selectedLibrarySourceIds.add(checkbox.value);
+  } else {
+    selectedLibrarySourceIds.delete(checkbox.value);
+  }
+  elements.highlightLibrarySourceSummary.textContent = selectedLibrarySourceIds.size
+    ? `${selectedLibrarySourceIds.size} 個來源`
+    : "全部來源";
+  renderHighlightLibrary();
+});
+elements.highlightLibraryGrid.addEventListener("change", (event) => {
+  const checkbox = event.target.closest("[data-library-select]");
+  if (!checkbox) return;
+  const card = checkbox.closest("[data-highlight-id]");
+  const highlightId = card?.dataset.highlightId;
+  if (!highlightId) return;
+  if (checkbox.checked && !selectedHighlightIds.includes(highlightId)) {
+    selectedHighlightIds.push(highlightId);
+  } else if (!checkbox.checked) {
+    selectedHighlightIds = selectedHighlightIds.filter((id) => id !== highlightId);
+  }
+  renderHighlightLibrary();
+});
+elements.highlightLibraryGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-highlight-preview]");
+  if (!button) return;
+  openHighlightPreview(
+    button.closest("[data-highlight-id]")?.dataset.highlightId,
+    button,
+  );
+});
+elements.compilationSelectionList.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-highlight-id]");
+  if (!item) return;
+  const index = selectedHighlightIds.indexOf(item.dataset.highlightId);
+  if (index < 0) return;
+  if (event.target.closest("[data-selection-remove]")) {
+    selectedHighlightIds.splice(index, 1);
+  } else {
+    const move = Number(event.target.closest("[data-selection-move]")?.dataset.selectionMove);
+    const next = index + move;
+    if (!Number.isFinite(move) || next < 0 || next >= selectedHighlightIds.length) return;
+    [selectedHighlightIds[index], selectedHighlightIds[next]] = [
+      selectedHighlightIds[next],
+      selectedHighlightIds[index],
+    ];
+  }
+  renderHighlightLibrary();
+});
+elements.compilationClear.addEventListener("click", () => {
+  selectedHighlightIds = [];
+  showCompilationMessage("");
+  renderHighlightLibrary();
+});
+elements.compilationCreate.addEventListener("click", createCompilation);
+elements.compilationList.addEventListener(
+  "toggle",
+  (event) => {
+    const details = event.target;
+    if (!details.matches?.("details.compilation-output[data-compilation-id]")) return;
+    const id = details.dataset.compilationId;
+    if (details.open) {
+      expandedCompilationIds.add(id);
+      hydrateCompilation(details);
+    } else {
+      expandedCompilationIds.delete(id);
+      dehydrateCompilation(details);
+    }
+  },
+  true,
+);
+elements.highlightPreviewClose.addEventListener("click", closeHighlightPreview);
+elements.highlightPreview.addEventListener("click", (event) => {
+  if (event.target === elements.highlightPreview) closeHighlightPreview();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !elements.highlightPreview.hidden) {
+    event.preventDefault();
+    closeHighlightPreview();
+  }
+});
 elements.annotationDevList.addEventListener("click", (event) => {
   const workspaceButton = event.target.closest(".open-annotation-workspace");
   if (workspaceButton) openAnnotationWorkspace(workspaceButton);
@@ -1338,6 +1855,20 @@ elements.importList.addEventListener("click", (event) => {
   if (deleteButton) deleteDriveImport(deleteButton);
 });
 elements.refreshButton.addEventListener("click", loadActivity);
+desktopLibraryMedia.addEventListener("change", (event) => {
+  if (event.matches) {
+    void loadLibraryActivity();
+  } else {
+    closeHighlightPreview();
+    for (const details of elements.compilationList.querySelectorAll(
+      "details.compilation-output[open]",
+    )) {
+      details.open = false;
+      dehydrateCompilation(details);
+    }
+    expandedCompilationIds.clear();
+  }
+});
 elements.accessForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const recoveredToken = accessTokenFrom(elements.accessValue.value);
