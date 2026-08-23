@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 _thread_lock = threading.Lock()
+_archive_thread_lock = threading.Lock()
 
 
 def _lock_file(handle: BinaryIO) -> None:
@@ -51,6 +52,20 @@ def media_work_lock(data_dir: Path) -> Iterator[None]:
     lock_path = data_dir / ".media-work.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with _thread_lock, lock_path.open("a+b") as handle:
+        _lock_file(handle)
+        try:
+            yield
+        finally:
+            _unlock_file(handle)
+
+
+@contextmanager
+def archive_work_lock(data_dir: Path) -> Iterator[None]:
+    """Serialize archive transfers without occupying the GPU/media lock."""
+
+    lock_path = data_dir / ".archive-work.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with _archive_thread_lock, lock_path.open("a+b") as handle:
         _lock_file(handle)
         try:
             yield

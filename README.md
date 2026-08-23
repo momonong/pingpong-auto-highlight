@@ -21,14 +21,14 @@
 
 系統採用「SQLite 存索引與狀態、檔案系統存影片」的混合方式，不會把大型 MP4 塞進資料庫：
 
-- `data/state.sqlite3`：上傳與 Drive 匯入進度、job 狀態、人工標記、逐球片段索引、active 版本與集錦順序。
+- `data/state.sqlite3`：上傳與 Drive 匯入進度、job 狀態、人工標記、逐球片段索引、active 版本、集錦順序與 pCloud archive 狀態。
 - `data/uploads/`：手機直傳或 Google Drive 匯入後的原片副本。
 - `data/outputs/<job-id>/`：各來源的分析 JSON、逐球 MP4，以及重建產生的版本化 `clip-sets/`。
 - `data/compilations/<compilation-id>/highlight_compilation.mp4`：跨來源選取、排序後的最後自訂集錦。
 
 Docker 會把主機的 `./data` bind mount 到容器的 `/data`，因此重建 image 或 container 不會清掉資料；但持久化不等於備份，磁碟損壞或手動刪除仍會失去唯一副本。SQLite 與影片路徑彼此相依，備份或搬機時必須一起複製權威 runtime set；也不要直接從檔案總管刪除 active 影片。完整目錄、資料表關聯、保留策略與備份方式見 [docs/storage.md](docs/storage.md)。
 
-### 長期改用 pCloud？
+### pCloud 長期影片 archive（第一階段可用）
 
 可以串，而且目標流程改成：
 
@@ -36,11 +36,48 @@ Docker 會把主機的 `./data` bind mount 到容器的 `/data`，因此重建 i
 Pixel 手機 → Google Drive 送件箱 → 桌機本地處理/cache → pCloud 影片 archive
 ```
 
-Google Drive 保留目前已經順手的手機入口；pCloud 負責長期保存原片、逐球影片和最後集錦。桌機仍在本機跑 FFmpeg/GPU，完成遠端 checksum 驗證後，未來才由系統提供「釋放本機空間」。SQLite live database 留本機即可，但它保存標記、active 版本與遠端檔案關聯，會另外產生很小的定期 snapshot。
+Google Drive 保留目前已經順手的手機入口；pCloud 負責長期保存原片、逐球影片和最後集錦。桌機仍在本機跑 FFmpeg/GPU。現在已可用明確的 CLI 將影片經 staging 上傳、比對 size + SHA-1、用 pCloud provider-side `copyfile noover=1` finalize、附上 manifest，並把 remote path/file ID/account/root/checksum 寫進 SQLite `storage_objects`。這一步不需要 GPU，也不會刪除本機或 Google Drive 檔案。
 
 [pCloud Android App](https://help.pcloud.com/article/uploading-downloading-organizing) 本身也支援手動、Android 分享選單與 Automatic Upload，所以可保留成備援入口；目前不需要為此放棄既有 Google Drive 匯入流程。不要把正在使用的 SQLite 或 FFmpeg 工作目錄直接放在 pCloud Drive/WebDAV mount：雲端 mount 的鎖定、seek、延遲寫回與斷線語意都不適合 live database 和長影片處理。
 
-最小可行版本會在電腦用 [rclone pCloud backend](https://rclone.org/pcloud/) 完成一次 OAuth 授權，將驗證完成的影片單向 `copy` 到專用 `/HighlightCraft/`。在 pCloud 原片已驗證前，不會提示刪除 Google Drive；在 remote record、size/hash 與按需還原能力完成前，也不會自動刪本機檔案。這項整合目前仍是下一階段設計，尚未在本版執行；現在手動刪除 `data/` 裡的影片仍會讓播放或重跑失敗。詳見 [pCloud 長期保存方案](docs/storage.md#pcloud-長期保存方案規劃中尚未實作)。
+不需要申請 pCloud API key 或自己建立 developer app。[rclone pCloud backend](https://rclone.org/pcloud/) 的 `client_id`／`client_secret` 一般留空，只要由帳號本人在瀏覽器完成一次 OAuth 授權。系統沿用這個 OAuth token 呼叫 pCloud 官方的 provider-side no-overwrite finalize；token 存在 Git 忽略的 `secrets/rclone/rclone.conf`，不要貼到 issue、commit、Docker image 或聊天訊息。常駐網站容器不會掛載這個檔案；只有手動啟動且沒有 port 的 `pcloud-admin` container 能讀取。
+
+Git Bash 的一次性設定：
+
+```bash
+./scripts/setup-pcloud.sh
+docker compose build pingpong-highlight
+docker compose run --rm --no-deps pcloud-admin doctor
+docker compose run --rm --no-deps pcloud-admin bootstrap --dry-run
+docker compose run --rm --no-deps pcloud-admin bootstrap
+```
+
+PowerShell 的第一行改為 `./scripts/setup-pcloud.ps1`，後面的 Docker 指令相同；Windows Git Bash 的 `.sh` 會安全轉交給這支 PowerShell script。設定腳本會下載並驗證固定的 rclone 1.75.0 portable binary，再開啟官方互動式設定；remote 名稱必須使用 `highlightcraft-pcloud`、storage 選 `pcloud`，兩個 app credential 欄位留白。
+
+原生 Linux 要讓網站與 admin 使用同一個 host UID/GID，避免 SQLite 或影片變成另一個使用者擁有；在同一個 shell 先執行 `export PINGPONG_UID=$(id -u) PINGPONG_GID=$(id -g)`，再執行 `docker compose up` 或下列 pCloud 指令。Windows 不需要設定。
+
+先只看重新命名與容量，不連 pCloud、不登記 job：
+
+```bash
+docker compose run --rm --no-deps pcloud-admin plan
+```
+
+第一次建議只傳一個較小的逐球片段驗證完整流程：
+
+```bash
+docker compose run --rm --no-deps pcloud-admin \
+  archive --kind highlight --limit 1
+docker compose run --rm --no-deps pcloud-admin \
+  archive --kind highlight --limit 1 --execute
+docker compose run --rm --no-deps pcloud-admin status
+docker compose run --rm --no-deps pcloud-admin verify --limit 1
+```
+
+`archive` 沒有 `--execute` 時也只會預覽。`status` 只讀 SQLite；`verify` 才會重新讀取 pCloud 的影片與 manifest checksum。測試成功後才移除 `--limit 1` 或改成 `--kind original`。pCloud 會建立 `HighlightCraft/inbox/` 與 `HighlightCraft/archive-v1/{originals,highlight-clips,compilations,...}`；原始手機檔名保存在 manifest/SQLite，正式遠端名稱使用拍攝時間、種類、rank 與穩定 ID，避免重名和後續手動整理。
+
+`HighlightCraft` 是預設 archive root；若要以 `PINGPONG_PCLOUD_ROOT` 改名，必須在第一次真正傳輸前決定。開始傳輸後，系統會固定 root、帳號與內容 checksum，避免同一份 catalog 被混寫到另一個位置；未來若要改 root 或升級 `archive-v2`，要先做明確的 catalog migration。
+
+目前仍是 operator-run 第一階段，尚未接到常駐背景 worker，也還沒有 restore/hydration 或安全釋放本機空間。因此即使顯示 `verified`，現在也不要手動刪除 `data/uploads`、active clips 或 compilations；播放器與重跑仍使用本機檔案。完整命名、狀態與故障恢復規則見 [pCloud 長期保存方案](docs/storage.md#pcloud-長期保存方案第一階段已實作)。
 
 ## 快速選擇啟動方式
 

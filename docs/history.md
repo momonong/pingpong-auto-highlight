@@ -1,5 +1,20 @@
 # Project history
 
+## August 2026: pCloud archive foundation (unreleased after 1.3.0)
+
+The first additive pCloud phase is implemented without changing local playback or deletion behavior:
+
+- a pinned rclone 1.75.0 binary is included in the source-built Docker image, while portable setup scripts create an OAuth config outside Git;
+- `pcloud doctor/bootstrap/plan/archive/status/verify` provides an explicit operator workflow, with no startup-triggered bulk upload;
+- canonical `HighlightCraft/archive-v1` paths rename originals, active clips, and final compilations by date/type/stable ID while retaining original names in deterministic manifests;
+- every transfer uses a unique staging path, local SHA-1/SHA-256, pCloud `copyfile noover=1`, remote size/SHA-1 verification, and crash reconciliation before SQLite marks the object verified;
+- the first transfer attempt freezes content/manifest checksums, while catalog preflight rejects account, backend-root, or archive-root drift before another object is registered;
+- `storage_objects` records independent local/archive state, remote alias/region/account/root/file ID/path, checksums, attempts, and errors;
+- the long-lived OAuth config is absent from the web container and mounted only into the operator-run `pcloud-admin` container;
+- this phase does not delete Drive or local files and does not yet provide background upload, hydration, eviction, or database snapshots.
+
+The real-data non-transfer plan on 2026-08-23 resolved all 5 originals and 102 active v2 clips with no missing local file, totaling about 16.1 GiB. It initialized the additive `storage_objects` schema but registered no object; no pCloud OAuth was performed and no remote folder or file was created.
+
 ## August 2026: reusable highlight library and cross-source compilations (unreleased after 1.3.0)
 
 Current local `main` separates source analysis from final Reel assembly. This work has not yet been published as a new immutable Docker tag; public image `1.3.0` predates it:
@@ -13,7 +28,7 @@ Current local `main` separates source analysis from final Reel assembly. This wo
 
 Legacy jobs can expose only files that older versions actually exported. `rebuild-library` creates a separate clip-set directory and atomically activates it after a successful run; NVDEC/NVENC accelerate media I/O while the current heuristic scoring remains CPU-side. It never deletes the prior clips or Reel.
 
-The 2026-08-23 persistence audit documented the hybrid SQLite/filesystem boundary and found 5 source videos (15.20 GiB), 56 human annotations, and 135 clip rows: 102 active v2, 30 inactive legacy, and 3 inactive v1. All 56 annotations are positive `highlight` labels, so this is useful error-analysis data but not yet a complete supervised training set. No custom compilation had been submitted at that snapshot. The target cloud lifecycle is Pixel → Google Drive handoff → desktop processing/cache → pCloud video archive, while live SQLite remains local with small snapshots. No pCloud credentials, upload worker, remote catalog, hydration, or automatic local eviction exist in this version. Package metadata still reports 1.3.0, so the next release must bump every version surface and refuse to overwrite the existing public tag before publishing.
+The 2026-08-23 persistence audit documented the hybrid SQLite/filesystem boundary and found 5 source videos (15.20 GiB), 56 human annotations, and 135 clip rows: 102 active v2, 30 inactive legacy, and 3 inactive v1. All 56 annotations are positive `highlight` labels, so this is useful error-analysis data but not yet a complete supervised training set. No custom compilation had been submitted at that snapshot. The target cloud lifecycle is Pixel → Google Drive handoff → desktop processing/cache → pCloud video archive, while live SQLite remains local with small snapshots. The later pCloud foundation above adds explicit archive transfer/catalog support, but credentials, background upload, hydration, automatic snapshots, and local eviction still do not exist. Package metadata still reports 1.3.0, so the next release must bump every version surface and refuse to overwrite the existing public tag before publishing.
 
 ## August 2026: threshold-selected point reels (version 1.3, superseded extraction policy)
 

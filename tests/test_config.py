@@ -38,6 +38,33 @@ def test_clip_context_reads_from_environment(tmp_path: Path, monkeypatch) -> Non
     assert settings.clip_post_roll_seconds == 2.0
 
 
+def test_pcloud_settings_read_from_environment(tmp_path: Path, monkeypatch) -> None:
+    config_path = tmp_path / "secrets" / "rclone.conf"
+    monkeypatch.setenv("PINGPONG_UPLOAD_TOKEN", "fixed-token")
+    monkeypatch.setenv("PINGPONG_PCLOUD_REMOTE", "personal-pcloud")
+    monkeypatch.setenv("PINGPONG_PCLOUD_ROOT", "/Video Archive/")
+    monkeypatch.setenv("PINGPONG_RCLONE_BINARY", "portable-rclone")
+    monkeypatch.setenv("PINGPONG_RCLONE_CONFIG", str(config_path))
+    monkeypatch.setenv("PINGPONG_PCLOUD_BWLIMIT", "8M")
+
+    settings = Settings.from_env(data_dir=tmp_path)
+
+    assert settings.pcloud_remote == "personal-pcloud"
+    assert settings.pcloud_root == "Video Archive"
+    assert settings.rclone_binary == "portable-rclone"
+    assert settings.rclone_config == config_path.resolve()
+    assert settings.pcloud_bwlimit == "8M"
+
+
+@pytest.mark.parametrize(
+    "remote",
+    ["", "   ", "bad:name", "bad/name", "bad\\name", "bad name"],
+)
+def test_invalid_pcloud_remote_is_rejected(tmp_path: Path, remote: str) -> None:
+    with pytest.raises(ValueError, match="pcloud_remote"):
+        Settings(data_dir=tmp_path, upload_token="test", pcloud_remote=remote)
+
+
 def test_threshold_selection_defaults_to_relative_score_without_point_cap(
     tmp_path: Path,
     monkeypatch,

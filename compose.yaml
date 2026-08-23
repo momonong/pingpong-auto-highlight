@@ -8,6 +8,7 @@ services:
     gpus: all
     restart: unless-stopped
     init: true
+    user: "${PINGPONG_UID:-10001}:${PINGPONG_GID:-10001}"
     ports:
       - "${PINGPONG_PORT:-8000}:8000"
     environment:
@@ -29,3 +30,25 @@ services:
         source: ./data
         target: /data
     stop_grace_period: 2m
+
+  pcloud-admin:
+    profiles: ["pcloud"]
+    image: pingpong-auto-highlight:local
+    pull_policy: never
+    init: true
+    user: "${PINGPONG_UID:-10001}:${PINGPONG_GID:-10001}"
+    environment:
+      PINGPONG_DATA_DIR: /data
+      PINGPONG_PCLOUD_REMOTE: "${PINGPONG_PCLOUD_REMOTE:-highlightcraft-pcloud}"
+      PINGPONG_PCLOUD_ROOT: "${PINGPONG_PCLOUD_ROOT:-HighlightCraft}"
+      PINGPONG_PCLOUD_BWLIMIT: "${PINGPONG_PCLOUD_BWLIMIT:-}"
+      PINGPONG_RCLONE_CONFIG: /config/rclone/rclone.conf
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+      - type: bind
+        source: ./secrets/rclone
+        target: /config/rclone
+        read_only: true
+    entrypoint: ["pingpong-highlight", "pcloud"]

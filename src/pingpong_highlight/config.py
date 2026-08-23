@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import secrets
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 def _env_int(name: str, default: int) -> int:
@@ -28,6 +28,13 @@ def _env_optional_positive_int(name: str, fallback_name: str | None = None) -> i
     return parsed or None
 
 
+def _env_optional_path(name: str) -> Path | None:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return None
+    return Path(value).expanduser().resolve()
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     data_dir: Path
@@ -48,6 +55,11 @@ class Settings:
     clip_pre_roll_seconds: float = 1.5
     clip_post_roll_seconds: float = 1.5
     worker_count: int = 1
+    pcloud_remote: str = "highlightcraft-pcloud"
+    pcloud_root: str = "HighlightCraft"
+    rclone_binary: str = "rclone"
+    rclone_config: Path | None = None
+    pcloud_bwlimit: str | None = None
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.library_minimum_point_score_ratio <= 1.0:
@@ -67,6 +79,25 @@ class Settings:
             object.__setattr__(self, "max_points", None)
         if self.reel_target_seconds <= 0:
             raise ValueError("reel_target_seconds must be positive")
+        normalized_remote = self.pcloud_remote.strip()
+        if not normalized_remote or any(
+            character in normalized_remote for character in ":/\\"
+        ) or any(
+            character.isspace() or ord(character) < 32
+            for character in normalized_remote
+        ):
+            raise ValueError("pcloud_remote must be a plain rclone remote name")
+        object.__setattr__(self, "pcloud_remote", normalized_remote)
+        normalized_root = self.pcloud_root.strip().strip("/\\").replace("\\", "/")
+        root_parts = PurePosixPath(normalized_root).parts
+        if (
+            not root_parts
+            or ":" in normalized_root
+            or ".." in root_parts
+            or any(ord(character) < 32 for character in normalized_root)
+        ):
+            raise ValueError("pcloud_root must be a safe relative remote path")
+        object.__setattr__(self, "pcloud_root", PurePosixPath(*root_parts).as_posix())
 
     @property
     def uploads_dir(self) -> Path:
@@ -149,6 +180,14 @@ class Settings:
             clip_pre_roll_seconds=_env_float("PINGPONG_CLIP_PRE_ROLL_SECONDS", 1.5),
             clip_post_roll_seconds=_env_float("PINGPONG_CLIP_POST_ROLL_SECONDS", 1.5),
             worker_count=_env_int("PINGPONG_WORKERS", 1),
+            pcloud_remote=os.getenv(
+                "PINGPONG_PCLOUD_REMOTE",
+                "highlightcraft-pcloud",
+            ),
+            pcloud_root=os.getenv("PINGPONG_PCLOUD_ROOT", "HighlightCraft"),
+            rclone_binary=os.getenv("PINGPONG_RCLONE_BINARY", "rclone"),
+            rclone_config=_env_optional_path("PINGPONG_RCLONE_CONFIG"),
+            pcloud_bwlimit=os.getenv("PINGPONG_PCLOUD_BWLIMIT") or None,
         )
         settings.ensure_directories()
         return settings

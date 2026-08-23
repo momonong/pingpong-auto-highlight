@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
 
+FROM rclone/rclone:1.75.0@sha256:b06aed988cf5967de7c25be5925240983981c757f4ed1ac9d2fa659d51d60548 AS rclone
+
 FROM python:3.12-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2 AS builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -28,6 +30,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
+COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
 COPY requirements.lock ./
 RUN python -m pip install --no-cache-dir --require-hashes -r requirements.lock
 

@@ -55,12 +55,12 @@ Docker Compose 把主機的 `./data` bind mount 到容器 `/data`。資料庫與
 
 | 類型 | 位置 | 權威內容 |
 |---|---|---|
-| catalog/state | `data/state.sqlite3` | ID、關聯、狀態、offset、分數、active 版本、人工標記、排列順序 |
+| catalog/state | `data/state.sqlite3` | ID、關聯、狀態、offset、分數、active 版本、人工標記、排列順序、archive metadata |
 | 原片 | `data/uploads/` | 完成匯入、可供重建與人工標記的來源 bytes |
 | 來源素材 | `data/outputs/<job-id>/` | `analysis.json`、逐球 MP4、版本化 `clip-sets/` |
 | 最後集錦 | `data/compilations/<compilation-id>/` | 使用者提交排序後產生的 H.264/AAC MP4 |
 
-`uploads` 與 `jobs` 是最多一對一；一個 upload 可有多個 `annotations` 和 `highlight_clips`；一個 compilation 透過有 `position` 的 `compilation_items` 對多個 clips 建立有序多對多關係。系統目前沒有獨立 `clip_sets` table，版本是由每筆 `highlight_clips.library_version` 與 `active` 表達。
+`uploads` 與 `jobs` 是最多一對一；一個 upload 可有多個 `annotations` 和 `highlight_clips`；一個 compilation 透過有 `position` 的 `compilation_items` 對多個 clips 建立有序多對多關係。`storage_objects` 以 provider + owner type/ID 對應原片、active clip 或 final compilation 的 local/remote 狀態。系統目前沒有獨立 `clip_sets` table，版本是由每筆 `highlight_clips.library_version` 與 `active` 表達。
 
 `jobs.result_json` 保存初次分析的工作結果；每次分析本身另有磁碟上的 `analysis.json`。`rebuild-library` 不覆寫原 job 結果，而是在獨立的 `clip-sets/<algorithm-version>-<timestamp>/` 寫完所有檔案後，以單一 SQLite transaction 停用舊 clip rows、啟用新 rows。DB 的 `library_version` 只保存演算法版本，不含 timestamp。舊 rows 與舊 MP4 保留，因此 DB activation 是 atomic，但檔案系統不是單一 transaction；中斷可能留下未被 DB 引用的半成品目錄，不會取代現役版本。
 
@@ -72,27 +72,29 @@ Docker Compose 把主機的 `./data` bind mount 到容器 `/data`。資料庫與
 
 下載器會保留 `.part`、回報電腦端 offset、限制單檔大小並預留磁碟空間。服務重啟會把中斷中的匯入重新排隊，再從磁碟上的部分檔案續傳。這條公開連結模式不需要 OAuth，但可讀權限由 Google Drive 連結本身承擔；多人或敏感資料版本應改成 OAuth service account／使用者授權，而不是擴大這個 bearer-link 模式。
 
-### Planned pCloud archive adapter
+### pCloud archive adapter: operator-run phase 1
 
-pCloud 的角色是影片的 durable archive，不是 live filesystem；手機的主要 ingress 仍是 Google Drive。現行分析 contract 繼續要求一個完整落盤的本機 `source_path`，因此未來 pCloud adapter 位於 pipeline 輸出端，並提供按需 hydration：
+pCloud 的角色是影片的 durable archive，不是 live filesystem；手機的主要 ingress 仍是 Google Drive。現行分析 contract 繼續要求一個完整落盤的本機 `source_path`，因此 pCloud adapter 位於 pipeline 輸出端；按需 hydration 仍是下一階段：
 
 ```mermaid
 flowchart LR
     PIXEL["Pixel"] --> DRIVE["Google Drive handoff"]
     DRIVE -->|"existing importer"| LOCAL["local upload/cache"]
     LOCAL --> MEDIA["existing analysis/export pipeline"]
-    MEDIA --> ART["immutable local artifacts"]
-    ART -->|"async copy + checksum"| PA["pCloud archive"]
-    PA -->|"on-demand hydrate"| LOCAL
+    MEDIA --> ART["versioned local artifacts"]
+    ART -->|"operator-run no-overwrite copy + checksum"| PA["pCloud archive"]
+    PA -.->|"future on-demand hydrate"| LOCAL
     DB["local SQLite catalog"] --- LOCAL
     DB -.->|"small snapshots"| PA
 ```
 
-先以一次性 rclone `copy`／`check` 驗證帳號、區域 endpoint 與大型影片速度。正式第一階段同時加入 `storage_objects`／archive job、rclone pCloud backend 與 OAuth；archive worker 不拿 GPU media lock，但應限制網路／磁碟並行度。它只做單向 immutable copy，上傳、provider checksum 與 DB commit 全部成功後才標成 remote verified，而且不刪本機。第二階段加入 on-demand hydration，第三階段才開放 local eviction。pCloud inbox 可以日後作備援入口，不需要阻塞這三階段。`rclone.conf`／OAuth token 要留在 runtime media mount 之外並限制權限。
+第一階段已新增 `archive.py`、additive `storage_objects` table、固定版本的 rclone pCloud backend、OAuth setup scripts 與 `pcloud doctor/bootstrap/plan/archive/status/verify` CLI。遠端名稱由 canonical builder 產生，先以 `copyto --ignore-existing` 進 `_staging`，核對 size/SHA-1 後，用 pCloud `copyfile noover=1` 在 provider 端拒絕同名覆寫；影片與 deterministic manifest 都再次驗證後才標成 `verified`，最後只刪除 hash 相同的 staging object。這是應用層 no-overwrite contract，不會阻止使用者之後從其他 pCloud client 手動改檔，因此 `pcloud verify` 可重新檢查 drift。既有資料只會被 `plan` 發現，使用者明確加上 `archive --execute` 才登記與傳輸，避免服務重啟時突然送出十多 GiB。
+
+目前沒有常駐 archive worker，CLI 也不拿 GPU media lock；操作者要先確認 media work idle，再分批傳輸。下一小步是把相同 backend 接到單 worker queue 與 UI 狀態，之後加入 on-demand hydration，最後才開放 local eviction。`rclone.conf`／OAuth token 位於 Git 與 Docker build context 之外的 `secrets/rclone/`，只讀掛載到沒有 port、手動啟動的 `pcloud-admin` container；常駐網站服務不持有它，而且它不是一般媒體備份的一部分。
 
 Google Drive 是暫存 handoff，不是第二個永久 archive。公開連結 importer 沒有刪除使用者 Drive 檔案的權限；pCloud 原片驗證成功後，UI 只能提示使用者可以手動刪除。桌機本機檔案則必須等 remote verified、hydration 可用且沒有 worker／播放器正在使用時，才由系統狀態機安全 eviction。
 
-live SQLite、FFmpeg seek input 與未完成 `.part` 都不能直接放在 pCloud Drive、WebDAV 或 rclone mount。這能讓雲端斷線只延遲 archive，不會破壞處理中的 transaction。完整資料生命週期與官方能力連結見 [storage.md](storage.md#pcloud-長期保存方案規劃中尚未實作)。
+live SQLite、FFmpeg seek input 與未完成 `.part` 都不能直接放在 pCloud Drive、WebDAV 或 rclone mount。這能讓雲端斷線只讓 archive 失敗，不會破壞處理中的 transaction。完整資料生命週期、命名與官方能力連結見 [storage.md](storage.md#pcloud-長期保存方案第一階段已實作)。
 
 ### Timestamp-based media layer
 

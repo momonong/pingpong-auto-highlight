@@ -126,6 +126,43 @@ class CompilationRecord:
     updated_at: str
 
 
+@dataclass(frozen=True, slots=True)
+class StorageObjectRecord:
+    id: str
+    media_kind: str
+    owner_type: str
+    owner_id: str
+    source_name: str
+    local_relative_path: str
+    local_state: str
+    provider: str
+    remote_name: str
+    naming_version: str
+    remote_path: str
+    manifest_remote_path: str
+    archive_state: str
+    byte_size: int
+    local_sha1: str | None
+    local_sha256: str | None
+    remote_hash_algorithm: str | None
+    remote_hash: str | None
+    remote_file_id: str | None
+    remote_region: str | None
+    remote_hostname: str | None
+    remote_account_id: str | None
+    remote_root_folder_id: str | None
+    manifest_sha1: str | None
+    manifest_sha256: str | None
+    manifest_byte_size: int | None
+    attempts: int
+    last_error: str | None
+    uploaded_at: str | None
+    verified_at: str | None
+    last_checked_at: str | None
+    created_at: str
+    updated_at: str
+
+
 class StateConflict(RuntimeError):
     pass
 
@@ -247,6 +284,57 @@ class Database:
                     UNIQUE (compilation_id, highlight_id)
                 );
 
+                CREATE TABLE IF NOT EXISTS storage_objects (
+                    id TEXT PRIMARY KEY,
+                    media_kind TEXT NOT NULL CHECK (
+                        media_kind IN ('original', 'highlight_clip', 'compilation')
+                    ),
+                    owner_type TEXT NOT NULL,
+                    owner_id TEXT NOT NULL,
+                    source_name TEXT NOT NULL,
+                    local_relative_path TEXT NOT NULL,
+                    local_state TEXT NOT NULL DEFAULT 'present' CHECK (
+                        local_state IN (
+                            'present', 'evicting', 'evicted', 'restoring', 'missing'
+                        )
+                    ),
+                    provider TEXT NOT NULL,
+                    remote_name TEXT NOT NULL,
+                    naming_version TEXT NOT NULL,
+                    remote_path TEXT NOT NULL,
+                    manifest_remote_path TEXT NOT NULL,
+                    archive_state TEXT NOT NULL DEFAULT 'pending' CHECK (
+                        archive_state IN (
+                            'pending', 'queued', 'uploading', 'verifying',
+                            'verified', 'failed'
+                        )
+                    ),
+                    byte_size INTEGER NOT NULL CHECK (byte_size >= 0),
+                    local_sha1 TEXT,
+                    local_sha256 TEXT,
+                    remote_hash_algorithm TEXT,
+                    remote_hash TEXT,
+                    remote_file_id TEXT,
+                    remote_region TEXT,
+                    remote_hostname TEXT,
+                    remote_account_id TEXT,
+                    remote_root_folder_id TEXT,
+                    manifest_sha1 TEXT,
+                    manifest_sha256 TEXT,
+                    manifest_byte_size INTEGER CHECK (
+                        manifest_byte_size IS NULL OR manifest_byte_size >= 0
+                    ),
+                    attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+                    last_error TEXT,
+                    uploaded_at TEXT,
+                    verified_at TEXT,
+                    last_checked_at TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(provider, owner_type, owner_id),
+                    UNIQUE(provider, remote_path)
+                );
+
                 CREATE INDEX IF NOT EXISTS jobs_status_idx ON jobs(status, created_at);
                 CREATE INDEX IF NOT EXISTS drive_imports_status_idx
                     ON drive_imports(status, created_at);
@@ -258,6 +346,10 @@ class Database:
                     ON highlight_clips(job_id, source_rank);
                 CREATE INDEX IF NOT EXISTS compilations_status_idx
                     ON compilations(status, created_at);
+                CREATE INDEX IF NOT EXISTS storage_objects_archive_idx
+                    ON storage_objects(provider, archive_state, created_at);
+                CREATE INDEX IF NOT EXISTS storage_objects_owner_idx
+                    ON storage_objects(owner_type, owner_id);
                 """
             )
             upload_columns = {
@@ -297,6 +389,50 @@ class Database:
                 ON highlight_clips(active, job_id, source_rank)
                 """
             )
+            storage_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(storage_objects)"
+                ).fetchall()
+            }
+            if "remote_region" not in storage_columns:
+                connection.execute(
+                    "ALTER TABLE storage_objects ADD COLUMN remote_region TEXT"
+                )
+            if "remote_hostname" not in storage_columns:
+                connection.execute(
+                    "ALTER TABLE storage_objects ADD COLUMN remote_hostname TEXT"
+                )
+            if "remote_name" not in storage_columns:
+                connection.execute(
+                    """
+                    ALTER TABLE storage_objects
+                    ADD COLUMN remote_name TEXT NOT NULL DEFAULT 'highlightcraft-pcloud'
+                    """
+                )
+            if "remote_account_id" not in storage_columns:
+                connection.execute(
+                    "ALTER TABLE storage_objects ADD COLUMN remote_account_id TEXT"
+                )
+            if "remote_root_folder_id" not in storage_columns:
+                connection.execute(
+                    """
+                    ALTER TABLE storage_objects
+                    ADD COLUMN remote_root_folder_id TEXT
+                    """
+                )
+            if "manifest_sha1" not in storage_columns:
+                connection.execute(
+                    "ALTER TABLE storage_objects ADD COLUMN manifest_sha1 TEXT"
+                )
+            if "manifest_byte_size" not in storage_columns:
+                connection.execute(
+                    """
+                    ALTER TABLE storage_objects
+                    ADD COLUMN manifest_byte_size INTEGER
+                    CHECK (manifest_byte_size IS NULL OR manifest_byte_size >= 0)
+                    """
+                )
             for row in connection.execute(
                 "SELECT id, filename, recorded_at_source FROM uploads"
             ).fetchall():
@@ -421,6 +557,50 @@ class Database:
             file_name=row["file_name"],
             duration=float(row["duration"]) if row["duration"] is not None else None,
             error=row["error"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    @staticmethod
+    def _storage_object(row: sqlite3.Row | None) -> StorageObjectRecord | None:
+        if row is None:
+            return None
+        return StorageObjectRecord(
+            id=row["id"],
+            media_kind=row["media_kind"],
+            owner_type=row["owner_type"],
+            owner_id=row["owner_id"],
+            source_name=row["source_name"],
+            local_relative_path=row["local_relative_path"],
+            local_state=row["local_state"],
+            provider=row["provider"],
+            remote_name=row["remote_name"],
+            naming_version=row["naming_version"],
+            remote_path=row["remote_path"],
+            manifest_remote_path=row["manifest_remote_path"],
+            archive_state=row["archive_state"],
+            byte_size=int(row["byte_size"]),
+            local_sha1=row["local_sha1"],
+            local_sha256=row["local_sha256"],
+            remote_hash_algorithm=row["remote_hash_algorithm"],
+            remote_hash=row["remote_hash"],
+            remote_file_id=row["remote_file_id"],
+            remote_region=row["remote_region"],
+            remote_hostname=row["remote_hostname"],
+            remote_account_id=row["remote_account_id"],
+            remote_root_folder_id=row["remote_root_folder_id"],
+            manifest_sha1=row["manifest_sha1"],
+            manifest_sha256=row["manifest_sha256"],
+            manifest_byte_size=(
+                int(row["manifest_byte_size"])
+                if row["manifest_byte_size"] is not None
+                else None
+            ),
+            attempts=int(row["attempts"]),
+            last_error=row["last_error"],
+            uploaded_at=row["uploaded_at"],
+            verified_at=row["verified_at"],
+            last_checked_at=row["last_checked_at"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -813,6 +993,18 @@ class Database:
         with self._lock, self._connect() as connection:
             row = connection.execute("SELECT * FROM uploads WHERE id = ?", (upload_id,)).fetchone()
         return self._upload(row)
+
+    def list_archivable_uploads(self) -> list[UploadRecord]:
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM uploads
+                WHERE status IN ('queued', 'processing', 'completed', 'failed')
+                  AND offset = size
+                ORDER BY COALESCE(recorded_at, created_at), created_at
+                """
+            ).fetchall()
+        return [record for row in rows if (record := self._upload(row)) is not None]
 
     def list_incomplete_uploads(self) -> list[UploadRecord]:
         with self._lock, self._connect() as connection:
@@ -1211,6 +1403,19 @@ class Database:
             record for row in rows if (record := self._compilation(row)) is not None
         ]
 
+    def list_archivable_compilations(self) -> list[CompilationRecord]:
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM compilations
+                WHERE status = 'completed' AND file_name IS NOT NULL
+                ORDER BY created_at
+                """
+            ).fetchall()
+        return [
+            record for row in rows if (record := self._compilation(row)) is not None
+        ]
+
     def list_compilation_highlights(
         self,
         compilation_id: str,
@@ -1296,4 +1501,395 @@ class Database:
                 WHERE id = ?
                 """,
                 (error[:1000], _now(), compilation_id),
+            )
+
+    def ensure_storage_object(
+        self,
+        *,
+        media_kind: str,
+        owner_type: str,
+        owner_id: str,
+        source_name: str,
+        local_relative_path: str,
+        provider: str,
+        remote_name: str,
+        naming_version: str,
+        remote_path: str,
+        manifest_remote_path: str,
+        byte_size: int,
+    ) -> StorageObjectRecord:
+        object_id = uuid.uuid5(
+            uuid.NAMESPACE_URL,
+            f"highlightcraft:{provider}:{owner_type}:{owner_id}",
+        ).hex
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing_row = connection.execute(
+                """
+                SELECT * FROM storage_objects
+                WHERE provider = ? AND owner_type = ? AND owner_id = ?
+                """,
+                (provider, owner_type, owner_id),
+            ).fetchone()
+            existing = self._storage_object(existing_row)
+            if existing is not None:
+                immutable_identity = (
+                    existing.media_kind,
+                    existing.remote_name,
+                    existing.naming_version,
+                    existing.remote_path,
+                    existing.manifest_remote_path,
+                )
+                requested_identity = (
+                    media_kind,
+                    remote_name,
+                    naming_version,
+                    remote_path,
+                    manifest_remote_path,
+                )
+                if immutable_identity != requested_identity:
+                    raise StateConflict(
+                        "Archive identity changed; an explicit catalog migration is required"
+                    )
+                if existing.attempts > 0 and (
+                    existing.source_name != source_name
+                    or existing.local_relative_path != local_relative_path
+                ):
+                    raise StateConflict(
+                        "Archive source identity changed after transfer started"
+                    )
+                if (
+                    existing.attempts > 0
+                    and byte_size > 0
+                    and existing.byte_size != byte_size
+                ):
+                    raise StateConflict(
+                        "Archive source size changed after transfer started"
+                    )
+                connection.execute(
+                    """
+                    UPDATE storage_objects SET
+                        source_name = ?, local_relative_path = ?,
+                        byte_size = CASE
+                            WHEN attempts > 0 THEN byte_size
+                            ELSE ?
+                        END,
+                        updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        source_name,
+                        local_relative_path,
+                        byte_size,
+                        timestamp,
+                        existing.id,
+                    ),
+                )
+                object_id = existing.id
+            else:
+                connection.execute(
+                    """
+                    INSERT INTO storage_objects (
+                        id, media_kind, owner_type, owner_id, source_name,
+                        local_relative_path, local_state, provider, naming_version,
+                        remote_name, remote_path, manifest_remote_path, archive_state,
+                        byte_size,
+                        created_at, updated_at
+                    )
+                    VALUES (
+                        ?, ?, ?, ?, ?, ?, 'present', ?, ?, ?, ?, ?, 'pending', ?, ?, ?
+                    )
+                    """,
+                    (
+                        object_id,
+                        media_kind,
+                        owner_type,
+                        owner_id,
+                        source_name,
+                        local_relative_path,
+                        provider,
+                        naming_version,
+                        remote_name,
+                        remote_path,
+                        manifest_remote_path,
+                        byte_size,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+            row = connection.execute(
+                "SELECT * FROM storage_objects WHERE id = ?",
+                (object_id,),
+            ).fetchone()
+        record = self._storage_object(row)
+        assert record is not None
+        return record
+
+    def get_storage_object(self, object_id: str) -> StorageObjectRecord | None:
+        with self._lock, self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM storage_objects WHERE id = ?",
+                (object_id,),
+            ).fetchone()
+        return self._storage_object(row)
+
+    def list_storage_objects(self, *, provider: str = "pcloud") -> list[StorageObjectRecord]:
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM storage_objects
+                WHERE provider = ?
+                ORDER BY created_at, media_kind, owner_id
+                """,
+                (provider,),
+            ).fetchall()
+        return [
+            record for row in rows if (record := self._storage_object(row)) is not None
+        ]
+
+    def start_storage_upload(
+        self,
+        object_id: str,
+        *,
+        local_sha1: str,
+        local_sha256: str,
+        byte_size: int,
+        manifest_sha1: str,
+        manifest_byte_size: int,
+        manifest_sha256: str,
+        remote_region: str | None = None,
+        remote_hostname: str | None = None,
+        remote_account_id: str | None = None,
+        remote_root_folder_id: str | None = None,
+    ) -> StorageObjectRecord:
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing_row = connection.execute(
+                "SELECT * FROM storage_objects WHERE id = ?",
+                (object_id,),
+            ).fetchone()
+            existing = self._storage_object(existing_row)
+            if existing is None:
+                raise StateConflict("Archive object is missing")
+            if existing.archive_state == "verified":
+                raise StateConflict("Archive object is already verified")
+            if existing.attempts > 0:
+                stored = (
+                    existing.byte_size,
+                    existing.local_sha1,
+                    existing.local_sha256,
+                    existing.manifest_sha1,
+                    existing.manifest_sha256,
+                    existing.manifest_byte_size,
+                )
+                requested = (
+                    byte_size,
+                    local_sha1,
+                    local_sha256,
+                    manifest_sha1,
+                    manifest_sha256,
+                    manifest_byte_size,
+                )
+                if None in stored or stored != requested:
+                    raise StateConflict(
+                        "Archive content identity changed after transfer started"
+                    )
+                for label, stored_target, requested_target in (
+                    ("region", existing.remote_region, remote_region),
+                    ("API hostname", existing.remote_hostname, remote_hostname),
+                    ("account", existing.remote_account_id, remote_account_id),
+                    (
+                        "remote root",
+                        existing.remote_root_folder_id,
+                        remote_root_folder_id,
+                    ),
+                ):
+                    if stored_target is not None and stored_target != requested_target:
+                        raise StateConflict(
+                            f"Archive pCloud {label} changed after transfer started"
+                        )
+            cursor = connection.execute(
+                """
+                UPDATE storage_objects
+                SET archive_state = 'uploading', attempts = attempts + 1,
+                    local_state = 'present',
+                    local_sha1 = ?, local_sha256 = ?, byte_size = ?,
+                    manifest_sha1 = ?, manifest_byte_size = ?,
+                    manifest_sha256 = ?, remote_region = ?, remote_hostname = ?,
+                    remote_account_id = ?, remote_root_folder_id = ?,
+                    last_error = NULL, updated_at = ?
+                WHERE id = ? AND archive_state != 'verified'
+                """,
+                (
+                    local_sha1,
+                    local_sha256,
+                    byte_size,
+                    manifest_sha1,
+                    manifest_byte_size,
+                    manifest_sha256,
+                    remote_region,
+                    remote_hostname,
+                    remote_account_id,
+                    remote_root_folder_id,
+                    timestamp,
+                    object_id,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise StateConflict("Archive object is already verified or missing")
+            row = connection.execute(
+                "SELECT * FROM storage_objects WHERE id = ?",
+                (object_id,),
+            ).fetchone()
+        record = self._storage_object(row)
+        assert record is not None
+        return record
+
+    def mark_storage_verifying(self, object_id: str) -> None:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE storage_objects
+                SET archive_state = 'verifying', uploaded_at = COALESCE(uploaded_at, ?),
+                    updated_at = ?
+                WHERE id = ? AND archive_state = 'uploading'
+                """,
+                (_now(), _now(), object_id),
+            )
+        if cursor.rowcount != 1:
+            raise StateConflict("Archive object is not uploading")
+
+    def finish_storage_verification(
+        self,
+        object_id: str,
+        *,
+        remote_file_id: str | None,
+        remote_hash_algorithm: str,
+        remote_hash: str,
+        remote_region: str | None = None,
+        remote_hostname: str | None = None,
+        remote_account_id: str | None = None,
+        remote_root_folder_id: str | None = None,
+    ) -> StorageObjectRecord:
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE storage_objects
+                SET archive_state = 'verified', remote_file_id = ?,
+                    remote_hash_algorithm = ?, remote_hash = ?, last_error = NULL,
+                    remote_region = ?, remote_hostname = ?,
+                    remote_account_id = ?, remote_root_folder_id = ?,
+                    uploaded_at = COALESCE(uploaded_at, ?),
+                    verified_at = COALESCE(verified_at, ?),
+                    last_checked_at = ?, updated_at = ?
+                WHERE id = ? AND archive_state = 'verifying'
+                """,
+                (
+                    remote_file_id,
+                    remote_hash_algorithm,
+                    remote_hash,
+                    remote_region,
+                    remote_hostname,
+                    remote_account_id,
+                    remote_root_folder_id,
+                    timestamp,
+                    timestamp,
+                    timestamp,
+                    timestamp,
+                    object_id,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise StateConflict("Archive object is not being verified")
+            row = connection.execute(
+                "SELECT * FROM storage_objects WHERE id = ?",
+                (object_id,),
+            ).fetchone()
+        record = self._storage_object(row)
+        assert record is not None
+        return record
+
+    def fail_storage_object(self, object_id: str, error: str) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE storage_objects
+                SET archive_state = 'failed', last_error = ?, updated_at = ?
+                WHERE id = ? AND archive_state != 'verified'
+                """,
+                (error[:1000], _now(), object_id),
+            )
+
+    def mark_storage_missing(self, object_id: str, error: str) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE storage_objects
+                SET archive_state = CASE
+                        WHEN archive_state = 'verified' THEN 'verified'
+                        ELSE 'failed'
+                    END,
+                    local_state = 'missing',
+                    last_error = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (error[:1000], _now(), object_id),
+            )
+
+    def mark_storage_present(self, object_id: str) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE storage_objects
+                SET local_state = 'present',
+                    last_error = CASE
+                        WHEN archive_state = 'verified' THEN NULL
+                        ELSE last_error
+                    END,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (_now(), object_id),
+            )
+
+    def finish_storage_check(self, object_id: str) -> StorageObjectRecord:
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE storage_objects
+                SET archive_state = 'verified', last_checked_at = ?,
+                    last_error = CASE
+                        WHEN local_state = 'missing' THEN last_error
+                        ELSE NULL
+                    END,
+                    updated_at = ?
+                WHERE id = ? AND verified_at IS NOT NULL
+                """,
+                (timestamp, timestamp, object_id),
+            )
+            if cursor.rowcount != 1:
+                raise StateConflict("Archive object has never been verified")
+            row = connection.execute(
+                "SELECT * FROM storage_objects WHERE id = ?",
+                (object_id,),
+            ).fetchone()
+        record = self._storage_object(row)
+        assert record is not None
+        return record
+
+    def fail_storage_check(self, object_id: str, error: str) -> None:
+        timestamp = _now()
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE storage_objects
+                SET archive_state = 'failed', last_error = ?,
+                    last_checked_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (error[:1000], timestamp, timestamp, object_id),
             )

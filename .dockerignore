@@ -12,3 +12,5 @@ data
 logs
 clips
 storage
+secrets
+.tools
