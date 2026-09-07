@@ -20,6 +20,14 @@
 
 ### Mobile upload UI
 
+登入後首頁以影片清單為主；新增來源可展開，管理與人工標記切換獨立檢視，但不切換帳號 scope 或重啟傳輸。播放器保持按需載入；成品下載可直接操作，來源下載與破壞性操作收在次要選單。
+
+前端保留無 build step 的 classic deferred scripts，依 `index.html` 順序共用 `core.js` 的 session/state bindings。`core.js` 管理 DOM references、帳號世代與 API；`uploads.js` 保留續傳協定；`sources.js` 管理來源卡與 Drive；`results.js` 管理影片卡、播放與下載；`annotations.js` 管理標記；`admin.js` 管理帳號／全域資料；`activity.js` 負責輪詢；`workspace.js` 管理檢視與篩選；`app.js` 綁定事件及啟動。這是功能拆分，尚未改成各模組獨立持有 state 的 ES module 架構。語言測試及靜態資源測試涵蓋全部功能檔案。
+
+`connection.js` 使用獨立、禁止 cache 的 `/api/health` 檢查，初始狀態為 checking；每次檢查最多等待 6 秒，完成後 5 秒再查。僅有效的 `status=ok` JSON 回應可顯示 online。離線事件立即取消舊檢查，重新連線／頁面恢復可見時重新驗證；epoch 防止過期回應覆蓋新狀態。這只確認 HTTP 連線，不代表處理器 readiness。影片 API 的讀取有 15 秒期限，失敗時保留舊資料並標示 stale；上傳 PATCH 不套用短期限，以保留慢速網路傳輸行為。
+
+瀏覽器回歸：安裝 Playwright 與 Chromium 後，以 `HIGHLIGHTCRAFT_TEST_PYTHON` 指向專案 dev Python，執行 `node tests/browser/workspace.cjs`。測試自行取得 localhost port、在 `data/browser-test-*` 建立獨立帳號與資料，生成短 MP4，結束時停止所啟動的服務。API、續傳及播放為實際流程；處理器與 Drive downloader 為 CPU-only fixture，不驗證模型或 Google 服務。螢幕截圖留在該測試目錄；不使用既有使用者影片。
+
 `src/pingpong_highlight/static/` 是無 build step 的 mobile-first 頁面。它把影片切成 8 MiB blob，依序 `PATCH` 到 upload resource。每次 request 都帶 server offset；request 或 response 中斷時，client 先用 `HEAD` 查詢電腦實際收到的位置，再決定是否重送。瀏覽器允許 Web Crypto 時，另帶 SHA-256 checksum。
 
 瀏覽器不允許頁面在背景永久執行，因此 iOS 把 Safari 完全關掉時上傳仍會停下；但 partial file 和 offset 會保留。重新開頁、再選同一個原檔即可續傳。

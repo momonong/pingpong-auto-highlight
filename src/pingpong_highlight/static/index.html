@@ -24,7 +24,7 @@
           <span class="language-track" aria-hidden="true"><i></i></span>
           <span class="language-option language-option-en" lang="en">EN</span>
         </button>
-        <span class="service-pill"><i aria-hidden="true"></i><span data-i18n="service.online">服務運作中</span></span>
+        <span id="serviceStatus" class="service-pill" data-state="checking" role="status"><i aria-hidden="true"></i><span data-i18n="service.checking">正在確認連線</span></span>
         <div id="sessionControls" class="session-controls" hidden>
           <button id="guideButton" class="topbar-button" type="button" data-i18n="nav.guide">使用教學</button>
           <span class="account-chip">
@@ -55,37 +55,18 @@
     </main>
 
     <main id="appShell" class="shell" hidden>
-      <section class="hero">
-        <div class="hero-copy">
-          <p class="eyebrow"><span>TABLE TENNIS</span><i></i><span>POINT REEL</span></p>
-          <h1><span data-i18n="hero.titleLead">把整場球，</span><br /><em data-i18n="hero.titleAccent">剪成值得重播的幾分。</em></h1>
-          <p class="hero-lead" data-i18n="hero.lead">
-            手機直接傳原片，電腦自動找出每一分、挑選精彩球，再用原始比例剪成一支流暢集錦。
-          </p>
-          <div class="hero-pills" aria-label="產品特色" data-i18n-aria-label="hero.featuresLabel">
-            <span data-i18n="hero.featurePoints">逐分切點</span><span data-i18n="hero.featureAspect">原尺寸輸出</span><span data-i18n="hero.featureLocal">本機處理</span>
-          </div>
-        </div>
-
-        <div class="hero-visual" aria-hidden="true">
-          <div class="visual-topline"><span>HIGHLIGHT MODE</span><b>REC</b></div>
-          <div class="court">
-            <span class="court-center"></span>
-            <span class="court-net"></span>
-            <span class="court-ball"></span>
-            <span class="court-shadow"></span>
-          </div>
-          <div class="visual-footer">
-            <span><small>SELECTED POINTS</small><b>06</b></span>
-            <span><small>TARGET REEL</small><b>00:55</b></span>
-          </div>
-          <span class="floating-tag tag-one">TOPSPIN</span>
-          <span class="floating-tag tag-two">+ GREAT RALLY</span>
-        </div>
-      </section>
-
+      <header class="workspace-heading">
+        <div><span class="section-kicker">MY STUDIO</span><h1 data-i18n="workspace.title">我的影片</h1><p data-i18n="workspace.lead">從原片到精彩集錦，在這裡掌握每一步。</p></div>
+        <button id="addVideoButton" class="primary" type="button" aria-expanded="false" aria-controls="addFootage" data-i18n="workspace.add">新增影片</button>
+      </header>
+      <nav id="workspaceNav" class="workspace-nav" aria-label="影片工作區" data-i18n-aria-label="workspace.library">
+        <button type="button" data-view="library" aria-pressed="true" data-i18n="workspace.title">我的影片</button>
+        <button type="button" data-view="admin" hidden data-i18n="workspace.admin">管理</button>
+        <button type="button" data-view="annotations" hidden data-i18n="workspace.annotate">人工標記</button>
+      </nav>
+      <p id="activityNotice" class="activity-notice" role="status" data-i18n="workspace.loading">正在讀取影片與進度…</p>
       <section class="workspace">
-        <article class="panel upload-card">
+        <article id="addFootage" class="panel upload-card" hidden>
           <div class="panel-heading">
             <div>
               <span class="section-kicker">01 / ADD FOOTAGE</span>
@@ -162,7 +143,7 @@
         <article class="panel jobs-card">
           <div class="panel-heading jobs-heading">
             <div>
-              <span class="section-kicker">02 / MY LIBRARY</span>
+              <span class="section-kicker">VIDEO LIBRARY</span>
               <h2 data-i18n="library.title">我的影片庫</h2>
               <p id="jobCount" data-i18n="library.waiting">等待第一支影片</p>
             </div>
@@ -171,6 +152,13 @@
             </button>
           </div>
 
+          <div id="libraryFilters" class="library-filters">
+            <button type="button" data-filter="all" aria-pressed="true" data-i18n="workspace.all">全部</button>
+            <button type="button" data-filter="active" aria-pressed="false" data-i18n="workspace.active">進行中</button>
+            <button type="button" data-filter="ready" aria-pressed="false" data-i18n="workspace.ready">已完成</button>
+            <button type="button" data-filter="failed" aria-pressed="false" data-i18n="workspace.failed">需處理</button>
+          </div>
+          <p id="filterEmpty" class="empty-state" hidden data-i18n="workspace.noMatch">此分類目前沒有影片</p>
           <div id="emptyJobs" class="empty-state">
             <div class="empty-reel" aria-hidden="true">
               <span></span><span></span><span></span><i></i>
@@ -414,6 +402,15 @@
       </div>
     </section>
 
+    <script src="/static/core.js?v=1.4.0" defer></script>
+    <script src="/static/connection.js?v=1.4.0" defer></script>
+    <script src="/static/uploads.js?v=1.4.0" defer></script>
+    <script src="/static/results.js?v=1.4.0" defer></script>
+    <script src="/static/annotations.js?v=1.4.0" defer></script>
+    <script src="/static/sources.js?v=1.4.0" defer></script>
+    <script src="/static/admin.js?v=1.4.0" defer></script>
+    <script src="/static/activity.js?v=1.4.0" defer></script>
+    <script src="/static/workspace.js?v=1.4.0" defer></script>
     <script src="/static/app.js?v=1.4.0" defer></script>
   </body>
 </html>

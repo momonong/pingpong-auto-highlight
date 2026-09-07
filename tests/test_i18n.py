@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "src/pingpong_highlight/static"
 INDEX_PATH = STATIC / "index.html"
 APP_PATH = STATIC / "app.js"
+APP_SOURCES = sorted(path for path in STATIC.glob("*.js") if path.name != "i18n.js")
 I18N_PATH = STATIC / "i18n.js"
 STYLES_PATH = STATIC / "styles.css"
 
@@ -22,9 +23,7 @@ CATALOG_ENTRY_RE = re.compile(
     r'(?P<en>"(?:\\.|[^"\\])*")\]\s*,?\s*$',
     re.MULTILINE,
 )
-LITERAL_KEY_RE = re.compile(
-    r'''["'`]([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9_-]+)+)["'`]'''
-)
+LITERAL_KEY_RE = re.compile(r"""["'`]([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9_-]+)+)["'`]""")
 LOCALIZED_TEXT_ATTRIBUTES = {
     "aria-label": "data-i18n-aria-label",
     "placeholder": "data-i18n-placeholder",
@@ -242,18 +241,17 @@ def test_translatable_chinese_attributes_have_translation_markers() -> None:
             value = str(attrs.get(attribute, ""))
             if not HAN_RE.search(value):
                 continue
-            stateful_language_toggle = (
-                attrs.get("id") == "languageToggle" and attribute in {"aria-label", "title"}
-            )
+            stateful_language_toggle = attrs.get("id") == "languageToggle" and attribute in {
+                "aria-label",
+                "title",
+            }
             if marker not in attrs and not stateful_language_toggle:
-                unmarked.append(
-                    f"line {element['line']}: <{element['tag']}> {attribute}={value!r}"
-                )
+                unmarked.append(f"line {element['line']}: <{element['tag']}> {attribute}={value!r}")
     assert not unmarked, "Unmarked translatable attributes:\n" + "\n".join(unmarked)
 
 
 def test_app_javascript_contains_no_chinese_copy() -> None:
-    source = APP_PATH.read_text(encoding="utf-8").replace("、", "")
+    source = "\n".join(path.read_text(encoding="utf-8") for path in APP_SOURCES).replace("、", "")
     matches = [
         f"line {line_number}: {line.strip()}"
         for line_number, line in enumerate(source.splitlines(), start=1)
@@ -271,7 +269,9 @@ def test_all_literal_translation_keys_exist() -> None:
         for name, value in element["attrs"].items()  # type: ignore[union-attr]
         if name in TRANSLATION_MARKERS
     }
-    app_keys = set(LITERAL_KEY_RE.findall(APP_PATH.read_text(encoding="utf-8")))
+    app_keys = set(
+        LITERAL_KEY_RE.findall("\n".join(path.read_text(encoding="utf-8") for path in APP_SOURCES))
+    )
     required_toggle_keys = {
         "language.currentChinese",
         "language.currentEnglish",
@@ -327,9 +327,7 @@ def test_html_fallback_copy_matches_traditional_chinese_catalog_values() -> None
             actual = _normalize_text(str(attrs.get(attribute, "")))
             expected = _normalize_text(catalog[str(key)][0])
             if actual != expected:
-                mismatches.append(
-                    f"line {element['line']}: {key}: {actual!r} != {expected!r}"
-                )
+                mismatches.append(f"line {element['line']}: {key}: {actual!r} != {expected!r}")
 
     assert not mismatches, "HTML fallbacks do not match the zh-Hant catalog:\n" + "\n".join(
         mismatches
