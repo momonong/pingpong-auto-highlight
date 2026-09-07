@@ -143,6 +143,14 @@ Quick Tunnel 適合少量受邀測試，不適合長期公開、多使用者的�
 
 ## 升級與 rollback
 
+### 素材庫開發分支的資料相容性
+
+`codex/preserve-local-20260907` 保存逐球素材庫、跨影片集錦、pCloud 封存與候選評估的開發成果；這些功能尚未整合到 1.4.0。若資料庫含有 `highlight_clips`、`compilations` 或 `storage_objects`，應先保留完整停機備份，並在另一份完整資料副本驗證升級。1.4.0 的重新處理會置換來源工作整個輸出目錄，刪除操作也沒有維護這些開發版索引；通過相容性驗證前，不要用它操作現役素材庫。
+
+只要先試用帳號、上傳／Drive 匯入與自動 Reel，可將 `PINGPONG_DATA_PATH` 指向獨立空目錄，使用另一個 Compose project name 與未佔用的 localhost port。新目錄的管理員帳號與資料獨立於既有服務。pCloud 封存紀錄或只保留 Git 分支都不能代替完整 `data` 備份。
+
+### 已支援資料版本的升級
+
 1. 確認目前沒有 active upload/import/job，記錄現有 `PINGPONG_IMAGE` digest。
 2. 依上一節做完整停機備份。
 3. 把 `.env` 的 `PINGPONG_IMAGE` 換成已驗證的新 digest。

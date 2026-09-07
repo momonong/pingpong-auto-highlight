@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -150,6 +151,14 @@ def test_identity_settings_read_from_environment(tmp_path: Path, monkeypatch) ->
     assert (tmp_path / ".maintenance-token").read_text(encoding="utf-8").strip() == (
         settings.maintenance_token
     )
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX mode bits are not enforced on Windows")
+def test_maintenance_token_is_owner_only_on_posix(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PINGPONG_UPLOAD_TOKEN", "fixed-token")
+
+    Settings.from_env(data_dir=tmp_path)
+
     assert (tmp_path / ".maintenance-token").stat().st_mode & 0o777 == 0o600
 
 

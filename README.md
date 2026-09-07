@@ -259,7 +259,9 @@ docker compose -f compose.yaml -f compose.deploy.yaml up -d --wait
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-目前 Docker Hub 已發佈版仍是 `1.3.0`；此分支的候選 image 是 `docker.io/momonong/pingpong-auto-highlight:1.4.0`，需完成驗收並正式發佈後才可在部署機 pull。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+本版對應 `docker.io/momonong/pingpong-auto-highlight:1.4.0`，包含個人帳號、資料歸屬、Google Drive 匯入與中英介面。部署時以發佈流程驗證的 `data/published-image.txt` digest 為準；只有 registry 已存在的版本才能 pull。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+
+逐球素材庫、跨影片集錦與 pCloud 封存目前保存在 `codex/preserve-local-20260907` 分支，未包含在 1.4.0。曾使用該開發分支的資料目錄，請先依部署手冊的相容性說明處理；首次試用 1.4.0 建議使用獨立資料目錄。
 
 新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。開發用途可取得完整 repository 後用啟動器；正式執行主機只需上一節所列的 Compose 部署 bundle。完整 repository 的 Git Bash 快速啟動方式是：
 

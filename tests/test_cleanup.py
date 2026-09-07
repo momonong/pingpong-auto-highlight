@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import shutil
 from pathlib import Path
 
@@ -185,23 +186,47 @@ def test_drive_delete_enqueues_metadata_and_files_together(
     assert database.list_cleanup_records() == []
 
 
-def test_cleanup_rejects_outside_paths_and_unlinks_symlink_only(tmp_path: Path) -> None:
+def test_cleanup_rejects_outside_paths(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    database = Database(settings.database_path)
+    cleanup = FilesystemCleanup(settings, database)
+    outside = tmp_path / "outside.mp4"
+    outside.write_bytes(b"keep")
+    database.enqueue_cleanup([(outside, "file")])
+
+    result = cleanup.drain()
+
+    assert result.removed == 0
+    assert result.failed == 1
+    assert outside.read_bytes() == b"keep"
+    queued = database.list_cleanup_records()
+    assert len(queued) == 1
+    assert queued[0].path == outside
+    assert queued[0].attempts == 1
+    assert "outside managed" in (queued[0].last_error or "")
+
+
+def test_cleanup_unlinks_symlink_only_and_rejects_linked_parent(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     database = Database(settings.database_path)
     cleanup = FilesystemCleanup(settings, database)
     outside = tmp_path / "outside.mp4"
     outside.write_bytes(b"keep")
     link = settings.uploads_dir / "outside-link.mp4"
-    link.symlink_to(outside)
     outside_dir = tmp_path / "outside-dir"
     outside_dir.mkdir()
     nested_outside = outside_dir / "nested.mp4"
     nested_outside.write_bytes(b"also-keep")
     linked_parent = settings.work_dir / "linked-parent"
-    linked_parent.symlink_to(outside_dir, target_is_directory=True)
+    try:
+        link.symlink_to(outside)
+        linked_parent.symlink_to(outside_dir, target_is_directory=True)
+    except OSError as exc:
+        if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+            pytest.skip("Windows symlink creation requires Developer Mode or elevation")
+        raise
     database.enqueue_cleanup(
         [
-            (outside, "file"),
             (link, "file"),
             (linked_parent / nested_outside.name, "file"),
         ]
@@ -210,13 +235,13 @@ def test_cleanup_rejects_outside_paths_and_unlinks_symlink_only(tmp_path: Path) 
     result = cleanup.drain()
 
     assert result.removed == 1
-    assert result.failed == 2
+    assert result.failed == 1
     assert outside.read_bytes() == b"keep"
     assert nested_outside.read_bytes() == b"also-keep"
     assert not link.exists() and not link.is_symlink()
     queued = database.list_cleanup_records()
-    assert len(queued) == 2
-    assert {record.path for record in queued} == {outside, linked_parent / nested_outside.name}
+    assert len(queued) == 1
+    assert queued[0].path == linked_parent / nested_outside.name
     assert all(record.attempts == 1 for record in queued)
     assert all("outside managed" in (record.last_error or "") for record in queued)
 
