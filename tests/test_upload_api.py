@@ -107,6 +107,7 @@ def _settings(tmp_path: Path) -> Settings:
     settings = Settings(
         data_dir=tmp_path,
         upload_token="test-secret",
+        legacy_token_auth_enabled=True,
         max_upload_bytes=1024,
         max_chunk_bytes=8,
     )
@@ -207,9 +208,9 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
             job_id = response.headers.get("upload-job-id") or job_id
 
         assert job_id
-        assert client.get(
-            "/api/uploads", headers={"X-Upload-Token": "test-secret"}
-        ).json() == {"uploads": []}
+        assert client.get("/api/uploads", headers={"X-Upload-Token": "test-secret"}).json() == {
+            "uploads": []
+        }
         for _ in range(100):
             job = client.get(f"/api/jobs/{job_id}", headers=_headers()).json()
             if job["status"] == "completed":
@@ -230,7 +231,7 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         )
         assert preview.status_code == 200
         assert preview.headers["content-type"] == "video/mp4"
-        assert preview.headers["cache-control"] == "private, max-age=3600"
+        assert preview.headers["cache-control"] == "private, no-store"
         assert preview.headers["accept-ranges"] == "bytes"
         assert "content-disposition" not in preview.headers
 
@@ -301,7 +302,7 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         assert source.status_code == 206
         assert source.content == payload[:4]
         assert source.headers["content-range"].startswith("bytes 0-3/")
-        assert source.headers["cache-control"] == "private, max-age=3600"
+        assert source.headers["cache-control"] == "private, no-store"
 
         annotations_url = f"/api/jobs/{job_id}/annotations"
         assert client.get(annotations_url, headers=_headers()).json()["annotations"] == []
@@ -320,9 +321,7 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         assert annotation["label"] == "highlight"
         assert annotation["duration"] == 0.7
         assert annotation["note"] == "backhand counter"
-        assert client.get(annotations_url, headers=_headers()).json()["annotations"] == [
-            annotation
-        ]
+        assert client.get(annotations_url, headers=_headers()).json()["annotations"] == [annotation]
 
         invalid = client.post(
             annotations_url,
@@ -331,9 +330,7 @@ def test_resumable_upload_checksum_and_job_completion(tmp_path: Path) -> None:
         )
         assert invalid.status_code == 422
 
-        deleted = client.delete(
-            f"{annotations_url}/{annotation['id']}", headers=_headers()
-        )
+        deleted = client.delete(f"{annotations_url}/{annotation['id']}", headers=_headers())
         assert deleted.status_code == 204
         assert client.get(annotations_url, headers=_headers()).json()["annotations"] == []
 
@@ -429,21 +426,28 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert index.headers["x-content-type-options"] == "nosniff"
         assert index.headers["x-frame-options"] == "DENY"
         assert "frame-ancestors 'none'" in index.headers["content-security-policy"]
-        assert 'id="accessForm"' in index.text
-        assert 'id="accessValue"' in index.text
+        assert index.headers["cache-control"] == "no-cache"
+        assert 'id="loginForm"' in index.text
+        assert 'id="loginUsername"' in index.text
+        assert 'id="loginPassword"' in index.text
+        assert 'id="quickGuide"' in index.text
+        assert 'id="adminPanel"' in index.text
+        assert 'id="adminPasswordDialog"' in index.text
+        assert 'id="adminResetPassword" type="password"' in index.text
         assert 'id="annotationWorkspace"' in index.text
         assert 'id="annotationWorkspaceVideo"' in index.text
         assert 'id="annotationDevBlock"' in index.text
         assert 'id="annotationDevList"' in index.text
         assert index.text.index('id="jobList"') < index.text.index('id="annotationDevBlock"')
-        assert "處理 session 並沒有消失" in index.text
+        assert "登入同一帳號即可查看自己的所有影片" in index.text
 
         app_js = client.get("/static/app.js")
         assert app_js.status_code == 200
+        assert app_js.headers["cache-control"] == "no-cache"
         assert "openAnnotationWorkspace" in app_js.text
         assert "renderAnnotationDevelopment" in app_js.text
         assert "lastAnnotationDevSignature" in app_js.text
-        assert 'aria-label="開啟 ${escapeHtml(filename)} 的標記工作區"' in app_js.text
+        assert 't("annotation.openLabel", { filename })' in app_js.text
         assert "expandedResultJobIds" in app_js.text
         assert "jobRenderSignatures" in app_js.text
         assert "hydrateResultPanel" in app_js.text
@@ -451,7 +455,7 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert 'source.removeAttribute("src");' in app_js.text
         assert "renderJobs(jobs)" in app_js.text
         assert 'data-result-job-id="${escapeHtml(jobId)}"' in app_js.text
-        assert '<span class="sr-only">${escapeHtml(sourceName)} 的剪輯結果：</span>' in app_js.text
+        assert 't("result.srLabel", { source: sourceName })' in app_js.text
         assert 'aria-label="展開或收合' not in app_js.text
         assert 'data-src="${escapeHtml(previewUrl)}"' in app_js.text
         assert '<source src="${escapeHtml(previewUrl)}"' not in app_js.text
@@ -471,6 +475,15 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         )
         assert "note.length > annotationNoteMaxLength" in app_js.text
         assert 'input, select, textarea, button, a, [contenteditable="true"]' in app_js.text
+        assert 'removeLocalStorage("pingpong-upload-token");' in app_js.text
+        assert 't("admin.selfPasswordTitle")' in app_js.text
+        assert "function finishAdminPassword(value)" in app_js.text
+        assert "elements.adminPasswordForm.reset();" in app_js.text
+
+        i18n_js = client.get("/static/i18n.js")
+        assert i18n_js.status_code == 200
+        assert i18n_js.headers["cache-control"] == "no-cache"
+        assert '"language.currentEnglish"' in i18n_js.text
 
         index_html = client.get("/")
         assert index_html.status_code == 200
@@ -485,6 +498,7 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
 
         styles = client.get("/static/styles.css")
         assert styles.status_code == 200
+        assert styles.headers["cache-control"] == "no-cache"
         assert ".annotation-dev-block" in styles.text
         assert ".result-panel[open]" in styles.text
         assert ".reel-toggle-label" in styles.text

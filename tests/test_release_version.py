@@ -26,5 +26,6 @@ def test_release_version_references_stay_in_sync() -> None:
         assert expected in content, f"{relative_path} is missing release version {version}"
 
     index = (ROOT / "src/pingpong_highlight/static/index.html").read_text(encoding="utf-8")
+    assert f"/static/i18n.js?v={version}" in index
     assert f"/static/app.js?v={version}" in index
     assert f"/static/styles.css?v={version}" in index

@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import gdown
 from gdown.exceptions import DownloadError, FileURLRetrievalError
 
+from pingpong_highlight.cleanup import FilesystemCleanup
 from pingpong_highlight.config import Settings
 from pingpong_highlight.db import Database, DriveImportRecord, StateConflict
 from pingpong_highlight.uploads import ALLOWED_SUFFIXES, UploadError, UploadStore, clean_filename
@@ -146,12 +147,14 @@ class DriveImportManager:
         uploads: UploadStore,
         enqueue_job: Callable[[str], None],
         downloader: DriveDownloader | None = None,
+        cleanup: FilesystemCleanup | None = None,
     ):
         self.settings = settings
         self.database = database
         self.uploads = uploads
         self.enqueue_job = enqueue_job
         self.downloader = downloader or GDownDriveDownloader()
+        self.cleanup = cleanup or FilesystemCleanup(settings, database)
         self._executor = ThreadPoolExecutor(
             max_workers=1,
             thread_name_prefix="drive-import",
@@ -166,36 +169,54 @@ class DriveImportManager:
             if record.status == "queued":
                 self._enqueue(record.id)
 
-    def submit(self, url: str) -> DriveImportRecord:
+    def submit(self, url: str, *, user_id: str | None = None) -> DriveImportRecord:
         link = parse_drive_link(url)
         record = self.database.create_or_requeue_drive_import(
             link.file_id,
             link.resource_key,
+            user_id=user_id,
         )
         if record.status == "queued":
             self._enqueue(record.id)
         return record
 
-    def retry(self, import_id: str) -> DriveImportRecord:
-        record = self.database.get_drive_import(import_id)
+    def retry(
+        self,
+        import_id: str,
+        *,
+        user_id: str | None = None,
+    ) -> DriveImportRecord:
+        record = self.database.get_drive_import(import_id, user_id=user_id)
         if record is None:
             raise DriveImportError(404, "找不到這筆 Google Drive 匯入")
-        if not self.database.retry_drive_import(import_id):
+        if not self.database.retry_drive_import(import_id, user_id=user_id):
             raise DriveImportError(409, "只有失敗的 Google Drive 匯入可以重試")
         self._enqueue(import_id)
-        updated = self.database.get_drive_import(import_id)
+        updated = self.database.get_drive_import(import_id, user_id=user_id)
         assert updated is not None
         return updated
 
-    def delete(self, import_id: str) -> None:
-        record = self.database.get_drive_import(import_id)
+    def delete(
+        self,
+        import_id: str,
+        *,
+        user_id: str | None = None,
+    ) -> None:
+        record = self.database.get_drive_import(import_id, user_id=user_id)
         if record is None:
             raise DriveImportError(404, "找不到這筆 Google Drive 匯入")
-        if not self.database.delete_drive_import(import_id):
+        targets = [
+            (path, "file")
+            for path in self.settings.drive_imports_dir.iterdir()
+            if path.name.startswith(record.id) and (path.is_file() or path.is_symlink())
+        ]
+        if not self.database.delete_drive_import(
+            import_id,
+            user_id=user_id,
+            cleanup_targets=targets,
+        ):
             raise DriveImportError(409, "下載中的 Google Drive 匯入不能刪除")
-        for path in self.settings.drive_imports_dir.glob(f"{record.id}*"):
-            if path.is_file():
-                path.unlink(missing_ok=True)
+        self.cleanup.drain()
 
     def _enqueue(self, import_id: str) -> None:
         with self._lock:
@@ -278,6 +299,7 @@ class DriveImportManager:
                 content_type,
                 downloaded,
                 drive_import_id=import_id,
+                user_id=record.user_id,
             )
             self.enqueue_job(job.id)
         except DriveImportCancelled:

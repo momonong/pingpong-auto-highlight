@@ -2,6 +2,9 @@ services:
   pingpong-highlight:
     ports: !override
       - "127.0.0.1:${PINGPONG_PORT:-8000}:8000"
+    environment:
+      PINGPONG_SESSION_COOKIE_SECURE: "true"
+      PINGPONG_TRUSTED_PROXY_PROVIDER: "ngrok"
 
   ngrok:
     image: ngrok/ngrok:latest@sha256:14d80d083e5b53145f416bbbd36238336c9de4016c43fd950eb2eb845670583b
@@ -21,7 +24,7 @@ services:
       - "127.0.0.1:${NGROK_INSPECT_PORT:-4040}:4040"
     volumes:
       - type: bind
-        source: ./data/.ngrok-agent.yml
+        source: "${PINGPONG_DATA_PATH:-./data}/.ngrok-agent.yml"
         target: /run/secrets/ngrok.yml
         read_only: true
     read_only: true

@@ -22,8 +22,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PINGPONG_HOST=0.0.0.0 \
     PINGPONG_PORT=8000
 
+ARG FFMPEG_VERSION="7:5.1.9-0+deb12u1"
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ffmpeg \
+    && apt-get install --yes --no-install-recommends "ffmpeg=${FFMPEG_VERSION}" \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -39,7 +40,7 @@ RUN python -m pip install --no-cache-dir --no-deps /tmp/wheels/*.whl \
     && mkdir -p /data \
     && chown pingpong:pingpong /data
 
-ARG APP_VERSION=1.3.0
+ARG APP_VERSION=1.4.0
 ARG VCS_REF=unknown
 
 LABEL org.opencontainers.image.title="Ping-Pong Auto Highlight" \

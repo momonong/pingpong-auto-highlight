@@ -1,0 +1,13 @@
+services:
+  pingpong-highlight:
+    # Production deploys must pull a published, explicitly selected artifact.
+    # Prefer an immutable registry digest in PINGPONG_IMAGE; never deploy latest.
+    build: !reset null
+    image: "${PINGPONG_IMAGE:?Set PINGPONG_IMAGE to a published tag or image@sha256 digest}"
+    # Upgrades call `docker compose pull` explicitly; ordinary restarts can use the
+    # already-verified local copy if the registry is temporarily unavailable.
+    pull_policy: missing
+    volumes:
+      - type: bind
+        source: "${PINGPONG_DATA_PATH:-./data}"
+        target: /data

@@ -4,3 +4,4 @@ services:
       - "127.0.0.1:${PINGPONG_PORT:-8000}:8000"
     environment:
       PINGPONG_PUBLIC_URL: "http://127.0.0.1:${PINGPONG_PORT:-8000}"
+      PINGPONG_SESSION_COOKIE_SECURE: "false"

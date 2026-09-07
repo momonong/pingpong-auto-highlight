@@ -10,6 +10,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "deployment-common.ps1")
+Assert-HighlightCraftComposeVersion
+$dataRoot = Get-HighlightCraftDataRoot -RepositoryRoot $repoRoot
 $composeFiles = @(
     "-f", (Join-Path $repoRoot "compose.yaml")
 )
@@ -104,68 +107,7 @@ function Get-PublishedPort {
 }
 
 function Assert-NoActiveWork {
-    $inspection = Get-HighlightContainerInspection
-    if ($null -eq $inspection) {
-        return
-    }
-    if ($inspection.State.Restarting) {
-        throw "HighlightCraft is restarting; unable to verify active work safely."
-    }
-    if (-not $inspection.State.Running) {
-        return
-    }
-
-    $tokenPath = Join-Path $repoRoot "data\.upload-token"
-    if (-not (Test-Path -LiteralPath $tokenPath)) {
-        throw "HighlightCraft is running, but its access token is unavailable; refusing to restart it."
-    }
-    $token = (Get-Content -Raw -LiteralPath $tokenPath).Trim()
-    if (-not $token) {
-        throw "HighlightCraft is running, but its access token is empty; refusing to restart it."
-    }
-
-    $hostPort = Get-PublishedPort -Inspection $inspection
-    $headers = @{ "X-Upload-Token" = $token }
-    try {
-        $imports = @(
-            (Invoke-RestMethod -Uri "http://127.0.0.1:$hostPort/api/drive-imports" `
-                -Headers $headers -TimeoutSec 10).imports
-        )
-        $uploads = @(
-            (Invoke-RestMethod -Uri "http://127.0.0.1:$hostPort/api/uploads" `
-                -Headers $headers -TimeoutSec 10).uploads
-        )
-        # Query jobs last so an upload or Drive import that finishes during this
-        # snapshot cannot silently transition into a queued job after jobs were read.
-        $jobs = @(
-            (Invoke-RestMethod -Uri "http://127.0.0.1:$hostPort/api/jobs" `
-                -Headers $headers -TimeoutSec 10).jobs
-        )
-    }
-    catch {
-        throw "Could not verify HighlightCraft's current work state; refusing to restart it."
-    }
-
-    $activeJobs = @($jobs | Where-Object { $_.status -in @("queued", "processing") })
-    $activeImports = @(
-        $imports | Where-Object { $_.status -in @("queued", "resolving", "downloading") }
-    )
-    $incompleteUploads = @(
-        $uploads | Where-Object { [int64]$_.offset -lt [int64]$_.size }
-    )
-    if ($activeJobs.Count -or $activeImports.Count -or $incompleteUploads.Count) {
-        throw (
-            "HighlightCraft still has active work " +
-            "($($activeJobs.Count) jobs, $($activeImports.Count) Drive imports, " +
-            "$($incompleteUploads.Count) incomplete uploads). " +
-            "Wait for it to finish, or remove abandoned uploads in the UI, then run again."
-        )
-    }
-
-    Write-Host (
-        "Safe to switch modes: $(@($jobs | Where-Object status -eq 'completed').Count) " +
-        "completed jobs and no active transfers or processing."
-    )
+    Assert-HighlightCraftNoActiveWork -RepositoryRoot $repoRoot -DataRoot $dataRoot
 }
 
 function Stop-TunnelService {
@@ -205,8 +147,8 @@ function Test-TunnelRunning {
 
 function Clear-StaleRemoteUrls {
     $staleRemoteUrlPaths = @(
-        (Join-Path $repoRoot "data\remote-access-url.txt"),
-        (Join-Path $repoRoot "data\ngrok-access-url.txt")
+        (Join-Path $dataRoot "remote-access-url.txt"),
+        (Join-Path $dataRoot "ngrok-access-url.txt")
     )
     foreach ($staleUrlPath in $staleRemoteUrlPaths) {
         if (Test-Path -LiteralPath $staleUrlPath) {
@@ -377,17 +319,8 @@ try {
         throw "Localhost safety check failed: a tunnel container is still running."
     }
 
-    $tokenPath = Join-Path $repoRoot "data\.upload-token"
-    if (-not (Test-Path -LiteralPath $tokenPath)) {
-        throw "The HighlightCraft access token was not created at $tokenPath."
-    }
-    $token = (Get-Content -Raw -LiteralPath $tokenPath).Trim()
-    if (-not $token) {
-        throw "The HighlightCraft access token is empty."
-    }
-
-    $localUrl = "http://127.0.0.1:$hostPort/#token=$([uri]::EscapeDataString($token))"
-    $localUrlPath = Join-Path $repoRoot "data\local-access-url.txt"
+    $localUrl = "http://127.0.0.1:$hostPort/"
+    $localUrlPath = Join-Path $dataRoot "local-access-url.txt"
     [IO.File]::WriteAllText(
         $localUrlPath,
         $localUrl + [Environment]::NewLine,
@@ -398,6 +331,11 @@ try {
     Write-Host "Open this link on this computer:"
     Write-Output $localUrl
     Write-Host ""
+    $generatedAdminPasswordPath = Join-Path $dataRoot ".admin-password"
+    Write-Host "Sign in with your HighlightCraft username and password."
+    if (Test-Path -LiteralPath $generatedAdminPasswordPath) {
+        Write-Host "A generated bootstrap password is stored at $generatedAdminPasswordPath"
+    }
     Write-Host "The link is also saved to $localUrlPath"
     Write-Host "ngrok and Cloudflare Tunnel are stopped; browser video traffic stays on this computer."
     Write-Warning "127.0.0.1 works only on this computer. A phone cannot open this address."
