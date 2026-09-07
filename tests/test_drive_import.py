@@ -82,6 +82,7 @@ def _settings(tmp_path: Path, *, max_upload_bytes: int = 1024) -> Settings:
     settings = Settings(
         data_dir=tmp_path,
         upload_token="test-secret",
+        legacy_token_auth_enabled=True,
         max_upload_bytes=max_upload_bytes,
         max_chunk_bytes=8,
         download_min_free_bytes=0,
@@ -110,8 +111,7 @@ def _wait_for_completed_job(client: TestClient) -> dict:
 
 def test_parse_drive_file_links_and_reject_other_hosts() -> None:
     parsed = parse_drive_link(
-        f"https://drive.google.com/file/u/0/d/{FILE_ID}/view"
-        "?usp=sharing&resourcekey=0-exampleKey"
+        f"https://drive.google.com/file/u/0/d/{FILE_ID}/view?usp=sharing&resourcekey=0-exampleKey"
     )
     assert parsed == DriveLink(FILE_ID, "0-exampleKey")
     assert parse_drive_link(f"https://drive.google.com/open?id={FILE_ID}").file_id == FILE_ID

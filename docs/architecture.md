@@ -8,8 +8,15 @@
 4. 第一個 baseline 不依賴固定鏡位、球桌方框或數 GB 模型權重。
 5. 每次結果留下可比較的 `analysis.json`，後續模型迭代能量化，而不是憑感覺調參數。
 6. 產品輸出以一個 scored point 為剪輯單位，再組成短 Reel；不把多分混成一個長候選段。
+7. 每筆上傳、Drive 匯入、處理工作與成品都有明確 owner；一般使用者彼此隔離，管理員才可做全域資料管理。
 
 ## Components
+
+### Identity and access
+
+空資料庫第一次啟動會建立 bootstrap administrator；密碼可由部署 secret 注入，未提供時只寫到持久資料目錄的 `.admin-password`。登入後由 HttpOnly session cookie 驗證請求，session 有固定有效期限；HTTPS tunnel／production 必須加上 `Secure`，純 HTTP localhost/LAN 則不能加，否則瀏覽器不會送 cookie。
+
+使用者、password hash、session hash 與 owner 關聯保存在同一個 SQLite state store。一般使用者查詢與修改 upload、Drive import、job、artifact 時都會套用 user scope；administrator 才能管理帳號與檢視全域影片庫。舊 `X-Upload-Token` 僅保留作遷移期相容入口，新頁面與分享網址都不再承載 bearer token。
 
 ### Mobile upload UI
 
@@ -23,7 +30,7 @@
 
 - `uploads.py` 只用隨機 ID 當磁碟檔名，原始 filename 僅作 metadata，避免 path traversal。
 - chunk 先寫獨立暫存檔並驗證 checksum，再 append 到 `.part`。完整收到後才以 atomic rename 變成分析輸入。
-- `db.py` 以 SQLite WAL 保存 upload offset、job 狀態、進度與結果。
+- `db.py` 以 SQLite WAL 保存使用者歸屬、upload offset、job 狀態、進度與結果。
 - `jobs.py` 預設單 worker，避免多份影片互搶 GPU／磁碟頻寬。重啟時會把 `processing` 工作重新排入 `queued`。
 
 目前內建 store 以單一 uvicorn process 為假設。若公開部署或多機擴充，API contract 可保留，傳輸層改接官方 `tusd`，輸入放 S3-compatible object storage，工作佇列改用 Redis／Postgres。
@@ -61,7 +68,7 @@ point candidate 不會再彼此合併。系統先以同片最佳分數為基準�
 
 `build_point_reel()` 以第一個單分片段的解析度與畫面比例作為成品規格，將正規化後的影音 stream 以 FFmpeg `concat` filter 直接剪接，不重疊或淡化相鄰得分。直式、裁切與字幕屬於發佈衍生版本，不改變核心分析輸出；`build_social_reel()` 保留為後續 renderer，但不在預設流程使用。
 
-完成頁以同一個受 token 保護的檔案端點提供兩種回應：inline response 供 `<video>` range playback，`download=true` 則加入 attachment header。手機可以先預覽，再使用一般下載或 Web Share 儲存；單分片段與分析報告收在次要展開區。
+完成頁以同一個需要有效登入、且會檢查 owner／管理員權限的檔案端點提供兩種回應：inline response 供 `<video>` range playback，`download=true` 則加入 attachment header。手機可以先預覽，再使用一般下載或 Web Share 儲存；單分片段與分析報告收在次要展開區。
 
 ## Failure and recovery model
 
@@ -83,4 +90,4 @@ point candidate 不會再彼此合併。系統先以同片最佳分數為基準�
 
 - 不追蹤 3 px 寬且常 motion-blur 的球；沒有專用訓練資料時，generic object detector 對此不可靠。
 - 不把 generic pose ID 當 rally state；人站在畫面裡不代表正在打球。
-- 不建立雲端物件儲存、付款流程或多人帳號系統。Quick Tunnel 只負責傳輸，影片分析與持久儲存仍是單機 local-first。
+- 不建立雲端物件儲存、付款流程或跨節點租戶平台。帳號只用來隔離這個單機 instance 上的試用者；Quick Tunnel 只負責傳輸，影片分析與持久儲存仍是單機 local-first。

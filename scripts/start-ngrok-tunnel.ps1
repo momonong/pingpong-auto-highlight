@@ -13,8 +13,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$tokenPath = Join-Path $repoRoot "data\.ngrok-authtoken"
-$agentConfigPath = Join-Path $repoRoot "data\.ngrok-agent.yml"
+. (Join-Path $PSScriptRoot "deployment-common.ps1")
+Assert-HighlightCraftComposeVersion
+$dataRoot = Get-HighlightCraftDataRoot -RepositoryRoot $repoRoot
+$tokenPath = Join-Path $dataRoot ".ngrok-authtoken"
+$agentConfigPath = Join-Path $dataRoot ".ngrok-agent.yml"
 $composeFiles = @(
     "-f", (Join-Path $repoRoot "compose.yaml")
 )
@@ -91,13 +94,15 @@ function Get-NgrokAuthtoken {
     $dataDir = Split-Path -Parent $tokenPath
     New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
     [IO.File]::WriteAllText($tokenPath, $newToken, [Text.UTF8Encoding]::new($false))
-    Write-Host "Saved the authtoken locally in data/.ngrok-authtoken (this directory is ignored by Git)."
+    Write-Host "Saved the authtoken locally in $tokenPath (the data directory is ignored by Git)."
     return $newToken
 }
 
 function Write-NgrokAgentConfig {
     param([Parameter(Mandatory = $true)][string]$Authtoken)
 
+    New-Item -ItemType Directory -Path (Split-Path -Parent $agentConfigPath) -Force |
+        Out-Null
     $escapedAuthtoken = $Authtoken.Replace("'", "''")
     $config = @"
 version: 3
@@ -159,24 +164,37 @@ try {
         throw "Docker Desktop is not running. Start Docker Desktop and try again."
     }
 
-    $authtoken = Get-NgrokAuthtoken
-    Write-NgrokAgentConfig -Authtoken $authtoken
     $env:NGROK_INSPECT_PORT = $InspectPort.ToString()
     $env:COMPOSE_IGNORE_ORPHANS = "true"
 
     Push-Location $repoRoot
     $locationPushed = $true
 
+    Assert-HighlightCraftNoActiveWork -RepositoryRoot $repoRoot -DataRoot $dataRoot
+    $authtoken = Get-NgrokAuthtoken
+    Write-NgrokAgentConfig -Authtoken $authtoken
+
     if ($UsePublishedImage) {
         & docker compose @composeFiles pull pingpong-highlight ngrok
         if ($LASTEXITCODE -ne 0) {
             throw "Docker Compose could not pull the published HighlightCraft image from Docker Hub."
         }
-        & docker compose @composeFiles up -d pingpong-highlight ngrok
     }
     else {
-        & docker compose @composeFiles up -d --build pingpong-highlight ngrok
+        & docker compose @composeFiles build pingpong-highlight
+        if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose could not build the HighlightCraft image."
+        }
+        & docker compose @composeFiles pull --policy missing ngrok
+        if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose could not prepare the ngrok image."
+        }
     }
+
+    # Pulling or building can take long enough for new work to arrive. Check
+    # again immediately before `up`, the operation that may recreate the app.
+    Assert-HighlightCraftNoActiveWork -RepositoryRoot $repoRoot -DataRoot $dataRoot
+    & docker compose @composeFiles up -d --no-build pingpong-highlight ngrok
     if ($LASTEXITCODE -ne 0) {
         if (-not $CpuOnly) {
             throw (
@@ -241,37 +259,27 @@ try {
         )
     }
 
-    $uploadTokenPath = Join-Path $repoRoot "data\.upload-token"
-    if (-not (Test-Path -LiteralPath $uploadTokenPath)) {
-        throw "The HighlightCraft access token was not created at $uploadTokenPath."
-    }
-    $uploadToken = (Get-Content -Raw -LiteralPath $uploadTokenPath).Trim()
-    if (-not $uploadToken) {
-        throw "The HighlightCraft access token is empty."
-    }
+    Stop-HighlightCraftOverlayService -RepositoryRoot $repoRoot `
+        -Overlay "compose.cloudflare.yaml" -Service "cloudflared"
 
-    $phoneUrl = "$tunnelUrl/#token=$([uri]::EscapeDataString($uploadToken))"
-    $ngrokUrlPath = Join-Path $repoRoot "data\ngrok-access-url.txt"
-    $latestUrlPath = Join-Path $repoRoot "data\remote-access-url.txt"
+    $phoneUrl = "$tunnelUrl/"
+    $ngrokUrlPath = Join-Path $dataRoot "ngrok-access-url.txt"
+    $latestUrlPath = Join-Path $dataRoot "remote-access-url.txt"
     $urlFileContent = $phoneUrl + [Environment]::NewLine
     [IO.File]::WriteAllText($ngrokUrlPath, $urlFileContent, [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText($latestUrlPath, $urlFileContent, [Text.UTF8Encoding]::new($false))
 
-    $cloudflareFiles = @(
-        "-f", (Join-Path $repoRoot "compose.yaml"),
-        "-f", (Join-Path $repoRoot "compose.cloudflare.yaml")
-    )
-    $null = Invoke-NativeCommandSilently {
-        docker compose @cloudflareFiles stop cloudflared
-    }
-
     Write-Host ""
     Write-Host "ngrok tunnel is ready." -ForegroundColor Green
-    Write-Host "Open this token-protected link on your phone:"
+    Write-Host "Open this HTTPS link on your phone and sign in:"
     Write-Output $phoneUrl
     Write-Host ""
-    Write-Host "If ngrok first shows 'Visit Site', tap it and then open the complete link above again."
-    Write-Warning "Anyone with the complete link can use this service. Do not share it."
+    $generatedAdminPasswordPath = Join-Path $dataRoot ".admin-password"
+    if (Test-Path -LiteralPath $generatedAdminPasswordPath) {
+        Write-Host "A generated bootstrap password is stored at $generatedAdminPasswordPath"
+    }
+    Write-Host "If ngrok first shows 'Visit Site', tap it and then sign in on HighlightCraft."
+    Write-Warning "Share accounts individually; do not send an administrator password to testers."
     Write-Warning "Keep Docker Desktop and this computer awake while using HighlightCraft."
     Write-Host "The latest link is also saved to $latestUrlPath"
 }

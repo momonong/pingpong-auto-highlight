@@ -13,9 +13,7 @@ def test_public_url_overrides_container_address(tmp_path: Path) -> None:
         public_url="http://192.168.1.19:9000/",
     )
 
-    assert _service_url(settings, "172.18.0.2") == (
-        "http://192.168.1.19:9000/#token=phone%20token"
-    )
+    assert _service_url(settings, "172.18.0.2") == "http://192.168.1.19:9000"
 
 
 def test_public_url_reads_from_environment(tmp_path: Path, monkeypatch) -> None:
@@ -128,4 +126,45 @@ def test_invalid_score_ratio_fails_during_configuration(
             data_dir=tmp_path,
             upload_token="test",
             minimum_point_score_ratio=ratio,
+        )
+
+
+def test_identity_settings_read_from_environment(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PINGPONG_UPLOAD_TOKEN", "fixed-token")
+    monkeypatch.setenv("PINGPONG_BOOTSTRAP_ADMIN_USERNAME", "Owner")
+    monkeypatch.setenv("PINGPONG_BOOTSTRAP_ADMIN_PASSWORD", "private-password")
+    monkeypatch.setenv("PINGPONG_SESSION_TTL_SECONDS", "3600")
+    monkeypatch.setenv("PINGPONG_SESSION_COOKIE_SECURE", "yes")
+    monkeypatch.setenv("PINGPONG_ENABLE_LEGACY_TOKEN_AUTH", "true")
+    monkeypatch.setenv("PINGPONG_TRUSTED_PROXY_PROVIDER", "ngrok")
+
+    settings = Settings.from_env(data_dir=tmp_path)
+
+    assert settings.bootstrap_admin_username == "owner"
+    assert settings.bootstrap_admin_password == "private-password"
+    assert settings.session_ttl_seconds == 3600
+    assert settings.session_cookie_secure is True
+    assert settings.legacy_token_auth_enabled is True
+    assert settings.trusted_proxy_provider == "ngrok"
+    assert settings.maintenance_token != settings.upload_token
+    assert (tmp_path / ".maintenance-token").read_text(encoding="utf-8").strip() == (
+        settings.maintenance_token
+    )
+    assert (tmp_path / ".maintenance-token").stat().st_mode & 0o777 == 0o600
+
+
+def test_invalid_identity_settings_are_rejected(tmp_path: Path, monkeypatch) -> None:
+    with pytest.raises(ValueError, match="session_ttl_seconds"):
+        Settings(data_dir=tmp_path, upload_token="test", session_ttl_seconds=0)
+
+    monkeypatch.setenv("PINGPONG_UPLOAD_TOKEN", "fixed-token")
+    monkeypatch.setenv("PINGPONG_SESSION_COOKIE_SECURE", "sometimes")
+    with pytest.raises(ValueError, match="PINGPONG_SESSION_COOKIE_SECURE"):
+        Settings.from_env(data_dir=tmp_path)
+
+    with pytest.raises(ValueError, match="trusted_proxy_provider"):
+        Settings(
+            data_dir=tmp_path,
+            upload_token="test",
+            trusted_proxy_provider="untrusted",
         )

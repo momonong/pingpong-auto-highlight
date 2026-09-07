@@ -4,32 +4,66 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0d12" />
-    <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" />
-    <title>HighlightCraft — 桌球精彩集錦</title>
-    <link rel="stylesheet" href="/static/styles.css?v=1.3.0" />
+    <meta name="description" content="把桌球比賽影片自動剪成逐分精彩集錦的本機工具。" data-i18n-content="meta.description" />
+    <title data-i18n="meta.title">HighlightCraft — 桌球精彩集錦</title>
+    <script src="/static/i18n.js?v=1.4.0"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=1.4.0" />
   </head>
   <body>
     <div class="ambient ambient-one" aria-hidden="true"></div>
     <div class="ambient ambient-two" aria-hidden="true"></div>
 
-    <header class="topbar">
-      <a class="brand" href="/" aria-label="HighlightCraft 首頁">
+    <header id="top" class="topbar">
+      <a class="brand" href="/" aria-label="HighlightCraft 首頁" data-i18n-aria-label="brand.home">
         <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
         <span><b>HIGHLIGHTCRAFT</b><small>LOCAL HIGHLIGHT STUDIO</small></span>
       </a>
-      <span class="service-pill"><i aria-hidden="true"></i> 本機服務運作中</span>
+      <div class="topbar-actions">
+        <button id="languageToggle" class="language-switch" type="button" role="switch" aria-checked="false" aria-label="中文介面" title="切換至英文">
+          <span class="language-option language-option-zh" lang="zh-Hant">中</span>
+          <span class="language-track" aria-hidden="true"><i></i></span>
+          <span class="language-option language-option-en" lang="en">EN</span>
+        </button>
+        <span class="service-pill"><i aria-hidden="true"></i><span data-i18n="service.online">服務運作中</span></span>
+        <div id="sessionControls" class="session-controls" hidden>
+          <button id="guideButton" class="topbar-button" type="button" data-i18n="nav.guide">使用教學</button>
+          <span class="account-chip">
+            <span id="accountAvatar" aria-hidden="true">U</span>
+            <span><b id="accountName" data-i18n="account.defaultName">使用者</b><small id="accountRole">USER</small></span>
+          </span>
+          <button id="logoutButton" class="logout-button" type="button" data-i18n="nav.logout">登出</button>
+        </div>
+      </div>
     </header>
 
-    <main class="shell">
+    <main id="loginView" class="login-shell">
+      <section class="login-panel" aria-labelledby="loginTitle">
+        <div class="login-intro">
+          <p class="eyebrow"><span>PRIVATE STUDIO</span><i></i><span>MEMBER ACCESS</span></p>
+          <h1 id="loginTitle"><span data-i18n="login.titleLead">你的每場球，</span><br /><em data-i18n="login.titleAccent">都有自己的位置。</em></h1>
+          <p data-i18n="login.lead">登入後上傳的原片、處理進度與剪輯成品，都只會收進你的個人影片庫。</p>
+        </div>
+        <form id="loginForm" class="login-form">
+          <span class="section-kicker" data-i18n="login.kicker">SIGN IN / 登入</span>
+          <label for="loginUsername"><span data-i18n="common.username">帳號</span><input id="loginUsername" name="username" type="text" autocomplete="username" required autofocus /></label>
+          <label for="loginPassword"><span data-i18n="common.password">密碼</span><input id="loginPassword" name="password" type="password" autocomplete="current-password" required /></label>
+          <button id="loginButton" class="primary" type="submit"><span data-i18n="login.submit">進入我的剪輯室</span><i aria-hidden="true">↗</i></button>
+          <p id="loginMessage" class="login-message" hidden aria-live="polite"></p>
+          <small data-i18n="login.help">帳號由管理員建立；若忘記密碼，請聯絡提供這套系統的人。</small>
+        </form>
+      </section>
+    </main>
+
+    <main id="appShell" class="shell" hidden>
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow"><span>TABLE TENNIS</span><i></i><span>POINT REEL</span></p>
-          <h1>把整場球，<br /><em>剪成值得重播的幾分。</em></h1>
-          <p class="hero-lead">
+          <h1><span data-i18n="hero.titleLead">把整場球，</span><br /><em data-i18n="hero.titleAccent">剪成值得重播的幾分。</em></h1>
+          <p class="hero-lead" data-i18n="hero.lead">
             手機直接傳原片，電腦自動找出每一分、挑選精彩球，再用原始比例剪成一支流暢集錦。
           </p>
-          <div class="hero-pills" aria-label="產品特色">
-            <span>逐分切點</span><span>原尺寸輸出</span><span>本機處理</span>
+          <div class="hero-pills" aria-label="產品特色" data-i18n-aria-label="hero.featuresLabel">
+            <span data-i18n="hero.featurePoints">逐分切點</span><span data-i18n="hero.featureAspect">原尺寸輸出</span><span data-i18n="hero.featureLocal">本機處理</span>
           </div>
         </div>
 
@@ -50,29 +84,15 @@
         </div>
       </section>
 
-      <section id="tokenWarning" class="notice danger token-warning" hidden role="alert">
-        <span class="notice-icon">!</span>
-        <div class="notice-copy">
-          <b>這台裝置還沒有存取權限，處理 session 並沒有消失。</b>
-          <p>若剛按過 ngrok 的「Visit Site」，請重新開啟原本的完整連結一次；也可以在下方貼上完整連結或存取碼。</p>
-          <form id="accessForm" class="access-form">
-            <label class="sr-only" for="accessValue">完整存取連結或存取碼</label>
-            <input id="accessValue" type="password" autocomplete="off" spellcheck="false" placeholder="貼上完整連結或存取碼" />
-            <button type="submit">解鎖</button>
-          </form>
-          <p id="accessMessage" class="access-message" hidden aria-live="polite"></p>
-        </div>
-      </section>
-
       <section class="workspace">
         <article class="panel upload-card">
           <div class="panel-heading">
             <div>
               <span class="section-kicker">01 / ADD FOOTAGE</span>
-              <h2>加入一段比賽影片</h2>
-              <p>從手機直傳，或貼上 Google Drive 公開連結。</p>
+              <h2 data-i18n="upload.title">加入一段比賽影片</h2>
+              <p data-i18n="upload.lead">從手機直傳，或貼上 Google Drive 公開連結。</p>
             </div>
-            <span class="privacy"><i></i> 本機剪輯</span>
+            <span class="privacy"><i></i><span data-i18n="upload.privacy">本機剪輯</span></span>
           </div>
 
           <label id="dropZone" class="drop-zone" for="videoInput">
@@ -82,28 +102,28 @@
                 <path d="M16 22V7m0 0-6 6m6-6 6 6M7 20v5h18v-5" />
               </svg>
             </span>
-            <strong id="filePrompt">點一下，從相簿選擇原片</strong>
-            <small id="fileMeta">也可以把 MOV、MP4、HEVC 影片拖到這裡</small>
+            <strong id="filePrompt" data-i18n="upload.filePrompt">點一下，從相簿選擇原片</strong>
+            <small id="fileMeta" data-i18n="upload.fileMeta">也可以把 MOV、MP4、HEVC 影片拖到這裡</small>
             <span class="format-row"><i>MOV</i><i>MP4</i><i>HEVC</i><i>4K</i></span>
           </label>
 
           <button id="uploadButton" class="primary" type="button" disabled>
-            <span>開始上傳與製作</span><i aria-hidden="true">↗</i>
+            <span data-i18n="upload.start">開始上傳與製作</span><i aria-hidden="true">↗</i>
           </button>
 
           <div id="transferPanel" class="transfer" hidden aria-live="polite">
             <div class="transfer-row">
-              <strong id="transferLabel">準備中</strong>
+              <strong id="transferLabel" data-i18n="transfer.preparing">準備中</strong>
               <span id="transferPercent">0%</span>
             </div>
             <div class="progress-track"><span id="transferBar"></span></div>
             <div class="transfer-row muted">
-              <span id="transferDetail">正在建立續傳工作階段</span>
-              <button id="pauseButton" class="text-button" type="button">暫停</button>
+              <span id="transferDetail" data-i18n="transfer.creatingSession">正在建立續傳工作階段</span>
+              <button id="pauseButton" class="text-button" type="button" data-i18n="transfer.pause">暫停</button>
             </div>
           </div>
 
-          <div class="source-divider"><span>或交給電腦從雲端下載</span></div>
+          <div class="source-divider"><span data-i18n="drive.divider">或交給電腦從雲端下載</span></div>
 
           <form id="driveForm" class="drive-source">
             <div class="drive-source-heading">
@@ -114,10 +134,10 @@
                   <path class="drive-yellow" d="M4.9 27.7h22.2l4.9-8.5H9.8z" />
                 </svg>
               </span>
-              <span><b>Google Drive</b><small>背景下載，關閉此頁也會繼續</small></span>
+              <span><b>Google Drive</b><small data-i18n="drive.background">背景下載，關閉此頁也會繼續</small></span>
             </div>
             <div class="drive-input-row">
-              <label class="sr-only" for="driveUrl">Google Drive 影片共用連結</label>
+              <label class="sr-only" for="driveUrl" data-i18n="drive.urlLabel">Google Drive 影片共用連結</label>
               <input
                 id="driveUrl"
                 type="url"
@@ -125,27 +145,28 @@
                 autocomplete="url"
                 maxlength="2048"
                 placeholder="貼上 drive.google.com 影片連結"
+                data-i18n-placeholder="drive.placeholder"
               />
-              <button id="driveButton" type="submit" disabled>開始匯入</button>
+              <button id="driveButton" type="submit" disabled data-i18n="drive.start">開始匯入</button>
             </div>
-            <p class="drive-hint"><i aria-hidden="true"></i>共用設定請選「知道連結的任何人」且權限為「檢視者」</p>
+            <p class="drive-hint"><i aria-hidden="true"></i><span data-i18n="drive.hint">共用設定請選「知道連結的任何人」且權限為「檢視者」</span></p>
             <p id="driveMessage" class="drive-message" hidden aria-live="polite"></p>
           </form>
 
           <div class="upload-note">
             <span class="network-icon" aria-hidden="true"><i></i><i></i><i></i></span>
-            <p><b>上傳時請保持這台電腦在線</b><small>開始處理後可以關閉此頁，電腦會繼續工作。</small></p>
+            <p><b data-i18n="upload.onlineTitle">上傳時請保持這台電腦在線</b><small data-i18n="upload.onlineBody">開始處理後可以關閉此頁，電腦會繼續工作。</small></p>
           </div>
         </article>
 
         <article class="panel jobs-card">
           <div class="panel-heading jobs-heading">
             <div>
-              <span class="section-kicker">02 / YOUR REELS</span>
-              <h2>上傳、處理與成品</h2>
-              <p id="jobCount">等待第一支影片</p>
+              <span class="section-kicker">02 / MY LIBRARY</span>
+              <h2 data-i18n="library.title">我的影片庫</h2>
+              <p id="jobCount" data-i18n="library.waiting">等待第一支影片</p>
             </div>
-            <button id="refreshButton" class="icon-button" type="button" aria-label="重新整理">
+            <button id="refreshButton" class="icon-button" type="button" aria-label="重新整理" data-i18n-aria-label="common.refresh">
               <span aria-hidden="true">↻</span>
             </button>
           </div>
@@ -154,13 +175,91 @@
             <div class="empty-reel" aria-hidden="true">
               <span></span><span></span><span></span><i></i>
             </div>
-            <strong>上傳進度與第一支集錦會出現在這裡</strong>
-            <p>傳送中可跨裝置監看；完成後可直接預覽、下載，或用手機分享。</p>
+            <strong data-i18n="library.emptyTitle">上傳進度與第一支集錦會出現在這裡</strong>
+            <p data-i18n="library.emptyBody">傳送中可跨裝置監看；完成後可直接預覽、下載，或用手機分享。</p>
           </div>
           <div id="importList" class="job-list import-list" aria-live="polite"></div>
           <div id="uploadList" class="job-list upload-list" aria-live="polite"></div>
           <div id="jobList" class="job-list" aria-live="polite"></div>
         </article>
+      </section>
+
+      <details id="quickGuide" class="panel quick-guide">
+        <summary>
+          <span><span class="section-kicker" data-i18n="guide.kicker">QUICK START / 使用教學</span><b data-i18n="guide.title">第一次使用？四步完成你的精彩集錦</b></span>
+          <span class="guide-toggle"><span data-i18n="guide.expand">展開教學</span><i aria-hidden="true"></i></span>
+        </summary>
+        <div class="guide-grid">
+          <article><span>01</span><div><b data-i18n="guide.step1Title">選擇原始影片</b><p data-i18n="guide.step1Body">點選上傳區從手機相簿挑選 MOV、MP4 或 HEVC；也可以貼上已開啟「知道連結的任何人」檢視權限的 Google Drive 連結。</p></div></article>
+          <article><span>02</span><div><b data-i18n="guide.step2Title">等待上傳完成</b><p data-i18n="guide.step2Body">直傳期間請保持頁面與這台電腦在線；中斷後重新選同一個檔案，就會從已收到的位置續傳。</p></div></article>
+          <article><span>03</span><div><b data-i18n="guide.step3Title">讓系統背景剪輯</b><p data-i18n="guide.step3Body">看到「已排入佇列」後就能關閉頁面。系統會分析每一分、挑選精彩回合，再輸出一支 Reel。</p></div></article>
+          <article><span>04</span><div><b data-i18n="guide.step4Title">回到影片庫取件</b><p data-i18n="guide.step4Body">登入同一帳號即可查看自己的所有影片。完成後可預覽 Reel、下載 MP4，或展開單分片段與分析檔。</p></div></article>
+        </div>
+        <p class="guide-note"><b data-i18n="guide.privacyLabel">隱私提醒：</b><span data-i18n="guide.privacyBody">每個帳號只看得到自己的內容；請勿共用帳號。管理員為維護儲存空間，可查看與移除所有使用者的影片。</span></p>
+        <p class="guide-note guide-language"><b data-i18n="guide.languageLabel">語言切換：</b><span data-i18n="guide.languageBody">右上角的「中 / EN」可隨時切換繁體中文與英文；重新整理或下次開啟時會沿用你的選擇。</span></p>
+      </details>
+
+      <details id="accountSecurity" class="panel account-security">
+        <summary>
+          <span><span class="section-kicker" data-i18n="account.kicker">ACCOUNT / 帳號安全</span><b data-i18n="account.changePassword">更改我的登入密碼</b></span>
+          <span class="guide-toggle"><span data-i18n="account.openSettings">開啟設定</span><i aria-hidden="true"></i></span>
+        </summary>
+        <form id="changePasswordForm" class="change-password-form">
+          <label><span data-i18n="account.currentPassword">目前密碼</span><input id="currentPassword" type="password" autocomplete="current-password" required /></label>
+          <label><span data-i18n="account.newPassword">新密碼</span><input id="changedPassword" type="password" minlength="8" autocomplete="new-password" required /></label>
+          <label><span data-i18n="account.confirmPassword">再次輸入新密碼</span><input id="changedPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required /></label>
+          <button id="changePasswordSubmit" type="submit" data-i18n="account.updatePassword">更新密碼</button>
+          <p id="changePasswordMessage" class="admin-message" hidden aria-live="polite"></p>
+        </form>
+      </details>
+
+      <section id="adminPanel" class="panel admin-panel" hidden aria-labelledby="adminTitle">
+        <div class="admin-heading">
+          <div>
+            <span class="section-kicker">ADMIN / DATA CONTROL</span>
+            <h2 id="adminTitle" data-i18n="admin.title">使用者與資料管理</h2>
+            <p data-i18n="admin.lead">管理試用帳號、所有人上傳的原片、處理狀態、剪輯成品與主機容量。</p>
+          </div>
+          <button id="adminRefreshButton" class="icon-button" type="button" aria-label="重新整理管理資料" data-i18n-aria-label="admin.refresh"><span aria-hidden="true">↻</span></button>
+        </div>
+
+        <div id="storageSummary" class="storage-summary" aria-live="polite">
+          <article><span data-i18n="storage.used">已使用空間</span><b data-i18n="common.loading">讀取中…</b><small data-i18n="storage.sourceAndOutput">來源與成品合計</small></article>
+          <article><span data-i18n="storage.sources">原始影片</span><b>—</b><small data-i18n="storage.waiting">等待容量資料</small></article>
+          <article><span data-i18n="storage.outputs">剪輯成品</span><b>—</b><small data-i18n="storage.waiting">等待容量資料</small></article>
+          <article><span data-i18n="storage.available">可用空間</span><b>—</b><small data-i18n="storage.hostDisk">主機磁碟</small></article>
+        </div>
+
+        <div class="admin-grid">
+          <section class="admin-section user-admin" aria-labelledby="userAdminTitle">
+            <div class="admin-section-heading"><div><span>01 / ACCOUNTS</span><h3 id="userAdminTitle" data-i18n="admin.accounts">試用帳號</h3></div><b id="adminUserCount">—</b></div>
+            <form id="createUserForm" class="create-user-form">
+              <div class="admin-form-row">
+                <label><span data-i18n="common.username">帳號</span><input id="newUsername" name="username" type="text" minlength="3" maxlength="64" autocomplete="off" required placeholder="例如 wang_chen" data-i18n-placeholder="admin.usernamePlaceholder" /></label>
+                <label><span data-i18n="common.displayName">顯示名稱</span><input id="newDisplayName" name="display_name" type="text" maxlength="80" autocomplete="off" placeholder="例如 王小明" data-i18n-placeholder="admin.displayNamePlaceholder" /></label>
+              </div>
+              <div class="admin-form-row compact">
+                <label><span data-i18n="admin.initialPassword">初始密碼</span><input id="newPassword" name="password" type="password" minlength="8" autocomplete="new-password" required placeholder="至少 8 個字元" data-i18n-placeholder="admin.passwordPlaceholder" /></label>
+                <label><span data-i18n="common.role">角色</span><select id="newRole" name="role"><option value="user" data-i18n="common.user">一般使用者</option><option value="admin" data-i18n="common.admin">管理員</option></select></label>
+                <button id="createUserButton" type="submit" data-i18n="admin.createAccount">建立帳號</button>
+              </div>
+              <p id="createUserMessage" class="admin-message" hidden aria-live="polite"></p>
+            </form>
+            <div id="adminUserList" class="admin-user-list" aria-live="polite"><p class="admin-loading" data-i18n="admin.loadingAccounts">正在讀取帳號…</p></div>
+          </section>
+
+          <section class="admin-section video-admin" aria-labelledby="videoAdminTitle">
+            <div class="admin-section-heading"><div><span>02 / ALL FOOTAGE</span><h3 id="videoAdminTitle" data-i18n="admin.allVideos">所有影片</h3></div><b id="adminJobCount">—</b></div>
+            <div class="admin-list-subheading"><span data-i18n="admin.pendingSources">未完成來源</span><b id="adminPendingCount">—</b></div>
+            <div id="adminPendingList" class="job-list admin-pending-list" aria-live="polite"><p class="admin-loading" data-i18n="admin.loadingPending">正在讀取未完成來源…</p></div>
+            <div class="admin-list-subheading processed"><span data-i18n="admin.jobsAndOutputs">處理工作與成品</span><b data-i18n="admin.perPage">每頁 20 支</b></div>
+            <div class="admin-list-legend"><span data-i18n="admin.owner">擁有者</span><span data-i18n="admin.sourceAndStatus">來源與狀態</span><span data-i18n="admin.sourceAndOutput">原片與成品</span></div>
+            <div id="adminJobList" class="job-list admin-job-list" aria-live="polite"><p class="admin-loading" data-i18n="admin.loadingVideos">正在讀取影片…</p></div>
+            <div id="adminPagination" class="admin-pagination" hidden>
+              <button id="adminPrevButton" type="button" data-i18n="admin.previous">← 上一頁</button><span id="adminPageLabel" data-i18n="admin.pageOne">第 1 頁</span><button id="adminNextButton" type="button" data-i18n="admin.next">下一頁 →</button>
+            </div>
+          </section>
+        </div>
       </section>
 
       <section
@@ -171,38 +270,52 @@
         <div class="annotation-dev-heading">
           <div>
             <span class="section-kicker">DEVELOPMENT / MANUAL LABELING</span>
-            <h2 id="annotationDevTitle">人工標記精彩球</h2>
-            <p>短期模型優化工具，與上方的手機上傳、處理及成品下載流程分開。</p>
+            <h2 id="annotationDevTitle" data-i18n="annotation.devTitle">人工標記精彩球</h2>
+            <p data-i18n="annotation.devLead">短期模型優化工具，與上方的手機上傳、處理及成品下載流程分開。</p>
           </div>
-          <span class="annotation-dev-badge"><i aria-hidden="true"></i> 僅限電腦</span>
+          <span class="annotation-dev-badge"><i aria-hidden="true"></i><span data-i18n="annotation.desktopOnly">僅限電腦</span></span>
         </div>
 
         <div class="annotation-dev-summary">
           <div>
             <span>POINT REVIEW WORKBENCH</span>
-            <p>選擇一支已完成影片，用大播放器與快捷鍵直接標記每一球。</p>
+            <p data-i18n="annotation.summary">選擇一支已完成影片，用大播放器與快捷鍵直接標記每一球。</p>
           </div>
-          <strong id="annotationDevCount">等待可標記影片</strong>
+          <strong id="annotationDevCount" data-i18n="annotation.waiting">等待可標記影片</strong>
         </div>
 
         <div id="annotationDevEmpty" class="annotation-dev-empty">
-          <b>目前還沒有可標記的影片</b>
-          <span>影片完成處理後，會自動出現在這個開發工具區。</span>
+          <b data-i18n="annotation.emptyTitle">目前還沒有可標記的影片</b>
+          <span data-i18n="annotation.emptyBody">影片完成處理後，會自動出現在這個開發工具區。</span>
         </div>
         <div id="annotationDevList" class="annotation-dev-list" aria-live="polite"></div>
       </section>
 
-      <section class="process-strip" aria-label="集錦製作流程">
-        <div><span>01</span><p><b>讀懂每一分</b><small>從發球到得分各自成段</small></p></div>
-        <div><span>02</span><p><b>挑出精彩球</b><small>依節奏、動態與回合排序</small></p></div>
-        <div><span>03</span><p><b>串成一支 Reel</b><small>保留原比例，俐落直接剪接</small></p></div>
+      <section class="process-strip" aria-label="集錦製作流程" data-i18n-aria-label="process.label">
+        <div><span>01</span><p><b data-i18n="process.step1Title">讀懂每一分</b><small data-i18n="process.step1Body">從發球到得分各自成段</small></p></div>
+        <div><span>02</span><p><b data-i18n="process.step2Title">挑出精彩球</b><small data-i18n="process.step2Body">依節奏、動態與回合排序</small></p></div>
+        <div><span>03</span><p><b data-i18n="process.step3Title">串成一支 Reel</b><small data-i18n="process.step3Body">保留原比例，俐落直接剪接</small></p></div>
       </section>
     </main>
 
-    <footer class="footer">
+    <footer id="appFooter" class="footer" hidden>
       <span>HIGHLIGHTCRAFT / LOCAL COURT LAB</span>
       <span>PRIVATE BY DEFAULT · MADE FOR YOUR BEST MOMENTS</span>
     </footer>
+
+    <dialog id="adminPasswordDialog" class="admin-password-dialog" aria-labelledby="adminPasswordTitle">
+      <form id="adminPasswordForm" method="dialog">
+        <span class="section-kicker">ADMIN / RESET PASSWORD</span>
+        <h2 id="adminPasswordTitle" data-i18n="adminPassword.title">重設使用者密碼</h2>
+        <p data-i18n="adminPassword.body">輸入至少 8 個字元的新密碼。儲存後，該使用者在其他裝置上的登入會全部失效。</p>
+        <label for="adminResetPassword"><span data-i18n="adminPassword.new">新密碼</span><input id="adminResetPassword" type="password" minlength="8" maxlength="1024" autocomplete="new-password" required /></label>
+        <p id="adminPasswordMessage" class="admin-message error" hidden aria-live="polite"></p>
+        <div class="admin-password-actions">
+          <button id="adminPasswordCancel" type="button" data-i18n="common.cancel">取消</button>
+          <button type="submit" data-i18n="adminPassword.save">儲存新密碼</button>
+        </div>
+      </form>
+    </dialog>
 
     <section
       id="annotationWorkspace"
@@ -217,12 +330,12 @@
         <header class="annotation-workspace-header">
           <div>
             <span class="section-kicker">DESKTOP / POINT REVIEW</span>
-            <h2 id="annotationWorkspaceTitle">精彩球標記工作區</h2>
-            <p id="annotationWorkspaceFilename">尚未選擇影片</p>
+            <h2 id="annotationWorkspaceTitle" data-i18n="annotation.workspaceTitle">精彩球標記工作區</h2>
+            <p id="annotationWorkspaceFilename" data-i18n="annotation.noVideo">尚未選擇影片</p>
           </div>
           <div class="annotation-workspace-header-actions">
-            <span><kbd>Esc</kbd> 關閉</span>
-            <button id="annotationWorkspaceClose" type="button" aria-label="關閉標記工作區">×</button>
+            <span data-i18n-html="annotation.closeHtml"><kbd>Esc</kbd> 關閉</span>
+            <button id="annotationWorkspaceClose" type="button" aria-label="關閉標記工作區" data-i18n-aria-label="annotation.closeLabel">×</button>
           </div>
         </header>
 
@@ -235,71 +348,72 @@
               preload="none"
               tabindex="0"
               aria-label="桌面標記原始影片播放器"
+              data-i18n-aria-label="annotation.videoLabel"
             ></video>
             <div class="annotation-workspace-transport">
-              <button type="button" data-workspace-seek="-5">−5 秒</button>
-              <button type="button" data-workspace-seek="-1">−1 秒</button>
+              <button type="button" data-workspace-seek="-5" data-i18n="annotation.backFive">−5 秒</button>
+              <button type="button" data-workspace-seek="-1" data-i18n="annotation.backOne">−1 秒</button>
               <output id="annotationWorkspaceCurrent">0:00.0</output>
-              <button type="button" data-workspace-seek="1">+1 秒</button>
-              <button type="button" data-workspace-seek="5">+5 秒</button>
+              <button type="button" data-workspace-seek="1" data-i18n="annotation.forwardOne">+1 秒</button>
+              <button type="button" data-workspace-seek="5" data-i18n="annotation.forwardFive">+5 秒</button>
             </div>
-            <div class="annotation-shortcuts" aria-label="鍵盤快捷鍵">
-              <span><kbd>Space</kbd> 播放／暫停</span>
-              <span><kbd>←</kbd><kbd>→</kbd> 前後 1 秒</span>
-              <span><kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd> 前後 5 秒</span>
-              <span><kbd>I</kbd> 起點</span>
-              <span><kbd>O</kbd> 終點</span>
-              <span><kbd>Enter</kbd> 儲存</span>
+            <div class="annotation-shortcuts" aria-label="鍵盤快捷鍵" data-i18n-aria-label="annotation.shortcutsLabel">
+              <span data-i18n-html="annotation.shortcutPlayHtml"><kbd>Space</kbd> 播放／暫停</span>
+              <span data-i18n-html="annotation.shortcutOneHtml"><kbd>←</kbd><kbd>→</kbd> 前後 1 秒</span>
+              <span data-i18n-html="annotation.shortcutFiveHtml"><kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd> 前後 5 秒</span>
+              <span data-i18n-html="annotation.shortcutStartHtml"><kbd>I</kbd> 起點</span>
+              <span data-i18n-html="annotation.shortcutEndHtml"><kbd>O</kbd> 終點</span>
+              <span data-i18n-html="annotation.shortcutSaveHtml"><kbd>Enter</kbd> 儲存</span>
             </div>
           </section>
 
           <aside class="annotation-workspace-sidebar">
             <section class="annotation-workspace-section">
               <div class="annotation-workspace-section-heading">
-                <span>01</span><div><b>標出一個回合</b><small>直接用播放器目前時間，不必抄秒數</small></div>
+                <span>01</span><div><b data-i18n="annotation.boundaryTitle">標出一個回合</b><small data-i18n="annotation.boundaryBody">直接用播放器目前時間，不必抄秒數</small></div>
               </div>
               <div class="annotation-workspace-boundaries">
-                <div><span>回合起點</span><output id="annotationWorkspaceStart">尚未設定</output><button id="annotationWorkspaceMarkStart" type="button"><kbd>I</kbd> 設為起點</button></div>
-                <div><span>回合終點</span><output id="annotationWorkspaceEnd">尚未設定</output><button id="annotationWorkspaceMarkEnd" type="button"><kbd>O</kbd> 設為終點</button></div>
+                <div><span data-i18n="annotation.start">回合起點</span><output id="annotationWorkspaceStart" data-i18n="annotation.notSet">尚未設定</output><button id="annotationWorkspaceMarkStart" type="button" data-i18n-html="annotation.markStartHtml"><kbd>I</kbd> 設為起點</button></div>
+                <div><span data-i18n="annotation.end">回合終點</span><output id="annotationWorkspaceEnd" data-i18n="annotation.notSet">尚未設定</output><button id="annotationWorkspaceMarkEnd" type="button" data-i18n-html="annotation.markEndHtml"><kbd>O</kbd> 設為終點</button></div>
               </div>
               <form id="annotationWorkspaceForm">
                 <div class="annotation-workspace-meta">
-                  <label><span>這一球</span><select id="annotationWorkspaceLabel"><option value="highlight">值得收錄</option><option value="exclude">不該收錄</option></select></label>
+                  <label><span data-i18n="annotation.thisRally">這一球</span><select id="annotationWorkspaceLabel"><option value="highlight" data-i18n="annotation.include">值得收錄</option><option value="exclude" data-i18n="annotation.exclude">不該收錄</option></select></label>
                   <fieldset class="annotation-workspace-tags">
-                    <legend>精彩標籤（可複選）</legend>
+                    <legend data-i18n="annotation.tagsLegend">精彩標籤（可複選）</legend>
                     <div class="annotation-workspace-tag-options">
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="相持" /><span>相持</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="搶攻" /><span>搶攻</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="反拉" /><span>反拉</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="反壓" /><span>反壓</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="落點" /><span>落點</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="落點控制" /><span>落點控制</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="擋球" /><span>擋球</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="防守" /><span>防守</span></label>
-                      <label class="annotation-workspace-tag"><input id="annotationWorkspaceNoteOtherToggle" type="checkbox" name="annotation-note-tag-other" /><span>其他…</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="相持" /><span data-i18n="annotation.tagRally">相持</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="搶攻" /><span data-i18n="annotation.tagAttack">搶攻</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="反拉" /><span data-i18n="annotation.tagCounterloop">反拉</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="反壓" /><span data-i18n="annotation.tagCounter">反壓</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="落點" /><span data-i18n="annotation.tagPlacement">落點</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="落點控制" /><span data-i18n="annotation.tagPlacementControl">落點控制</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="擋球" /><span data-i18n="annotation.tagBlock">擋球</span></label>
+                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="防守" /><span data-i18n="annotation.tagDefense">防守</span></label>
+                      <label class="annotation-workspace-tag"><input id="annotationWorkspaceNoteOtherToggle" type="checkbox" name="annotation-note-tag-other" /><span data-i18n="annotation.tagOther">其他…</span></label>
                     </div>
                   </fieldset>
                   <label id="annotationWorkspaceNoteOtherField" class="annotation-workspace-note-other" for="annotationWorkspaceNoteOther" hidden>
-                    <span>其他標籤</span>
-                    <input id="annotationWorkspaceNoteOther" type="text" maxlength="274" placeholder="輸入這一球的特別之處" autocomplete="off" />
+                    <span data-i18n="annotation.otherLabel">其他標籤</span>
+                    <input id="annotationWorkspaceNoteOther" type="text" maxlength="274" placeholder="輸入這一球的特別之處" data-i18n-placeholder="annotation.otherPlaceholder" autocomplete="off" />
                   </label>
                 </div>
-                <button id="annotationWorkspaceSave" class="annotation-workspace-save" type="submit"><kbd>Enter</kbd> 儲存這一球</button>
+                <button id="annotationWorkspaceSave" class="annotation-workspace-save" type="submit" data-i18n-html="annotation.saveHtml"><kbd>Enter</kbd> 儲存這一球</button>
                 <p id="annotationWorkspaceMessage" class="annotation-workspace-message" hidden aria-live="polite"></p>
               </form>
             </section>
 
             <section class="annotation-workspace-section annotation-workspace-saved">
               <div class="annotation-workspace-section-heading">
-                <span>02</span><div><b>已儲存標記</b><small id="annotationWorkspaceCount">0 個回合</small></div>
+                <span>02</span><div><b data-i18n="annotation.savedTitle">已儲存標記</b><small id="annotationWorkspaceCount" data-i18n="annotation.zeroCount">0 個回合</small></div>
               </div>
-              <div id="annotationWorkspaceList" class="annotation-workspace-list" aria-live="polite"><p>開啟影片後讀取標記…</p></div>
+              <div id="annotationWorkspaceList" class="annotation-workspace-list" aria-live="polite"><p data-i18n="annotation.openToLoad">開啟影片後讀取標記…</p></div>
             </section>
           </aside>
         </div>
       </div>
     </section>
 
-    <script src="/static/app.js?v=1.3.0" defer></script>
+    <script src="/static/app.js?v=1.4.0" defer></script>
   </body>
 </html>

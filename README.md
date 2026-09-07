@@ -4,6 +4,10 @@
 
 手機只負責錄影與提供影片；可以直接續傳，也可以先放上 Google Drive 再貼公開連結。電腦在本地完成下載、影片解碼、逐分切點、精彩度排序與 Reel 剪接。匯入後的原片副本與成品持久儲存在這台電腦；使用 ngrok 或 Cloudflare Tunnel 時，網頁流量會經過該入口服務，而 Drive 原片由電腦直接向 Google 下載。
 
+系統以帳號辨識影片擁有者：一般使用者只操作自己的上傳、處理紀錄、原片與成品；管理員可建立／停用試用帳號，並從管理檢視查找所有使用者的影片與結果。網址本身不再承載共用存取 token；每位試用者應使用自己的帳號登入，避免無法追溯影片來源。
+
+目前優先完成使用者、資料歸屬、影片庫與部署可靠性，既有介面視覺暫不重做。右上角的「中 / EN」可在繁體中文與英文間切換，瀏覽器會保留選擇；登入後的頁面內也會提供使用教學。部署與維運人員請另看 [部署、備份與搬機手冊](docs/deployment.md)。
+
 ## 成品形式
 
 - 每支影片只收錄分數至少達到該片最佳候選 87% 的得分；球數可以不同，不再為了湊滿 6 球而回填。
@@ -17,11 +21,21 @@
 
 直式、裁切、字幕等社群發佈格式屬於後續輸出，不會在分析階段綁死。
 
+## 邀請少量試用者
+
+1. 先以 bootstrap 管理員登入並更換初始密碼。
+2. 在使用者管理為每位試用者建立一個一般帳號；不要共用管理員帳號。
+3. 傳送相同的 localhost/LAN/tunnel 網址，但將每人的帳密分開、安全地交付。
+4. 一般使用者登入後只會看到自己的影片庫、上傳進度、原片及剪輯成品；管理員可在全域資料管理依使用者查找與處理內容。
+5. 試用結束可停用帳號，使既有 session 一併失效；資料是否刪除是另一個明確操作，不會因停用帳號自動消失。
+
+頁面內的「使用教學」會說明上傳、Drive 匯入、等待處理、預覽與下載；維運人員的 image、`.env`、備份及搬機流程不放進一般使用教學，統一收在部署手冊。
+
 ## 只在這台電腦使用（localhost，不走 tunnel）
 
 這是 ngrok 額度用完、公開網址失效，或只想在電腦上標記精彩球時的建議模式。若 ngrok 頁面顯示 `Network bandwidth exceeded`，不必繼續重試，直接使用本節。它不啟動 ngrok 或 Cloudflare Tunnel，網站只綁在 `127.0.0.1`，因此瀏覽器播放原片與成品不會消耗 tunnel 流量，也不會讓同一個 Wi-Fi 的其他裝置連入。
 
-1. 開啟 Docker Desktop，等到 Docker Engine 正在執行。
+1. 開啟已更新的 Docker Desktop，確認 Docker Engine 正在執行且 `docker compose version` 至少為 v2.30.0。
 2. 開啟 Git Bash，進入專案並從目前 source 建置、啟動 GPU 版本：
 
    ```bash
@@ -53,7 +67,7 @@
    cat ./data/local-access-url.txt
    ```
 
-   完整網址包含本機存取權杖，頁面第一次讀取後會把它從網址列移除。`data/local-access-url.txt` 只存在本機且不會進 Git，仍不應貼到公開場所。
+   網址不含密碼或 token。開啟後以 HighlightCraft 帳號登入；若第一次啟動時沒有在 `.env` 指定 bootstrap 密碼，系統會把隨機管理員密碼保存在 `data/.admin-password`，啟動器只提示檔案位置、不會把密碼印到終端機。首次登入後請立即更換密碼。
 
 啟動器會先確認目前沒有上傳、Drive 下載或剪輯正在進行，才停止 ngrok／Cloudflare Tunnel 並切換服務；若還有工作，它會拒絕重啟並告訴你先等候或刪除已放棄的未完成上傳。原片、成品、處理紀錄及人工標記都留在 `./data`，切換模式不會刪除。
 
@@ -104,9 +118,9 @@ docker compose -f compose.yaml -f compose.localhost.yaml stop pingpong-highlight
    cat ./data/remote-access-url.txt
    ```
 
-   免費方案第一次以瀏覽器開啟該網域時，ngrok 會先顯示防濫用提示；確認網址是自己剛產生的，再按一次 `Visit`。ngrok 會為該網域保存 cookie，通常七天內不再顯示。
+   免費方案第一次以瀏覽器開啟該網域時，ngrok 會先顯示防濫用提示；確認網址是自己剛產生的，再按一次 `Visit`，接著在 HighlightCraft 登入。ngrok 會為該網域保存自己的提示 cookie；HighlightCraft 的登入 session 則由系統獨立管理。
 
-   完整網址含有私人存取權杖，拿到網址的人就能使用服務，請勿分享或貼在公開場所。
+   可以把網站網址傳給受邀試用者，但每個人應使用管理員建立的獨立帳號。不要共用管理員帳密，也不要把 `.env`、`data/.admin-password` 或 ngrok authtoken 傳出去。
 
 6. 想確認系統是否正常，可執行：
 
@@ -187,7 +201,7 @@ docker compose up -d --build
 docker compose logs -f pingpong-highlight
 ```
 
-把 `.env` 裡的 `PINGPONG_PUBLIC_URL` 改成電腦目前的 Wi‑Fi IP，例如 `http://192.168.1.19:8000`。啟動後，log 會顯示完整手機網址與 QR code；`restart: unless-stopped` 會讓容器在 Docker 重新啟動後自動恢復。
+把 `.env` 裡的 `PINGPONG_PUBLIC_URL` 改成電腦目前的 Wi‑Fi IP，例如 `http://192.168.1.19:8000`。純 HTTP LAN 的 `PINGPONG_SESSION_COOKIE_SECURE` 必須是 `false`。啟動後，log 會顯示手機網址與 QR code；開啟後以個人帳號登入。`restart: unless-stopped` 會讓容器在 Docker 重新啟動後自動恢復。
 
 上傳原片、Drive 下載暫存、續傳資訊、工作狀態與成品都掛載在電腦的 `./data`，重新 build 或刪除容器不會遺失。要更新程式時再執行一次：
 
@@ -207,22 +221,37 @@ docker compose up -d --build
 docker compose -f compose.yaml -f compose.cpu.yaml up -d --build
 ```
 
-根目錄的 Compose 檔案是「一個基底加幾個小型開關」，不是六套不同服務。平常只需要 `docker compose up -d --build`；啟動腳本會視需要自動疊加 localhost、CPU、Docker Hub release、ngrok 或 Cloudflare 的小型設定，不需要手動挑選。
+根目錄的 Compose 檔案是「一個基底加幾個小型開關」，不是多套不同服務。從 source 開發時只需 `docker compose up -d --build`；啟動腳本會視需要疊加 localhost、CPU、Docker Hub release、ngrok 或 Cloudflare 設定。只 pull 已發佈成品的主機則使用 `compose.deploy.yaml`。
 
-常用管理指令：
+所有管理指令都必須重複啟動時的同一組 `-f` 檔案（包括 `deploy`／`release`、`cpu` 與目前的存取模式）；只下 base-only 指令可能看不到、也停不掉仍在執行的 tunnel。例如以 pull-only ngrok 模式啟動後，應使用：
 
 ```powershell
-docker compose ps                    # 查看服務與健康狀態
-docker compose logs -f pingpong-highlight
-docker compose restart               # 重新啟動
-docker compose down                  # 停止服務；保留 ./data
+docker compose -f compose.yaml -f compose.deploy.yaml -f compose.ngrok.yaml ps
+docker compose -f compose.yaml -f compose.deploy.yaml -f compose.ngrok.yaml logs -f pingpong-highlight ngrok
+docker compose -f compose.yaml -f compose.deploy.yaml -f compose.ngrok.yaml restart
+docker compose -f compose.yaml -f compose.deploy.yaml -f compose.ngrok.yaml down  # 保留 data
 ```
+
+若啟動時另加了 `compose.cpu.yaml`，上述每一行也要在 `compose.deploy.yaml` 後加上 `-f compose.cpu.yaml`；localhost 或 Cloudflare 模式則把最後一個 overlay 換成實際使用的檔案。從 source 啟動的純 LAN 模式只有 `compose.yaml`，那是唯一可安全使用 base-only `ps`／`down` 的情況。
 
 若希望登入 Windows 後一直可用，請同時開啟 Docker Desktop 的「Start Docker Desktop when you sign in」。
 
+## 在其他電腦開發，這台只部署
+
+可以，而且這是正式使用時較建議的模式。開發電腦或 CI 負責測試、build 與 push；這台有 GPU／大容量磁碟的電腦只需要 Docker、Compose 部署 bundle、自己的 `.env` 與持久 `data`。不需要複製 `.venv`、Python dependencies、Git 工作樹或開發機的 `.env`。
+
+部署端先從 `.env.example` 建立新的 `.env`，把 `PINGPONG_IMAGE` 固定到發佈後的 tag，最好是 `image@sha256:...` digest，再執行：
+
+```powershell
+docker compose -f compose.yaml -f compose.deploy.yaml pull
+docker compose -f compose.yaml -f compose.deploy.yaml up -d --wait
+```
+
+`compose.deploy.yaml` 明確移除本地 build，且會把 `PINGPONG_DATA_PATH` 掛到 `/data`；容器更新不會帶走使用者、影片、成品或標記。`.env` 不進 Git/image，bootstrap admin 密碼也不得提交。完整的首次部署、HTTPS cookie、備份、升級、rollback 與換機步驟見 [docs/deployment.md](docs/deployment.md)。
+
 ## 影片播放效能
 
-`localhost` 只表示瀏覽器與服務在同一台電腦，不代表影片不需要經過 HTTP、Docker bind mount 與瀏覽器解碼。HighlightCraft 1.2.3 的影片端點使用可感知斷線的 HTTP Range 串流與較大的讀取區塊；播放器收合或拖曳造成舊請求中斷時，伺服器會立即停止讀檔，不會在背景繼續把整支原片讀完。完成影片可保留在瀏覽器私有快取，重播與倒退也不必每次重新傳輸。
+`localhost` 只表示瀏覽器與服務在同一台電腦，不代表影片不需要經過 HTTP、Docker bind mount 與瀏覽器解碼。影片端點使用可感知斷線的 HTTP Range 串流與較大的讀取區塊；播放器收合或拖曳造成舊請求中斷時，伺服器會立即停止讀檔，不會在背景繼續把整支原片讀完。多人共用瀏覽器時為避免上一個帳號的影片留在 HTTP cache，原片與成品使用 `no-store`；同一段播放中的拖曳仍由 Range request 讀取需要的區段。
 
 新產生的 H.264 成品最多使用 30 fps、約兩秒一個 GOP，並限制目標與峰值碼率。1.2.3 以前已完成的 MP4 不會被自動覆寫；它們仍可透過新版串流順暢播放，但若希望把舊的 120 fps／高碼率檔案縮小，需要重新處理原片。
 
@@ -230,9 +259,9 @@ docker compose down                  # 停止服務；保留 ./data
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-Docker Hub 的 public image 是 `docker.io/momonong/pingpong-auto-highlight:1.3.0`。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+目前 Docker Hub 已發佈版仍是 `1.3.0`；此分支的候選 image 是 `docker.io/momonong/pingpong-auto-highlight:1.4.0`，需完成驗收並正式發佈後才可在部署機 pull。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
-新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。取得這份 repository 後，在 Git Bash 執行：
+新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。開發用途可取得完整 repository 後用啟動器；正式執行主機只需上一節所列的 Compose 部署 bundle。完整 repository 的 Git Bash 快速啟動方式是：
 
 ```bash
 cd /d/projects/pingpong-auto-highlight
@@ -250,7 +279,7 @@ docker compose -f compose.yaml -f compose.release.yaml exec pingpong-highlight p
 
 `doctor` 的 `NVIDIA NVDEC` 與 `NVIDIA NVENC` 都必須顯示 `可用`。目前 5090 Laptop 已實測通過；4090 移機後仍應用同一支測試影片做一次驗收，比較選出的得分時間點、成品長度與是否可播放，不要比較 MP4 檔案 hash，因為不同 GPU／driver 的硬體編碼結果不保證逐 bit 相同。
 
-正式使用請固定版本 tag 或 `data/published-image.txt` 記錄的 digest；`latest` 只供方便查看最新版本，不應作為長期部署鎖定值。所有原片、續傳與成品仍在該電腦的 `./data`，不會存進 Docker Hub image。
+正式使用請固定版本 tag，最好固定 `data/published-image.txt` 記錄的 digest；`latest` 只供方便查看最新版本，不應作為長期部署鎖定值。所有使用者資料、原片、續傳與成品仍在該電腦的 `./data`，不會存進 Docker Hub image。
 
 ### 發佈新版本到 Docker Hub
 
@@ -260,7 +289,7 @@ docker compose -f compose.yaml -f compose.release.yaml exec pingpong-highlight p
 ./scripts/publish-dockerhub.sh
 ```
 
-發佈器固定產生 `linux/amd64`，使用 `pyproject.toml` 的版本建立 immutable version tag 與 `latest`，附加 SBOM／provenance，確認 repository 是 public，再從 Docker Hub pull 回來檢查版本與 NVIDIA NVDEC／NVENC。Python base image、production dependencies 與 build dependencies 都以 digest 或 hashes 固定；`data`、`.env`、影片及 token 由 `.dockerignore` 排除。
+發佈器固定產生 `linux/amd64`，使用 `pyproject.toml` 的版本建立 version tag 與 `latest`，附加 SBOM／provenance，確認 repository 是 public，再從 Docker Hub pull 回來檢查版本與 NVIDIA NVDEC／NVENC。Python base image、production dependencies 與 build dependencies 都以 digest 或 hashes 固定；`data`、`.env`、影片及 secret 由 `.dockerignore` 排除。部署時仍應使用 registry 回傳的 manifest digest，因為 registry tag 技術上可以被重新指向。
 
 ## ngrok Tunnel 細節
 
@@ -270,7 +299,7 @@ Git Bash 的標準啟動指令：
 ./scripts/start-ngrok-tunnel.sh
 ```
 
-若手機第一次開啟時先看到 ngrok 的「Visit Site」頁面，按下後請再開一次終端顯示的完整網址（必須包含 `#token=...`）。第一次只是在該手機建立 ngrok 的瀏覽器 cookie，跳轉時可能沒有保留 fragment；HighlightCraft 收不到 token 時仍能顯示首頁，但會無法讀取伺服器端的處理 session。此時可重新開啟完整網址，或把完整網址／存取碼貼進頁面的解鎖欄位。session 與成品都還保存在電腦的 `data`，不會因手機換頁或重新整理而消失。
+若手機第一次開啟時先看到 ngrok 的「Visit Site」頁面，按下後會進入 HighlightCraft 登入頁。這兩層 cookie 不同：前者只記住 ngrok 防濫用提示，後者是 HighlightCraft 的 HttpOnly 登入 session。重新整理或網址改變不會刪除電腦 `data` 裡的影片與成品；新 tunnel 網域會需要重新登入。
 
 PowerShell 也可以使用同一套流程：
 
@@ -278,7 +307,7 @@ PowerShell 也可以使用同一套流程：
 .\scripts\start-ngrok-tunnel.ps1
 ```
 
-啟動器會確認 Docker、啟動預設 GPU 服務與 ngrok、等待公開 health check 通過，再產生一條可直接在手機開啟的網址。ngrok 的 HTTP 請求檢視預設關閉，避免在本機 Traffic Inspector 保存影片要求與帶有 HighlightCraft 存取權杖的下載網址；4040 只綁在 `127.0.0.1`，啟動器用它讀取 tunnel 網址，不會對區域網路公開。
+啟動器會確認 Docker，並在任何可能重建 HighlightCraft container 的步驟前確認所有使用者都沒有未完成上傳、Drive 匯入或剪輯。它接著啟動預設 GPU 服務與 ngrok、等待公開 health check 通過，再停止仍在執行的 Cloudflare Tunnel 並顯示 HTTPS 網址；若新入口失敗，既有 Cloudflare 入口不會被提前關閉。ngrok 的 HTTP 請求檢視預設關閉，避免在本機 Traffic Inspector 保存影片與 API 要求；4040 只綁在 `127.0.0.1`，啟動器用它讀取 tunnel 網址，不會對區域網路公開。
 
 免費方案會提供一個開發用網域，而且 endpoint 沒有固定逾時，但目前每月包含 1 GB 對外傳輸與 20,000 個 HTTP requests。把原片先傳到 Google Drive、再讓電腦直接下載，不會讓整支原片經過 ngrok；手機直接上傳與下載完成的集錦則會使用 ngrok 額度。額度可能調整，實際數字以 [ngrok Free plan limits](https://ngrok.com/docs/pricing-limits/free-plan-limits) 為準。
 
@@ -288,7 +317,7 @@ PowerShell 也可以使用同一套流程：
 docker compose -f compose.yaml -f compose.ngrok.yaml stop ngrok
 ```
 
-要讓新 token 取代本機保存的舊 token：
+要讓新的 ngrok authtoken 取代本機保存的舊值：
 
 ```bash
 ./scripts/start-ngrok-tunnel.sh -ReplaceAuthtoken
@@ -308,7 +337,13 @@ PowerShell 也可以使用同一套流程：
 .\scripts\start-cloudflare-tunnel.ps1
 ```
 
-腳本會啟動本機服務、保留健康的既有 tunnel、在 tunnel 失效時自動建立新的臨時 HTTPS 網址、確認公開 health check，最後顯示一條可直接在手機開啟、含有存取權杖的專用網址。不要把完整網址轉傳給別人。網址裡的 upload token 放在 `#` 後方，不會隨第一次 HTTP 請求送到 Cloudflare；頁面讀取後也會立刻從網址列移除。
+若這台只負責執行已發佈 image，可加上 `-UsePublishedImage`，避免從 source build：
+
+```powershell
+.\scripts\start-cloudflare-tunnel.ps1 -UsePublishedImage
+```
+
+腳本會在任何可能重建 HighlightCraft container 的步驟前確認全域沒有進行中的工作，再啟動本機服務、保留健康的既有 Cloudflare tunnel，並在失效時自動建立新的臨時 HTTPS 網址。公開 health check 通過後，它才停止仍在執行的 ngrok 並顯示登入網址；若新入口失敗，既有 ngrok 不會被提前關閉。可以把網址傳給受邀試用者，但請為每人建立獨立帳號；不要共用管理員密碼。
 
 這台電腦與 Docker Desktop 必須保持開啟。Quick Tunnel 是測試用途，沒有固定網址或 uptime SLA；`cloudflared` 容器重建後需重新執行腳本並使用新網址。最新網址也會保存在本機的 `data/remote-access-url.txt`。新網址仍可藉由檔名與檔案大小接回唯一一筆未完成上傳；若之後要固定書籤或避免網址變動，再改用 Cloudflare named tunnel。
 
@@ -346,7 +381,7 @@ pingpong-highlight serve
 
 終端機會顯示手機網址與 QR code。手機和電腦連到同一個區域網路後，用手機開啟網址並選擇影片。上傳採用可續傳分塊；中斷後重新選擇同一檔案即可接續。
 
-上傳百分比以電腦實際保存的分塊為準，受 token 保護的網址可在手機或電腦跨裝置監看。重新整理不會遺失已傳資料，但瀏覽器基於安全限制不會自動恢復手機相簿裡的檔案；請在原來源裝置重新選擇同一支影片。系統會先使用該瀏覽器保存的工作階段；若網址已改變，則以完全相同的檔名與檔案大小接回伺服器上唯一的未完成紀錄。其他裝置能監看，無法代替來源裝置送出它沒有的原始檔案。
+上傳百分比以電腦實際保存的分塊為準；登入後可在手機或電腦查看自己帳號的進度。重新整理不會遺失已傳資料，但瀏覽器基於安全限制不會自動恢復手機相簿裡的檔案；請在原來源裝置重新選擇同一支影片。系統會先使用該帳號保存的工作階段；若網址已改變，則以同一使用者下完全相同的檔名與檔案大小接回唯一的未完成紀錄。其他裝置能監看，無法代替來源裝置送出它沒有的原始檔案。
 
 完整操作流程：
 
@@ -394,6 +429,12 @@ flowchart LR
 | `PINGPONG_HOST` | `0.0.0.0` | LAN 服務位址 |
 | `PINGPONG_PORT` | `8000` | LAN 服務連接埠 |
 | `PINGPONG_PUBLIC_URL` | 自動偵測 | QR code 與手機要開啟的公開基底網址；Docker 建議明確設定 |
+| `PINGPONG_BOOTSTRAP_ADMIN_USERNAME` | `admin` | 空資料庫第一次啟動時建立的管理員名稱 |
+| `PINGPONG_BOOTSTRAP_ADMIN_PASSWORD` | 自動產生 | 首次 bootstrap secret；留空時寫入 `data/.admin-password`，不可提交 |
+| `PINGPONG_SESSION_TTL_SECONDS` | `604800` | 登入 session 有效秒數（預設 7 天） |
+| `PINGPONG_SESSION_COOKIE_SECURE` | `false` | HTTPS 外網設 `true`；HTTP localhost/LAN 保持 `false` |
+| `PINGPONG_IMAGE` | deploy 必填 | `compose.deploy.yaml` 使用的固定 tag／digest |
+| `PINGPONG_DATA_PATH` | `./data` | `compose.deploy.yaml` 在主機上的持久資料路徑 |
 | `PINGPONG_MAX_UPLOAD_BYTES` | 100 GiB | 單檔上限 |
 | `PINGPONG_DOWNLOAD_MIN_FREE_BYTES` | 2 GiB | Drive 匯入時保留的最低可用空間 |
 | `PINGPONG_VIDEO_SAMPLE_FPS` | 8 | 畫面分析取樣率 |
@@ -425,4 +466,4 @@ uv run --frozen --group train python -c "import torch; assert torch.cuda.is_avai
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-架構與評估方式見 [docs/architecture.md](docs/architecture.md) 與 [docs/evaluation.md](docs/evaluation.md)。
+架構與評估方式見 [docs/architecture.md](docs/architecture.md) 與 [docs/evaluation.md](docs/evaluation.md)；production 操作見 [docs/deployment.md](docs/deployment.md)。

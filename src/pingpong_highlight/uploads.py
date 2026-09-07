@@ -10,11 +10,13 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 
+from pingpong_highlight.cleanup import FilesystemCleanup
 from pingpong_highlight.config import Settings
 from pingpong_highlight.db import Database, JobRecord, StateConflict, UploadRecord
 
 ALLOWED_SUFFIXES = {".mp4", ".mov", ".m4v", ".mkv", ".avi", ".webm"}
 SAFE_NAME = re.compile(r"[^\w.()\- ]+", re.UNICODE)
+MAX_INCOMPLETE_UPLOADS_PER_USER = 3
 
 
 class UploadError(RuntimeError):
@@ -45,9 +47,15 @@ def _checksum(header: str | None) -> tuple[str, bytes] | None:
 
 
 class UploadStore:
-    def __init__(self, settings: Settings, database: Database):
+    def __init__(
+        self,
+        settings: Settings,
+        database: Database,
+        cleanup: FilesystemCleanup | None = None,
+    ):
         self.settings = settings
         self.database = database
+        self.cleanup = cleanup or FilesystemCleanup(settings, database)
         self._locks: dict[str, asyncio.Lock] = {}
         self._locks_guard = asyncio.Lock()
 
@@ -59,11 +67,35 @@ class UploadStore:
     def part_path(record: UploadRecord) -> Path:
         return record.path.with_name(record.path.name + ".part")
 
-    def create(self, filename: str, size: int, content_type: str) -> UploadRecord:
+    def create(
+        self,
+        filename: str,
+        size: int,
+        content_type: str,
+        *,
+        user_id: str | None = None,
+    ) -> UploadRecord:
         if size <= 0:
             raise UploadError(400, "Upload-Length must be positive")
         if size > self.settings.max_upload_bytes:
             raise UploadError(413, "Video exceeds the configured upload size limit")
+        if (
+            user_id is not None
+            and self.database.count_uploads(user_id=user_id, status="uploading")
+            >= MAX_INCOMPLETE_UPLOADS_PER_USER
+        ):
+            raise UploadError(
+                409,
+                "Too many incomplete uploads; resume or delete one before starting another",
+            )
+
+        reserved = sum(
+            max(0, record.size - record.offset)
+            for record in self.database.list_incomplete_uploads()
+        )
+        free = shutil.disk_usage(self.settings.uploads_dir).free
+        if free < self.settings.download_min_free_bytes + reserved + size:
+            raise UploadError(507, "Not enough free disk space for this upload")
 
         upload_id = uuid.uuid4().hex
         filename = clean_filename(filename)
@@ -77,6 +109,7 @@ class UploadStore:
             size,
             content_type or "application/octet-stream",
             destination,
+            user_id=user_id,
         )
         self.part_path(record).touch(exist_ok=False)
         return record
@@ -88,6 +121,7 @@ class UploadStore:
         source: Path,
         *,
         drive_import_id: str,
+        user_id: str | None = None,
     ) -> tuple[UploadRecord, JobRecord]:
         filename = clean_filename(filename)
         suffix = Path(filename).suffix.lower()
@@ -114,6 +148,7 @@ class UploadStore:
                 content_type or "application/octet-stream",
                 destination,
                 drive_import_id=drive_import_id,
+                user_id=user_id,
             )
         except Exception:
             os.replace(destination, source)
@@ -134,6 +169,11 @@ class UploadStore:
             actual = part.stat().st_size if part.exists() else 0
             if actual > record.size:
                 raise StateConflict(f"Partial upload {record.id} is larger than declared")
+            if actual == record.size and actual > 0:
+                os.replace(part, record.path)
+                self.database.force_upload_offset(record.id, actual)
+                self.database.complete_upload(record.id)
+                continue
             if actual != record.offset:
                 self.database.force_upload_offset(record.id, actual)
 
@@ -156,13 +196,20 @@ class UploadStore:
             record = self.get(upload_id)
             if record.status != "uploading":
                 raise UploadError(409, "Only an incomplete upload can be deleted")
-            if not self.database.delete_incomplete_upload(upload_id):
+            targets = [
+                (self.part_path(record), "file"),
+                (record.path, "file"),
+                *(
+                    (temporary, "file")
+                    for temporary in self.settings.uploads_dir.glob(f".{upload_id}.*.chunk")
+                ),
+            ]
+            if not self.database.delete_incomplete_upload(
+                upload_id,
+                cleanup_targets=targets,
+            ):
                 raise UploadError(409, "Upload state changed before it could be deleted")
-
-            self.part_path(record).unlink(missing_ok=True)
-            record.path.unlink(missing_ok=True)
-            for temporary in self.settings.uploads_dir.glob(f".{upload_id}.*.chunk"):
-                temporary.unlink(missing_ok=True)
+            self.cleanup.drain()
             return record
 
     async def append(
@@ -188,6 +235,15 @@ class UploadStore:
                 raise UploadError(
                     409, "Upload offset mismatch", {"Upload-Offset": str(record.offset)}
                 )
+            expected_write = (
+                content_length
+                if content_length is not None
+                else min(self.settings.max_chunk_bytes, record.size - expected_offset)
+            )
+            if shutil.disk_usage(
+                self.settings.uploads_dir
+            ).free < self.settings.download_min_free_bytes + (2 * expected_write):
+                raise UploadError(507, "Not enough free disk space to continue this upload")
 
             temporary = self.settings.uploads_dir / f".{upload_id}.{uuid.uuid4().hex}.chunk"
             algorithm = expected_checksum[0] if expected_checksum else "sha256"

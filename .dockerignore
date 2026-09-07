@@ -9,6 +9,8 @@ __pycache__
 .coverage
 .env
 data
+highlightcraft-data-*.tar
+highlightcraft-data-*.tar.gz
 logs
 clips
 storage

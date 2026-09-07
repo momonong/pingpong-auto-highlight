@@ -1,8 +1,30 @@
+const i18n = window.HighlightCraftI18n;
+const { clear: clearLocalizedElement, setHtml, setText, t } = i18n;
+
 const elements = {
-  tokenWarning: document.querySelector("#tokenWarning"),
-  accessForm: document.querySelector("#accessForm"),
-  accessValue: document.querySelector("#accessValue"),
-  accessMessage: document.querySelector("#accessMessage"),
+  languageToggle: document.querySelector("#languageToggle"),
+  loginView: document.querySelector("#loginView"),
+  loginForm: document.querySelector("#loginForm"),
+  loginUsername: document.querySelector("#loginUsername"),
+  loginPassword: document.querySelector("#loginPassword"),
+  loginButton: document.querySelector("#loginButton"),
+  loginMessage: document.querySelector("#loginMessage"),
+  appShell: document.querySelector("#appShell"),
+  appFooter: document.querySelector("#appFooter"),
+  sessionControls: document.querySelector("#sessionControls"),
+  accountAvatar: document.querySelector("#accountAvatar"),
+  accountName: document.querySelector("#accountName"),
+  accountRole: document.querySelector("#accountRole"),
+  logoutButton: document.querySelector("#logoutButton"),
+  guideButton: document.querySelector("#guideButton"),
+  quickGuide: document.querySelector("#quickGuide"),
+  accountSecurity: document.querySelector("#accountSecurity"),
+  changePasswordForm: document.querySelector("#changePasswordForm"),
+  currentPassword: document.querySelector("#currentPassword"),
+  changedPassword: document.querySelector("#changedPassword"),
+  changedPasswordConfirm: document.querySelector("#changedPasswordConfirm"),
+  changePasswordSubmit: document.querySelector("#changePasswordSubmit"),
+  changePasswordMessage: document.querySelector("#changePasswordMessage"),
   dropZone: document.querySelector("#dropZone"),
   videoInput: document.querySelector("#videoInput"),
   filePrompt: document.querySelector("#filePrompt"),
@@ -24,6 +46,32 @@ const elements = {
   importList: document.querySelector("#importList"),
   uploadList: document.querySelector("#uploadList"),
   jobList: document.querySelector("#jobList"),
+  adminPanel: document.querySelector("#adminPanel"),
+  adminRefreshButton: document.querySelector("#adminRefreshButton"),
+  storageSummary: document.querySelector("#storageSummary"),
+  createUserForm: document.querySelector("#createUserForm"),
+  newUsername: document.querySelector("#newUsername"),
+  newDisplayName: document.querySelector("#newDisplayName"),
+  newPassword: document.querySelector("#newPassword"),
+  newRole: document.querySelector("#newRole"),
+  createUserButton: document.querySelector("#createUserButton"),
+  createUserMessage: document.querySelector("#createUserMessage"),
+  adminUserCount: document.querySelector("#adminUserCount"),
+  adminUserList: document.querySelector("#adminUserList"),
+  adminJobCount: document.querySelector("#adminJobCount"),
+  adminPendingCount: document.querySelector("#adminPendingCount"),
+  adminPendingList: document.querySelector("#adminPendingList"),
+  adminJobList: document.querySelector("#adminJobList"),
+  adminPagination: document.querySelector("#adminPagination"),
+  adminPrevButton: document.querySelector("#adminPrevButton"),
+  adminNextButton: document.querySelector("#adminNextButton"),
+  adminPageLabel: document.querySelector("#adminPageLabel"),
+  adminPasswordDialog: document.querySelector("#adminPasswordDialog"),
+  adminPasswordForm: document.querySelector("#adminPasswordForm"),
+  adminResetPassword: document.querySelector("#adminResetPassword"),
+  adminPasswordMessage: document.querySelector("#adminPasswordMessage"),
+  adminPasswordCancel: document.querySelector("#adminPasswordCancel"),
+  annotationDevBlock: document.querySelector("#annotationDevBlock"),
   annotationDevCount: document.querySelector("#annotationDevCount"),
   annotationDevEmpty: document.querySelector("#annotationDevEmpty"),
   annotationDevList: document.querySelector("#annotationDevList"),
@@ -54,19 +102,6 @@ const elements = {
   annotationWorkspaceList: document.querySelector("#annotationWorkspaceList"),
 };
 
-const searchParams = new URLSearchParams(window.location.search);
-const queryToken = searchParams.get("token");
-const fragmentParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-const fragmentToken = fragmentParams.get("token");
-const urlToken = fragmentToken || queryToken;
-if (urlToken) {
-  localStorage.setItem("pingpong-upload-token", urlToken);
-  searchParams.delete("token");
-  const cleanSearch = searchParams.toString();
-  history.replaceState({}, "", `${window.location.pathname}${cleanSearch ? `?${cleanSearch}` : ""}`);
-}
-const token = urlToken || localStorage.getItem("pingpong-upload-token") || "";
-
 let selectedFile = null;
 let chunkSize = 8 * 1024 * 1024;
 let paused = false;
@@ -79,6 +114,15 @@ let lastImportsSignature = "";
 let lastUploadsSignature = "";
 let lastJobsSignature = "";
 let lastAnnotationDevSignature = "";
+let currentUser = null;
+let activityTimer = null;
+let adminLoading = false;
+let authGeneration = 0;
+let requestController = new AbortController();
+let identityRefreshPromise = null;
+let adminOffset = 0;
+let adminTotal = 0;
+const adminLimit = 20;
 const jobRenderSignatures = new Map();
 const expandedResultJobIds = new Set();
 let annotationWorkspaceJobId = "";
@@ -86,43 +130,50 @@ let annotationWorkspaceStart = null;
 let annotationWorkspaceEnd = null;
 let annotationWorkspaceReturnFocus = null;
 let annotationWorkspaceComposing = false;
+let adminPasswordResolver = null;
+let latestActivityPayload = null;
+let latestAdminPayload = null;
+let latestAnnotationPayload = null;
+let languageSwitchLocks = 0;
+let languageSwitchEpoch = 0;
 
 const annotationNoteMaxLength = 300;
 
 const uploadActiveWindowMs = 60 * 1000;
 
-function accessTokenFrom(value) {
-  const input = String(value || "").trim();
-  if (!input) return "";
-  try {
-    const url = new URL(input, window.location.origin);
-    const fragment = new URLSearchParams(url.hash.replace(/^#/, "")).get("token");
-    const query = url.searchParams.get("token");
-    if (fragment || query) return fragment || query;
-  } catch (_) {
-    // Treat non-URL input as a raw token below.
-  }
-  const raw = input.replace(/^#?token=/, "");
-  return raw && !/\s/.test(raw) ? raw : "";
-}
-
-function showAccessMessage(message) {
-  elements.accessMessage.textContent = message;
-  elements.accessMessage.hidden = !message;
-}
-
-const stageNames = {
-  queued: "等待電腦處理",
-  "queued-after-restart": "重新排入處理",
-  starting: "準備分析",
-  probing: "讀取影片時間軸",
-  "audio-analysis": "分析擊球聲",
-  "motion-analysis": "分析畫面動態",
-  "detecting-points": "切分每一個得分",
-  "editing-point-reel": "剪接得分集錦",
-  completed: "完成",
-  failed: "處理失敗",
+const stageKeys = {
+  queued: "stage.queued",
+  "queued-after-restart": "stage.queued-after-restart",
+  starting: "stage.starting",
+  probing: "stage.probing",
+  "audio-analysis": "stage.audio-analysis",
+  "motion-analysis": "stage.motion-analysis",
+  "detecting-points": "stage.detecting-points",
+  "editing-point-reel": "stage.editing-point-reel",
+  completed: "stage.completed",
+  failed: "stage.failed",
 };
+
+function lockLanguageSwitch() {
+  const epoch = languageSwitchEpoch;
+  let released = false;
+  languageSwitchLocks += 1;
+  elements.languageToggle.disabled = true;
+  return () => {
+    if (released || epoch !== languageSwitchEpoch) return;
+    released = true;
+    languageSwitchLocks = Math.max(0, languageSwitchLocks - 1);
+    elements.languageToggle.disabled = languageSwitchLocks > 0;
+  };
+}
+
+function renderStorageLoading() {
+  elements.storageSummary.innerHTML = `
+    <article><span>${t("storage.used")}</span><b>${t("common.loading")}</b><small>${t("storage.sourceAndOutput")}</small></article>
+    <article><span>${t("storage.sources")}</span><b>—</b><small>${t("storage.waiting")}</small></article>
+    <article><span>${t("storage.outputs")}</span><b>—</b><small>${t("storage.waiting")}</small></article>
+    <article><span>${t("storage.available")}</span><b>—</b><small>${t("storage.hostDisk")}</small></article>`;
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -154,21 +205,23 @@ function formatTimestamp(seconds) {
   return `${minutes}:${remainder}`;
 }
 
-function authHeaders(extra = {}) {
-  return { "X-Upload-Token": token, ...extra };
-}
-
 function fileAccessUrl(path, { download = false } = {}) {
   const url = new URL(path, window.location.origin);
-  url.searchParams.set("token", token);
   if (download) url.searchParams.set("download", "true");
   return `${url.pathname}${url.search}`;
 }
 
 async function apiFetch(path, options = {}) {
+  const {
+    headers = {},
+    signal = requestController.signal,
+    ...requestOptions
+  } = options;
   const response = await fetch(path, {
-    ...options,
-    headers: authHeaders(options.headers || {}),
+    credentials: "same-origin",
+    ...requestOptions,
+    headers,
+    signal,
   });
   if (!response.ok) {
     let message = `${response.status} ${response.statusText}`;
@@ -177,9 +230,235 @@ async function apiFetch(path, options = {}) {
     } catch (_) {
       // Keep the HTTP status as the useful fallback.
     }
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
   return response;
+}
+
+function userFromPayload(payload) {
+  return payload?.user || payload;
+}
+
+function isAdmin() {
+  return currentUser?.role === "admin";
+}
+
+function isUnauthorized(error) {
+  return error?.status === 401;
+}
+
+function isAborted(error) {
+  return error?.name === "AbortError";
+}
+
+function sessionIsCurrent(generation, userId = currentUser?.id) {
+  return (
+    generation === authGeneration &&
+    currentUser !== null &&
+    String(currentUser.id) === String(userId)
+  );
+}
+
+function resetUserState(nextUser = null) {
+  authGeneration += 1;
+  requestController.abort();
+  requestController = new AbortController();
+  identityRefreshPromise = null;
+
+  authReady = false;
+  currentUser = nextUser;
+  activityLoading = false;
+  adminLoading = false;
+  driveSubmitting = false;
+  paused = false;
+  uploadRunning = false;
+  selectedFile = null;
+  adminOffset = 0;
+  adminTotal = 0;
+  latestActivityPayload = null;
+  latestAdminPayload = null;
+  latestAnnotationPayload = null;
+  languageSwitchEpoch += 1;
+  languageSwitchLocks = 0;
+  elements.languageToggle.disabled = false;
+
+  if (activityTimer) {
+    clearInterval(activityTimer);
+    activityTimer = null;
+  }
+  releaseWakeLock();
+  finishAdminPassword(null);
+  if (annotationWorkspaceIsOpen()) closeAnnotationWorkspace();
+
+  for (const video of [
+    ...elements.jobList.querySelectorAll("video"),
+    ...elements.adminJobList.querySelectorAll("video"),
+  ]) {
+    video.pause();
+    video.removeAttribute("src");
+    for (const source of video.querySelectorAll("source")) source.removeAttribute("src");
+    video.load();
+  }
+
+  elements.appShell.hidden = true;
+  elements.appFooter.hidden = true;
+  elements.sessionControls.hidden = true;
+  elements.adminPanel.hidden = true;
+  elements.annotationDevBlock.hidden = true;
+  elements.accountAvatar.textContent = "";
+  elements.accountName.textContent = "";
+  elements.accountRole.textContent = "";
+  elements.videoInput.value = "";
+  elements.videoInput.disabled = false;
+  elements.dropZone.classList.remove("selected", "dragging");
+  setText(elements.filePrompt, "upload.filePrompt");
+  setText(elements.fileMeta, "upload.fileMeta");
+  elements.uploadButton.disabled = true;
+  setText(elements.uploadButton.querySelector("span"), "upload.start");
+  elements.transferPanel.hidden = true;
+  setText(elements.transferLabel, "transfer.preparing");
+  elements.transferPercent.textContent = "0%";
+  elements.transferBar.style.width = "0%";
+  setText(elements.transferDetail, "transfer.creatingSession");
+  elements.pauseButton.hidden = false;
+  setText(elements.pauseButton, "transfer.pause");
+  elements.driveForm.reset();
+  showDriveMessage("");
+  updateDriveButton();
+
+  elements.emptyJobs.hidden = false;
+  setText(elements.jobCount, "library.waiting");
+  elements.importList.replaceChildren();
+  elements.uploadList.replaceChildren();
+  elements.jobList.replaceChildren();
+  setText(elements.annotationDevCount, "annotation.waiting");
+  elements.annotationDevEmpty.hidden = false;
+  elements.annotationDevList.replaceChildren();
+  elements.adminUserCount.textContent = "—";
+  elements.adminJobCount.textContent = "—";
+  elements.adminPendingCount.textContent = "—";
+  elements.adminUserList.innerHTML = `<p class="admin-loading">${t("admin.loadingAccounts")}</p>`;
+  elements.adminPendingList.innerHTML = `<p class="admin-loading">${t("admin.loadingPending")}</p>`;
+  elements.adminJobList.innerHTML = `<p class="admin-loading">${t("admin.loadingVideos")}</p>`;
+  renderStorageLoading();
+  elements.adminPagination.hidden = true;
+  setText(elements.adminPageLabel, "admin.pageOne");
+  elements.createUserForm.reset();
+  elements.createUserButton.disabled = false;
+  elements.adminRefreshButton.disabled = false;
+  elements.createUserMessage.hidden = true;
+  elements.quickGuide.open = false;
+  elements.accountSecurity.open = false;
+  elements.changePasswordForm.reset();
+  elements.changePasswordSubmit.disabled = false;
+  elements.changePasswordMessage.hidden = true;
+  elements.changePasswordMessage.classList.remove("error");
+  setText(elements.annotationWorkspaceFilename, "annotation.noVideo");
+  elements.annotationWorkspaceCurrent.textContent = "0:00.0";
+  setText(elements.annotationWorkspaceStart, "annotation.notSet");
+  setText(elements.annotationWorkspaceEnd, "annotation.notSet");
+  elements.annotationWorkspaceLabel.value = "highlight";
+  resetAnnotationWorkspaceNote();
+  elements.annotationWorkspaceSave.disabled = false;
+  setHtml(elements.annotationWorkspaceSave, "annotation.saveHtml");
+  setText(elements.annotationWorkspaceCount, "annotation.zeroCount");
+  elements.annotationWorkspaceList.innerHTML = `<p>${t("annotation.openToLoad")}</p>`;
+  showAnnotationWorkspaceMessage("");
+
+  lastImportsSignature = "";
+  lastUploadsSignature = "";
+  lastJobsSignature = "";
+  lastAnnotationDevSignature = "";
+  jobRenderSignatures.clear();
+  expandedResultJobIds.clear();
+  return authGeneration;
+}
+
+function showLogin(messageKey = "", parameters = {}) {
+  resetUserState();
+  elements.loginView.hidden = false;
+  elements.loginUsername.value = "";
+  elements.loginPassword.value = "";
+  if (messageKey) setText(elements.loginMessage, messageKey, parameters);
+  else {
+    clearLocalizedElement(elements.loginMessage);
+    elements.loginMessage.textContent = "";
+  }
+  elements.loginMessage.hidden = !messageKey;
+  elements.loginButton.disabled = false;
+  setText(elements.loginButton.querySelector("span"), "login.submit");
+  window.setTimeout(() => elements.loginUsername.focus({ preventScroll: true }), 0);
+}
+
+function showApplication(user, { reveal = true } = {}) {
+  currentUser = user;
+  const displayName = user.display_name || user.username;
+  clearLocalizedElement(elements.accountName);
+  elements.accountName.textContent = displayName;
+  elements.accountRole.textContent = `${user.role === "admin" ? "ADMIN" : "USER"} · @${user.username}`;
+  elements.accountAvatar.textContent = displayName.trim().charAt(0).toUpperCase() || "U";
+  elements.loginView.hidden = reveal;
+  elements.appShell.hidden = !reveal;
+  elements.appFooter.hidden = !reveal;
+  elements.sessionControls.hidden = !reveal;
+  elements.adminPanel.hidden = user.role !== "admin";
+  elements.annotationDevBlock.hidden = user.role !== "admin";
+}
+
+async function refreshIdentityAfterForbidden(expectedGeneration) {
+  if (!sessionIsCurrent(expectedGeneration)) return;
+  if (identityRefreshPromise) {
+    await identityRefreshPromise;
+    return;
+  }
+
+  const expectedUserId = currentUser.id;
+  const refresh = (async () => {
+    try {
+      const response = await apiFetch("/api/auth/me");
+      const user = userFromPayload(await response.json());
+      if (!sessionIsCurrent(expectedGeneration, expectedUserId)) return;
+      if (!user?.id || String(user.id) !== String(expectedUserId)) {
+        await initializeApplication(user);
+        return;
+      }
+      const wasAdmin = isAdmin();
+      showApplication(user);
+      if (user.role !== "admin") {
+        adminLoading = false;
+        elements.adminPanel.hidden = true;
+        elements.annotationDevBlock.hidden = true;
+        if (annotationWorkspaceIsOpen()) closeAnnotationWorkspace();
+      } else if (!wasAdmin) {
+        await loadAdminDashboard();
+      }
+    } catch (error) {
+      if (isUnauthorized(error) && sessionIsCurrent(expectedGeneration, expectedUserId)) {
+        showLogin("error.sessionExpired");
+      }
+    }
+  })();
+  identityRefreshPromise = refresh;
+  try {
+    await refresh;
+  } finally {
+    if (identityRefreshPromise === refresh) identityRefreshPromise = null;
+  }
+}
+
+async function handleAuthorizationError(error, generation, messageKey = "error.sessionExpired") {
+  if (isAborted(error)) return true;
+  if (isUnauthorized(error)) {
+    if (sessionIsCurrent(generation)) showLogin(messageKey);
+    return true;
+  }
+  if (error?.status === 403) {
+    await refreshIdentityAfterForbidden(generation);
+    return true;
+  }
+  return false;
 }
 
 function encodeMetadata(value) {
@@ -189,17 +468,87 @@ function encodeMetadata(value) {
   return btoa(binary);
 }
 
-function fingerprint(file) {
-  return `pingpong-upload:${file.name}:${file.size}:${file.lastModified}`;
+function resumeKeyHash(value) {
+  const text = String(value);
+  let first = 0xdeadbeef ^ text.length;
+  let second = 0x41c6ce57 ^ text.length;
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    first = Math.imul(first ^ code, 2654435761);
+    second = Math.imul(second ^ code, 1597334677);
+  }
+  first = Math.imul(first ^ (first >>> 16), 2246822507) ^
+    Math.imul(second ^ (second >>> 13), 3266489909);
+  second = Math.imul(second ^ (second >>> 16), 2246822507) ^
+    Math.imul(first ^ (first >>> 13), 3266489909);
+  return `${(first >>> 0).toString(16).padStart(8, "0")}${(second >>> 0)
+    .toString(16)
+    .padStart(8, "0")}`;
 }
 
-async function createSession(file) {
+function resumeStoragePrefix(userId = currentUser?.id) {
+  return `pingpong-upload:v2:${resumeKeyHash(userId || "anonymous")}:`;
+}
+
+function fingerprint(file, userId = currentUser?.id) {
+  const privateFingerprint = resumeKeyHash(
+    `${file.name}\u0000${file.size}\u0000${file.lastModified}`,
+  );
+  return `${resumeStoragePrefix(userId)}${privateFingerprint}`;
+}
+
+function localStorageKeys() {
+  try {
+    return Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
+
+function readLocalStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeLocalStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (_) {
+    // Uploading still works; only browser-side resume discovery is unavailable.
+  }
+}
+
+function removeLocalStorage(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (_) {
+    // Nothing to remove when browser storage is unavailable.
+  }
+}
+
+function purgeLegacyResumeKeys() {
+  const staleKeys = localStorageKeys().filter(
+    (key) => key.startsWith("pingpong-upload:") && !key.startsWith("pingpong-upload:v2:"),
+  );
+  for (const key of staleKeys) removeLocalStorage(key);
+  removeLocalStorage("pingpong-upload-token");
+}
+
+async function createSession(
+  file,
+  { signal = requestController.signal, userId = currentUser?.id } = {},
+) {
   const metadata = [
     `filename ${encodeMetadata(file.name)}`,
     `filetype ${encodeMetadata(file.type || "application/octet-stream")}`,
   ].join(",");
   const response = await apiFetch("/api/uploads", {
     method: "POST",
+    signal,
     headers: {
       "Tus-Resumable": "1.0.0",
       "Upload-Length": String(file.size),
@@ -207,18 +556,19 @@ async function createSession(file) {
     },
   });
   const location = response.headers.get("Location");
-  if (!location) throw new Error("伺服器沒有回傳續傳網址");
-  localStorage.setItem(fingerprint(file), location);
+  if (!location) throw new Error(t("upload.errorLocation"));
+  writeLocalStorage(fingerprint(file, userId), location);
   return { location, offset: 0, jobId: null };
 }
 
-async function inspectSession(location, file) {
+async function inspectSession(location, file, { signal = requestController.signal } = {}) {
   const response = await apiFetch(location, {
     method: "HEAD",
+    signal,
     headers: { "Tus-Resumable": "1.0.0" },
   });
   const length = Number(response.headers.get("Upload-Length"));
-  if (length !== file.size) throw new Error("已儲存的續傳工作階段與影片大小不同");
+  if (length !== file.size) throw new Error(t("upload.errorSize"));
   return {
     location,
     offset: Number(response.headers.get("Upload-Offset")) || 0,
@@ -226,33 +576,37 @@ async function inspectSession(location, file) {
   };
 }
 
-async function findOrCreateSession(file) {
-  const fileFingerprint = fingerprint(file);
-  const saved = localStorage.getItem(fileFingerprint);
+async function findOrCreateSession(
+  file,
+  { signal = requestController.signal, userId = currentUser?.id } = {},
+) {
+  const fileFingerprint = fingerprint(file, userId);
+  const saved = readLocalStorage(fileFingerprint);
   if (saved) {
     try {
-      return await inspectSession(saved, file);
+      return await inspectSession(saved, file, { signal });
     } catch (error) {
+      if (isAborted(error)) throw error;
       if (!String(error.message).includes("404")) console.info("Starting a new upload:", error);
-      localStorage.removeItem(fileFingerprint);
+      removeLocalStorage(fileFingerprint);
     }
   }
 
-  const response = await apiFetch("/api/uploads");
+  const response = await apiFetch("/api/uploads", { signal });
   const { uploads } = await response.json();
   const matches = uploads.filter(
     (upload) => upload.filename === file.name && upload.size === file.size,
   );
   if (matches.length > 1) {
-    throw new Error(`找到 ${matches.length} 筆相同影片的上傳紀錄，請先刪除重複項目`);
+    throw new Error(t("upload.errorDuplicates", { count: matches.length }));
   }
   if (matches.length === 1) {
     const location = `/api/uploads/${matches[0].id}`;
-    const session = await inspectSession(location, file);
-    localStorage.setItem(fileFingerprint, location);
+    const session = await inspectSession(location, file, { signal });
+    writeLocalStorage(fileFingerprint, location);
     return session;
   }
-  return createSession(file);
+  return createSession(file, { signal, userId });
 }
 
 async function checksumHeader(blob) {
@@ -264,18 +618,24 @@ async function checksumHeader(blob) {
   return `sha256 ${btoa(binary)}`;
 }
 
-async function serverOffset(location) {
+async function serverOffset(location, { signal = requestController.signal } = {}) {
   const response = await apiFetch(location, {
     method: "HEAD",
+    signal,
     headers: { "Tus-Resumable": "1.0.0" },
   });
   return Number(response.headers.get("Upload-Offset")) || 0;
 }
 
-async function sendChunk(location, offset, blob) {
+async function sendChunk(location, offset, blob, { signal = requestController.signal } = {}) {
   const checksum = await checksumHeader(blob);
   let lastError = null;
   for (const delay of [0, 700, 1800, 4000]) {
+    if (signal.aborted) {
+      const error = new Error("Upload request was cancelled");
+      error.name = "AbortError";
+      throw error;
+    }
     if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
     try {
       const headers = {
@@ -284,22 +644,28 @@ async function sendChunk(location, offset, blob) {
         "Content-Type": "application/offset+octet-stream",
       };
       if (checksum) headers["Upload-Checksum"] = checksum;
-      const response = await apiFetch(location, { method: "PATCH", headers, body: blob });
+      const response = await apiFetch(location, {
+        method: "PATCH",
+        headers,
+        body: blob,
+        signal,
+      });
       return {
         offset: Number(response.headers.get("Upload-Offset")),
         jobId: response.headers.get("Upload-Job-Id"),
       };
     } catch (error) {
+      if (isAborted(error)) throw error;
       lastError = error;
       try {
-        const recovered = await serverOffset(location);
+        const recovered = await serverOffset(location, { signal });
         if (recovered > offset) return { offset: recovered, jobId: null };
       } catch (_) {
         // The retry loop will surface the original transfer error.
       }
     }
   }
-  throw lastError || new Error("分塊傳送失敗");
+  throw lastError || new Error(t("upload.errorChunks"));
 }
 
 function setTransferProgress(offset, total, startedAt) {
@@ -309,7 +675,11 @@ function setTransferProgress(offset, total, startedAt) {
   const speed = offset / elapsed;
   elements.transferPercent.textContent = `${percent}%`;
   elements.transferBar.style.width = `${percent}%`;
-  elements.transferDetail.textContent = `${formatBytes(offset)} / ${formatBytes(total)} · ${formatBytes(speed)}/s`;
+  setText(elements.transferDetail, "upload.progress", {
+    offset: formatBytes(offset),
+    total: formatBytes(total),
+    speed: formatBytes(speed),
+  });
 }
 
 async function acquireWakeLock() {
@@ -318,73 +688,89 @@ async function acquireWakeLock() {
   } catch (_) {
     wakeLock = null;
   }
+  return wakeLock;
 }
 
-async function releaseWakeLock() {
+async function releaseWakeLock(lock = wakeLock) {
   try {
-    await wakeLock?.release();
+    await lock?.release();
   } catch (_) {
     // The browser may already have released it when the tab lost focus.
   }
-  wakeLock = null;
+  if (wakeLock === lock) wakeLock = null;
 }
 
 async function startUpload() {
   if (!selectedFile || uploadRunning || !authReady) return;
+  const generation = authGeneration;
+  const userId = currentUser.id;
+  const signal = requestController.signal;
+  const file = selectedFile;
   uploadRunning = true;
   paused = false;
   elements.uploadButton.disabled = true;
   elements.videoInput.disabled = true;
   elements.transferPanel.hidden = false;
   elements.pauseButton.hidden = false;
-  elements.pauseButton.textContent = "暫停";
-  elements.transferLabel.textContent = "建立可續傳連線";
+  setText(elements.pauseButton, "transfer.pause");
+  setText(elements.transferLabel, "upload.creatingConnection");
   const startedAt = performance.now();
-  await acquireWakeLock();
+  const uploadWakeLock = await acquireWakeLock();
 
   try {
-    const session = await findOrCreateSession(selectedFile);
+    if (!sessionIsCurrent(generation, userId)) return;
+    const session = await findOrCreateSession(file, { signal, userId });
+    if (!sessionIsCurrent(generation, userId)) return;
     let offset = session.offset;
     let jobId = session.jobId;
-    setTransferProgress(offset, selectedFile.size, startedAt);
-    elements.transferLabel.textContent = offset ? "繼續傳送影片" : "正在傳送影片";
+    setTransferProgress(offset, file.size, startedAt);
+    setText(elements.transferLabel, offset ? "upload.continuing" : "upload.sending");
 
-    while (offset < selectedFile.size) {
+    while (offset < file.size) {
       while (paused) await new Promise((resolve) => setTimeout(resolve, 250));
-      const end = Math.min(offset + chunkSize, selectedFile.size);
-      const result = await sendChunk(session.location, offset, selectedFile.slice(offset, end));
+      if (!sessionIsCurrent(generation, userId)) return;
+      const end = Math.min(offset + chunkSize, file.size);
+      const result = await sendChunk(session.location, offset, file.slice(offset, end), {
+        signal,
+      });
+      if (!sessionIsCurrent(generation, userId)) return;
       if (!Number.isFinite(result.offset) || result.offset <= offset) {
-        throw new Error("伺服器沒有推進上傳 offset");
+        throw new Error(t("upload.errorOffset"));
       }
       offset = result.offset;
       jobId = result.jobId || jobId;
-      setTransferProgress(offset, selectedFile.size, startedAt);
+      setTransferProgress(offset, file.size, startedAt);
     }
 
     if (!jobId) {
-      const response = await apiFetch(session.location);
+      const response = await apiFetch(session.location, { signal });
       jobId = (await response.json()).job_id;
     }
-    elements.transferLabel.textContent = "影片已送達電腦";
-    elements.transferDetail.textContent = "分析已排入佇列；現在可以關閉這個頁面";
+    if (!sessionIsCurrent(generation, userId)) return;
+    setText(elements.transferLabel, "upload.delivered");
+    setText(elements.transferDetail, "upload.queuedDetail");
     elements.pauseButton.hidden = true;
     await loadActivity();
   } catch (error) {
-    elements.transferLabel.textContent = "傳送暫停";
-    elements.transferDetail.textContent = `${error.message}。重新按開始會從已完成的位置繼續。`;
-    elements.uploadButton.disabled = false;
+    if (!isAborted(error) && sessionIsCurrent(generation, userId)) {
+      setText(elements.transferLabel, "upload.paused");
+      setText(elements.transferDetail, "upload.pausedDetail", { error: error.message });
+      elements.uploadButton.disabled = false;
+    }
   } finally {
-    uploadRunning = false;
-    elements.videoInput.disabled = false;
-    await releaseWakeLock();
+    if (sessionIsCurrent(generation, userId)) {
+      uploadRunning = false;
+      elements.videoInput.disabled = false;
+    }
+    await releaseWakeLock(uploadWakeLock);
   }
 }
 
 function jobStage(job) {
-  if (job.stage.startsWith("exporting-point-")) {
-    return `輸出第 ${job.stage.split("-").at(-1)} 個得分`;
+  if (job.stage?.startsWith("exporting-point-")) {
+    return t("stage.exportingPoint", { number: job.stage.split("-").at(-1) });
   }
-  return stageNames[job.stage] || job.stage;
+  return stageKeys[job.stage] ? t(stageKeys[job.stage]) : job.stage || t("stage.waiting");
 }
 
 function triggerDownload(url, filename) {
@@ -397,6 +783,9 @@ function triggerDownload(url, filename) {
 }
 
 async function shareOrSave(button) {
+  const generation = authGeneration;
+  const userId = currentUser?.id;
+  const signal = requestController.signal;
   const path = button.dataset.url;
   const filename = button.dataset.filename || "best_points_reel.mp4";
   const fallbackUrl = fileAccessUrl(path, { download: true });
@@ -405,12 +794,13 @@ async function shareOrSave(button) {
     return;
   }
 
-  const originalLabel = button.textContent;
+  const releaseLanguageSwitch = lockLanguageSwitch();
   button.disabled = true;
-  button.textContent = "準備影片…";
+  setText(button, "result.preparingShare");
   try {
-    const response = await apiFetch(path);
+    const response = await apiFetch(path, { signal });
     const blob = await response.blob();
+    if (!sessionIsCurrent(generation, userId)) return;
     const file = new File([blob], filename, { type: blob.type || "video/mp4" });
     if (navigator.canShare && !navigator.canShare({ files: [file] })) {
       triggerDownload(fallbackUrl, filename);
@@ -418,67 +808,77 @@ async function shareOrSave(button) {
     }
     await navigator.share({
       files: [file],
-      title: "桌球得分集錦",
+      title: t("result.shareTitle"),
     });
   } catch (error) {
-    if (error?.name !== "AbortError") triggerDownload(fallbackUrl, filename);
+    if (!isAborted(error) && sessionIsCurrent(generation, userId)) {
+      if (!(await handleAuthorizationError(error, generation))) {
+        triggerDownload(fallbackUrl, filename);
+      }
+    }
   } finally {
-    button.disabled = false;
-    button.textContent = originalLabel;
+    releaseLanguageSwitch();
+    if (sessionIsCurrent(generation, userId) && button.isConnected) {
+      button.disabled = false;
+      setText(button, "result.shareSave");
+    }
   }
 }
 
 function renderResultPanel(result, jobId, sourceName) {
-  const reel = result.files.find((file) => file.kind === "reel");
-  const pointFiles = result.files.filter((file) => file.kind === "point" || file.kind === "clip");
-  const analysis = result.files.find((file) => file.kind === "analysis");
+  const files = Array.isArray(result?.files) ? result.files : [];
+  const reel = files.find((file) => file.kind === "reel");
+  const pointFiles = files.filter((file) => file.kind === "point" || file.kind === "clip");
+  const analysis = files.find((file) => file.kind === "analysis");
   if (!reel) {
-    return `<div class="downloads">${result.files
+    return files.length
+      ? `<div class="downloads">${files
       .map((file) => {
         const url = fileAccessUrl(file.url, { download: true });
         return `<a href="${escapeHtml(url)}" download>${escapeHtml(file.name)}</a>`;
       })
-      .join("")}</div>`;
+      .join("")}</div>`
+      : "";
   }
 
   const previewUrl = fileAccessUrl(reel.url);
   const downloadUrl = fileAccessUrl(reel.url, { download: true });
   const webShareAvailable = typeof navigator.share === "function";
   const shareAction = webShareAvailable
-    ? `<button class="share-button" type="button" data-url="${escapeHtml(reel.url)}" data-filename="${escapeHtml(reel.name)}">分享／存到相簿</button>`
+    ? `<button class="share-button" type="button" data-url="${escapeHtml(reel.url)}" data-filename="${escapeHtml(reel.name)}">${t("result.shareSave")}</button>`
     : "";
   const saveHint = webShareAvailable
-    ? "可從手機分享選單選擇「儲存影片」。"
-    : "下載後若要放進相簿，請開啟 MP4，再使用手機的分享或儲存影片功能。";
+    ? t("result.mobileSaveHint")
+    : t("result.downloadSaveHint");
   const pointLinks = pointFiles
     .map((file, index) => {
       const url = fileAccessUrl(file.url, { download: true });
-      return `<a href="${escapeHtml(url)}" download>得分 ${index + 1}</a>`;
+      return `<a href="${escapeHtml(url)}" download>${t("result.pointDownload", { number: index + 1 })}</a>`;
     })
     .join("");
   const analysisLink = analysis
-    ? `<a href="${escapeHtml(fileAccessUrl(analysis.url, { download: true }))}" download>分析報告</a>`
+    ? `<a href="${escapeHtml(fileAccessUrl(analysis.url, { download: true }))}" download>${t("result.analysis")}</a>`
     : "";
 
   const open = expandedResultJobIds.has(jobId) ? " open" : "";
   return `<details class="result-panel" data-result-job-id="${escapeHtml(jobId)}"${open}>
     <summary class="reel-heading">
-      <span class="sr-only">${escapeHtml(sourceName)} 的剪輯結果：</span>
+      <span class="sr-only">${escapeHtml(t("result.srLabel", { source: sourceName }))}</span>
       <span class="reel-heading-copy"><span>BEST POINTS REEL</span><b>${escapeHtml(reel.name)}</b></span>
-      <span class="reel-toggle-label"><span class="reel-toggle-closed">播放與下載</span><span class="reel-toggle-open">收合</span></span>
+      <span class="reel-toggle-label"><span class="reel-toggle-closed">${t("result.playDownload")}</span><span class="reel-toggle-open">${t("result.collapse")}</span></span>
       <i class="reel-toggle-icon" aria-hidden="true"></i>
     </summary>
     <div class="result-panel-body">
-      <video controls playsinline preload="metadata" aria-label="${escapeHtml(sourceName)} 的得分集錦預覽">
+      <video controls playsinline preload="metadata" aria-label="${escapeHtml(t("result.previewLabel", { source: sourceName }))}">
         <source data-src="${escapeHtml(previewUrl)}" type="video/mp4" />
       </video>
       <div class="result-actions">
-        <a class="result-primary" href="${escapeHtml(downloadUrl)}" download>下載 MP4</a>
+        <a class="result-primary" href="${escapeHtml(downloadUrl)}" download>${t("result.downloadMp4")}</a>
         ${shareAction}
       </div>
       <p class="save-hint">${saveHint}</p>
       <details class="more-files">
-        <summary>單分片段與分析檔</summary>
+        <summary>${t("result.moreFiles")}</summary>
         <div class="downloads">${pointLinks}${analysisLink}</div>
       </details>
     </div>
@@ -490,16 +890,29 @@ function annotationWorkspaceIsOpen() {
 }
 
 function showAnnotationWorkspaceMessage(message, isError = false) {
+  clearLocalizedElement(elements.annotationWorkspaceMessage);
   elements.annotationWorkspaceMessage.textContent = message;
   elements.annotationWorkspaceMessage.hidden = !message;
   elements.annotationWorkspaceMessage.classList.toggle("error", isError);
 }
 
+function showAnnotationWorkspaceMessageKey(key, parameters = {}, isError = false) {
+  setText(elements.annotationWorkspaceMessage, key, parameters);
+  elements.annotationWorkspaceMessage.hidden = false;
+  elements.annotationWorkspaceMessage.classList.toggle("error", isError);
+}
+
 function renderAnnotationWorkspaceBoundaries() {
-  elements.annotationWorkspaceStart.textContent =
-    annotationWorkspaceStart === null ? "尚未設定" : formatTimestamp(annotationWorkspaceStart);
-  elements.annotationWorkspaceEnd.textContent =
-    annotationWorkspaceEnd === null ? "尚未設定" : formatTimestamp(annotationWorkspaceEnd);
+  if (annotationWorkspaceStart === null) setText(elements.annotationWorkspaceStart, "annotation.notSet");
+  else {
+    clearLocalizedElement(elements.annotationWorkspaceStart);
+    elements.annotationWorkspaceStart.textContent = formatTimestamp(annotationWorkspaceStart);
+  }
+  if (annotationWorkspaceEnd === null) setText(elements.annotationWorkspaceEnd, "annotation.notSet");
+  else {
+    clearLocalizedElement(elements.annotationWorkspaceEnd);
+    elements.annotationWorkspaceEnd.textContent = formatTimestamp(annotationWorkspaceEnd);
+  }
 }
 
 function resetAnnotationWorkspaceNote() {
@@ -555,22 +968,36 @@ function seekAnnotationWorkspace(seconds) {
 }
 
 function renderAnnotationWorkspaceList(annotations) {
-  elements.annotationWorkspaceCount.textContent = `${annotations.length} 個回合`;
+  latestAnnotationPayload = annotations;
+  setText(
+    elements.annotationWorkspaceCount,
+    annotations.length === 1 ? "annotation.count.one" : "annotation.count.other",
+    { count: annotations.length },
+  );
   if (!annotations.length) {
-    elements.annotationWorkspaceList.innerHTML =
-      "<p>還沒有標記。播放原片後按 I、O、Enter 就能存下第一球。</p>";
+    elements.annotationWorkspaceList.innerHTML = `<p>${t("annotation.empty")}</p>`;
     return;
   }
+  const translatedPresetTags = new Map(
+    elements.annotationWorkspaceNoteTags.map((checkbox) => [
+      checkbox.value,
+      t(checkbox.closest("label")?.querySelector("span")?.dataset.i18n || ""),
+    ]),
+  );
+  const localizeNote = (value) => String(value)
+    .split("、")
+    .map((part) => translatedPresetTags.get(part) || part)
+    .join(i18n.language === "en" ? ", " : "、");
   elements.annotationWorkspaceList.innerHTML = annotations
     .map((annotation, index) => {
-      const label = annotation.label === "highlight" ? "值得收錄" : "不該收錄";
-      const note = annotation.note ? `<small>${escapeHtml(annotation.note)}</small>` : "";
+      const label = t(annotation.label === "highlight" ? "annotation.include" : "annotation.exclude");
+      const note = annotation.note ? `<small>${escapeHtml(localizeNote(annotation.note))}</small>` : "";
       return `<article class="annotation-workspace-item ${escapeHtml(annotation.label)}">
-        <button class="annotation-workspace-preview" type="button" data-start="${annotation.start}" data-end="${annotation.end}" aria-label="播放第 ${index + 1} 個標記">
+        <button class="annotation-workspace-preview" type="button" data-start="${annotation.start}" data-end="${annotation.end}" aria-label="${t("annotation.playLabel", { number: index + 1 })}">
           <span>${String(index + 1).padStart(2, "0")}</span>
-          <div><b>${label}</b><time>${formatTimestamp(annotation.start)}–${formatTimestamp(annotation.end)} · ${Number(annotation.duration).toFixed(1)} 秒</time>${note}</div>
+          <div><b>${label}</b><time>${formatTimestamp(annotation.start)}–${formatTimestamp(annotation.end)} · ${t("annotation.duration", { seconds: Number(annotation.duration).toFixed(1) })}</time>${note}</div>
         </button>
-        <button class="annotation-workspace-delete" type="button" data-annotation-id="${escapeHtml(annotation.id)}" aria-label="刪除第 ${index + 1} 個標記">×</button>
+        <button class="annotation-workspace-delete" type="button" data-annotation-id="${escapeHtml(annotation.id)}" aria-label="${t("annotation.deleteLabel", { number: index + 1 })}">×</button>
       </article>`;
     })
     .join("");
@@ -578,15 +1005,25 @@ function renderAnnotationWorkspaceList(annotations) {
 
 async function loadAnnotationWorkspaceList() {
   if (!annotationWorkspaceJobId) return;
-  elements.annotationWorkspaceList.innerHTML = "<p>正在讀取標記…</p>";
+  const generation = authGeneration;
+  const userId = currentUser?.id;
+  const jobId = annotationWorkspaceJobId;
+  elements.annotationWorkspaceList.innerHTML = `<p>${t("annotation.loading")}</p>`;
   try {
     const response = await apiFetch(
-      `/api/jobs/${annotationWorkspaceJobId}/annotations`,
+      `/api/jobs/${jobId}/annotations`,
     );
     const payload = await response.json();
+    if (!sessionIsCurrent(generation, userId) || annotationWorkspaceJobId !== jobId) return;
     renderAnnotationWorkspaceList(payload.annotations || []);
   } catch (error) {
-    elements.annotationWorkspaceList.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+    if (
+      !(await handleAuthorizationError(error, generation)) &&
+      sessionIsCurrent(generation, userId) &&
+      annotationWorkspaceJobId === jobId
+    ) {
+      elements.annotationWorkspaceList.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+    }
   }
 }
 
@@ -599,8 +1036,12 @@ function openAnnotationWorkspace(button) {
   annotationWorkspaceComposing = false;
   renderAnnotationWorkspaceBoundaries();
   showAnnotationWorkspaceMessage("");
-  elements.annotationWorkspaceFilename.textContent =
-    button.dataset.sourceName || "原始影片";
+  if (button.dataset.sourceName) {
+    clearLocalizedElement(elements.annotationWorkspaceFilename);
+    elements.annotationWorkspaceFilename.textContent = button.dataset.sourceName;
+  } else {
+    setText(elements.annotationWorkspaceFilename, "annotation.sourceVideo");
+  }
   elements.annotationWorkspaceLabel.value = "highlight";
   resetAnnotationWorkspaceNote();
   elements.annotationWorkspaceCurrent.textContent = "0:00.0";
@@ -625,6 +1066,7 @@ function closeAnnotationWorkspace() {
   elements.annotationWorkspace.hidden = true;
   document.body.classList.remove("annotation-workspace-open");
   annotationWorkspaceJobId = "";
+  latestAnnotationPayload = null;
   annotationWorkspaceReturnFocus = null;
   annotationWorkspaceComposing = false;
   const currentLauncher = Array.from(
@@ -638,7 +1080,7 @@ function toggleAnnotationWorkspacePlayback() {
   if (video.paused) {
     video
       .play()
-      .catch(() => showAnnotationWorkspaceMessage("瀏覽器無法播放這個原片編碼。", true));
+      .catch(() => showAnnotationWorkspaceMessageKey("annotation.playbackError", {}, true));
   } else {
     video.pause();
   }
@@ -646,17 +1088,20 @@ function toggleAnnotationWorkspacePlayback() {
 
 async function saveAnnotationWorkspace() {
   if (elements.annotationWorkspaceSave.disabled) return;
+  const generation = authGeneration;
+  const userId = currentUser?.id;
+  const jobId = annotationWorkspaceJobId;
   if (
     annotationWorkspaceStart === null ||
     annotationWorkspaceEnd === null ||
     annotationWorkspaceEnd <= annotationWorkspaceStart
   ) {
-    showAnnotationWorkspaceMessage("請先按 I 設起點，再按 O 設終點。", true);
+    showAnnotationWorkspaceMessageKey("annotation.rangeError", {}, true);
     return;
   }
   const note = annotationWorkspaceNoteValue();
   if (note.length > annotationNoteMaxLength) {
-    showAnnotationWorkspaceMessage("精彩標籤合計不能超過 300 個字。", true);
+    showAnnotationWorkspaceMessageKey("annotation.noteLengthError", {}, true);
     if (elements.annotationWorkspaceNoteOtherToggle.checked) {
       elements.annotationWorkspaceNoteOther.focus({ preventScroll: true });
     }
@@ -666,16 +1111,15 @@ async function saveAnnotationWorkspace() {
     elements.annotationWorkspaceNoteOtherToggle.checked &&
     !elements.annotationWorkspaceNoteOther.value.trim()
   ) {
-    showAnnotationWorkspaceMessage("請填寫其他標籤，或取消選取「其他…」。", true);
+    showAnnotationWorkspaceMessageKey("annotation.otherError", {}, true);
     elements.annotationWorkspaceNoteOther.focus({ preventScroll: true });
     return;
   }
   const button = elements.annotationWorkspaceSave;
-  const originalHtml = button.innerHTML;
   button.disabled = true;
-  button.textContent = "儲存中…";
+  setText(button, "annotation.saving");
   try {
-    await apiFetch(`/api/jobs/${annotationWorkspaceJobId}/annotations`, {
+    await apiFetch(`/api/jobs/${jobId}/annotations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -685,33 +1129,55 @@ async function saveAnnotationWorkspace() {
         note,
       }),
     });
+    if (!sessionIsCurrent(generation, userId) || annotationWorkspaceJobId !== jobId) return;
     annotationWorkspaceStart = null;
     annotationWorkspaceEnd = null;
     resetAnnotationWorkspaceNote();
     renderAnnotationWorkspaceBoundaries();
-    showAnnotationWorkspaceMessage("已儲存。可以直接繼續播放並標下一球。", false);
+    showAnnotationWorkspaceMessageKey("annotation.saved");
     await loadAnnotationWorkspaceList();
   } catch (error) {
-    showAnnotationWorkspaceMessage(error.message, true);
+    if (
+      !(await handleAuthorizationError(error, generation)) &&
+      sessionIsCurrent(generation, userId) &&
+      annotationWorkspaceJobId === jobId
+    ) {
+      showAnnotationWorkspaceMessage(error.message, true);
+    }
   } finally {
-    button.disabled = false;
-    button.innerHTML = originalHtml;
+    if (sessionIsCurrent(generation, userId) && annotationWorkspaceJobId === jobId) {
+      button.disabled = false;
+      setHtml(button, "annotation.saveHtml");
+    }
   }
 }
 
 async function deleteAnnotationWorkspaceItem(button) {
-  if (!window.confirm("確定要刪除這個人工標記嗎？")) return;
+  if (!window.confirm(t("annotation.confirmDelete"))) return;
+  const generation = authGeneration;
+  const userId = currentUser?.id;
+  const jobId = annotationWorkspaceJobId;
+  const releaseLanguageSwitch = lockLanguageSwitch();
   button.disabled = true;
   try {
     await apiFetch(
-      `/api/jobs/${annotationWorkspaceJobId}/annotations/${button.dataset.annotationId}`,
+      `/api/jobs/${jobId}/annotations/${button.dataset.annotationId}`,
       { method: "DELETE" },
     );
-    showAnnotationWorkspaceMessage("標記已刪除。", false);
+    if (!sessionIsCurrent(generation, userId) || annotationWorkspaceJobId !== jobId) return;
+    showAnnotationWorkspaceMessageKey("annotation.deleted");
     await loadAnnotationWorkspaceList();
   } catch (error) {
-    showAnnotationWorkspaceMessage(error.message, true);
-    button.disabled = false;
+    if (
+      !(await handleAuthorizationError(error, generation)) &&
+      sessionIsCurrent(generation, userId) &&
+      annotationWorkspaceJobId === jobId
+    ) {
+      showAnnotationWorkspaceMessage(error.message, true);
+      button.disabled = false;
+    }
+  } finally {
+    releaseLanguageSwitch();
   }
 }
 
@@ -722,11 +1188,15 @@ function uploadIsActive(upload) {
 
 function hasLocalResumeSession(upload) {
   const expectedPath = `/api/uploads/${upload.id}`;
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index);
-    if (!key?.startsWith("pingpong-upload:")) continue;
-    const saved = localStorage.getItem(key);
-    if (saved && new URL(saved, window.location.origin).pathname === expectedPath) return true;
+  const expectedPrefix = resumeStoragePrefix();
+  for (const key of localStorageKeys()) {
+    if (!key.startsWith(expectedPrefix)) continue;
+    const saved = readLocalStorage(key);
+    try {
+      if (saved && new URL(saved, window.location.origin).pathname === expectedPath) return true;
+    } catch (_) {
+      // Ignore malformed values written by an older build or browser extension.
+    }
   }
   return false;
 }
@@ -734,15 +1204,18 @@ function hasLocalResumeSession(upload) {
 function forgetLocalResumeSession(uploadId) {
   const expectedPath = `/api/uploads/${uploadId}`;
   const matchingKeys = [];
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index);
-    if (!key?.startsWith("pingpong-upload:")) continue;
-    const saved = localStorage.getItem(key);
-    if (saved && new URL(saved, window.location.origin).pathname === expectedPath) {
-      matchingKeys.push(key);
+  for (const key of localStorageKeys()) {
+    if (!key.startsWith("pingpong-upload:")) continue;
+    const saved = readLocalStorage(key);
+    try {
+      if (saved && new URL(saved, window.location.origin).pathname === expectedPath) {
+        matchingKeys.push(key);
+      }
+    } catch (_) {
+      // Ignore unrelated malformed local-storage values.
     }
   }
-  for (const key of matchingKeys) localStorage.removeItem(key);
+  for (const key of matchingKeys) removeLocalStorage(key);
 }
 
 function uploadProgress(upload) {
@@ -754,8 +1227,10 @@ function uploadProgress(upload) {
 
 function uploadUpdatedLabel(value) {
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "最近更新";
-  return `最後更新 ${date.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}`;
+  if (!Number.isFinite(date.getTime())) return t("common.recentlyUpdated");
+  return t("common.lastUpdated", {
+    time: date.toLocaleTimeString(i18n.locale(), { hour: "2-digit", minute: "2-digit" }),
+  });
 }
 
 function driveImportProgress(record) {
@@ -766,40 +1241,48 @@ function driveImportProgress(record) {
   return { value, label: `${value.toFixed(decimals)}%` };
 }
 
-function renderDriveImport(record) {
-  const statusLabels = {
-    queued: "等待下載",
-    resolving: "檢查連結",
-    downloading: "Drive 下載中",
-    failed: "匯入失敗",
+function renderRecordOwner(record, sourceLabel) {
+  const createdAt = record.created_at ? formatDateTime(record.created_at) : "";
+  return `<div class="admin-job-meta admin-pending-meta">
+    <span><b>${escapeHtml(jobOwnerName(record))}</b><small>${escapeHtml(sourceLabel)}${createdAt ? ` · ${escapeHtml(createdAt)}` : ""}</small></span>
+  </div>`;
+}
+
+function renderDriveImport(record, { admin = false } = {}) {
+  const statusKeys = {
+    queued: "drive.statusQueued",
+    resolving: "drive.statusResolving",
+    downloading: "drive.statusDownloading",
+    failed: "drive.statusFailed",
   };
   const details = record.error
     ? escapeHtml(record.error)
     : record.status === "queued"
-      ? "已交給電腦，輪到這支影片時會自動開始。"
+      ? t("drive.detailQueued")
       : record.status === "resolving"
-        ? "正在確認公開權限、檔名與影片格式。"
-        : "影片會直接下載到這台電腦，完成後自動排入 GPU 剪輯。";
+        ? t("drive.detailResolving")
+        : t("drive.detailDownloading");
   const progress = driveImportProgress(record);
   const progressMeta = record.size
     ? `${formatBytes(record.offset)} / ${formatBytes(record.size)}`
     : record.offset
-      ? `已下載 ${formatBytes(record.offset)}`
-      : "準備連線至 Google Drive";
+      ? t("drive.downloaded", { bytes: formatBytes(record.offset) })
+      : t("drive.connecting");
   const progressBar =
     record.status === "downloading" || record.status === "resolving"
-      ? `<div class="job-progress-meta"><span>${escapeHtml(progressMeta)} · ${escapeHtml(uploadUpdatedLabel(record.updated_at))}</span><b>${progress?.label || "下載中"}</b></div><div class="job-progress${progress ? "" : " indeterminate"}"><span${progress ? ` style="width:${progress.value}%"` : ""}></span></div>`
+      ? `<div class="job-progress-meta"><span>${escapeHtml(progressMeta)} · ${escapeHtml(uploadUpdatedLabel(record.updated_at))}</span><b>${progress?.label || t("drive.downloading")}</b></div><div class="job-progress${progress ? "" : " indeterminate"}"><span${progress ? ` style="width:${progress.value}%"` : ""}></span></div>`
       : "";
   const actions =
     record.status === "failed"
-      ? `<div class="import-actions"><button class="delete-import-button" type="button" data-import-id="${escapeHtml(record.id)}">刪除</button><button class="retry-import-button" type="button" data-import-id="${escapeHtml(record.id)}">從目前進度重試</button></div>`
+      ? `<div class="import-actions"><button class="delete-import-button" type="button" data-import-id="${escapeHtml(record.id)}" data-label-key="common.delete">${t("common.delete")}</button><button class="retry-import-button" type="button" data-import-id="${escapeHtml(record.id)}">${t("drive.retry")}</button></div>`
       : record.status === "queued"
-        ? `<div class="import-actions"><button class="delete-import-button" type="button" data-import-id="${escapeHtml(record.id)}">取消這筆匯入</button></div>`
+        ? `<div class="import-actions"><button class="delete-import-button" type="button" data-import-id="${escapeHtml(record.id)}" data-label-key="drive.cancel">${t("drive.cancel")}</button></div>`
         : "";
-  const filename = record.filename || "Google Drive 影片";
-  const status = statusLabels[record.status] || record.status;
+  const filename = record.filename || t("drive.defaultFilename");
+  const status = statusKeys[record.status] ? t(statusKeys[record.status]) : record.status;
 
   return `<article class="job ${escapeHtml(record.status)}">
+    ${admin ? renderRecordOwner(record, "Google Drive") : ""}
     <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(record.status)}">${escapeHtml(status)}</span></div>
     <p class="job-detail">${details}</p>
     ${progressBar}${actions}
@@ -809,34 +1292,61 @@ function renderDriveImport(record) {
 async function retryDriveImport(button) {
   const importId = button.dataset.importId;
   if (!importId) return;
-  const originalLabel = button.textContent;
+  const generation = authGeneration;
+  const fromAdminDashboard = elements.adminPendingList.contains(button);
+  const releaseLanguageSwitch = lockLanguageSwitch();
   button.disabled = true;
-  button.textContent = "重新排入中…";
+  setText(button, "drive.requeuing");
   try {
-    await apiFetch(`/api/drive-imports/${importId}/retry`, { method: "POST" });
+    await apiFetch(`/api/drive-imports/${encodeURIComponent(importId)}/retry`, {
+      method: "POST",
+    });
+    if (!sessionIsCurrent(generation)) return;
     lastImportsSignature = "";
-    await loadActivity();
+    await Promise.all([
+      loadActivity(),
+      fromAdminDashboard ? loadAdminDashboard() : Promise.resolve(),
+    ]);
   } catch (error) {
-    window.alert(`無法重試：${error.message}`);
-    button.disabled = false;
-    button.textContent = originalLabel;
+    if (await handleAuthorizationError(error, generation)) return;
+    window.alert(t("drive.retryError", { error: error.message }));
+  } finally {
+    releaseLanguageSwitch();
+    if (sessionIsCurrent(generation) && button.isConnected) {
+      button.disabled = false;
+      setText(button, "drive.retry");
+    }
   }
 }
 
 async function deleteDriveImport(button) {
   const importId = button.dataset.importId;
-  if (!importId || !window.confirm("確定移除這筆 Google Drive 匯入與電腦上的暫存進度？\n\nGoogle Drive 裡的原始影片不受影響。")) return;
-  const originalLabel = button.textContent;
+  if (!importId || !window.confirm(t("drive.confirmDelete"))) return;
+  const generation = authGeneration;
+  const fromAdminDashboard = elements.adminPendingList.contains(button);
+  const labelKey = button.dataset.labelKey || "common.delete";
+  const releaseLanguageSwitch = lockLanguageSwitch();
   button.disabled = true;
-  button.textContent = "移除中…";
+  setText(button, "drive.removing");
   try {
-    await apiFetch(`/api/drive-imports/${importId}`, { method: "DELETE" });
+    await apiFetch(`/api/drive-imports/${encodeURIComponent(importId)}`, {
+      method: "DELETE",
+    });
+    if (!sessionIsCurrent(generation)) return;
     lastImportsSignature = "";
-    await loadActivity();
+    await Promise.all([
+      loadActivity(),
+      fromAdminDashboard ? loadAdminDashboard() : Promise.resolve(),
+    ]);
   } catch (error) {
-    window.alert(`無法移除：${error.message}`);
-    button.disabled = false;
-    button.textContent = originalLabel;
+    if (await handleAuthorizationError(error, generation)) return;
+    window.alert(t("drive.removeError", { error: error.message }));
+  } finally {
+    releaseLanguageSwitch();
+    if (sessionIsCurrent(generation) && button.isConnected) {
+      button.disabled = false;
+      setText(button, labelKey);
+    }
   }
 }
 
@@ -846,100 +1356,126 @@ function updateDriveButton() {
 }
 
 function showDriveMessage(message, isError = false) {
+  clearLocalizedElement(elements.driveMessage);
   elements.driveMessage.textContent = message;
   elements.driveMessage.classList.toggle("error", isError);
   elements.driveMessage.hidden = !message;
+}
+
+function showDriveMessageKey(key, parameters = {}, isError = false) {
+  setText(elements.driveMessage, key, parameters);
+  elements.driveMessage.classList.toggle("error", isError);
+  elements.driveMessage.hidden = false;
 }
 
 async function submitDriveLink(event) {
   event.preventDefault();
   const url = elements.driveUrl.value.trim();
   if (!url || driveSubmitting) return;
+  const generation = authGeneration;
+  const userId = currentUser?.id;
   driveSubmitting = true;
   updateDriveButton();
-  showDriveMessage("正在把連結交給這台電腦…");
+  showDriveMessageKey("drive.submitting");
   try {
     await apiFetch("/api/drive-imports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
     });
+    if (!sessionIsCurrent(generation, userId)) return;
     elements.driveUrl.value = "";
     lastImportsSignature = "";
-    showDriveMessage("已開始背景匯入。現在可以關閉此頁，稍後再回來看進度。");
+    showDriveMessageKey("drive.submitted");
     await loadActivity();
   } catch (error) {
-    showDriveMessage(error.message, true);
+    if (!(await handleAuthorizationError(error, generation)) && sessionIsCurrent(generation, userId)) {
+      showDriveMessage(error.message, true);
+    }
   } finally {
-    driveSubmitting = false;
-    updateDriveButton();
+    if (sessionIsCurrent(generation, userId)) {
+      driveSubmitting = false;
+      updateDriveButton();
+    }
   }
 }
 
-function renderUpload(upload) {
+function renderUpload(upload, { admin = false } = {}) {
   const progress = uploadProgress(upload);
   const active = upload.transfer_active;
   const resumableHere = upload.local_resume;
   const statusClass = active ? "uploading" : "waiting";
-  const statusText = active ? "上傳中" : "等待續傳";
+  const statusText = t(active ? "upload.statusActive" : "upload.statusWaiting");
   const details = resumableHere
-    ? "這台裝置保留了續傳位置；若曾重新整理，請在上方重新選擇同一支影片。"
+    ? t("upload.resumeLocal")
     : active
-      ? "來源裝置正在傳送；此頁會自動更新電腦已收到的進度。"
-      : "目前沒有收到新分塊；請回來源裝置重新選擇同一支影片續傳。";
+      ? t("upload.resumeActive")
+      : t("upload.resumeIdle");
   const transferred = `${formatBytes(upload.offset)} / ${formatBytes(upload.size)}`;
 
   return `<article class="job ${statusClass}">
+    ${admin ? renderRecordOwner(upload, t("common.deviceUpload")) : ""}
     <div class="job-title"><strong title="${escapeHtml(upload.filename)}">${escapeHtml(upload.filename)}</strong><span class="status ${statusClass}">${statusText}</span></div>
     <p class="job-detail">${details}</p>
     <div class="job-progress-meta"><span>${escapeHtml(transferred)} · ${escapeHtml(uploadUpdatedLabel(upload.updated_at))}</span><b>${progress.label}</b></div>
     <div class="job-progress"><span style="width:${progress.value}%"></span></div>
-    <div class="upload-actions"><button class="delete-upload-button" type="button" data-upload-id="${escapeHtml(upload.id)}" data-filename="${escapeHtml(upload.filename)}" data-transferred="${escapeHtml(transferred)}">刪除這筆上傳</button></div>
+    <div class="upload-actions"><button class="delete-upload-button" type="button" data-upload-id="${escapeHtml(upload.id)}" data-filename="${escapeHtml(upload.filename)}" data-transferred="${escapeHtml(transferred)}">${t("upload.deleteRecord")}</button></div>
   </article>`;
 }
 
 async function deleteUploadSession(button) {
   const uploadId = button.dataset.uploadId;
   if (!uploadId) return;
-  const filename = button.dataset.filename || "這支影片";
-  const transferred = button.dataset.transferred || "已上傳的資料";
+  const generation = authGeneration;
+  const fromAdminDashboard = elements.adminPendingList.contains(button);
+  const filename = button.dataset.filename || t("upload.thisVideo");
+  const transferred = button.dataset.transferred || t("upload.transferredData");
   const confirmed = window.confirm(
-    `確定刪除「${filename}」這筆未完成上傳？\n\n電腦上的 ${transferred} 會永久刪除，手機裡的原始影片不受影響。`,
+    t("upload.confirmDelete", { filename, transferred }),
   );
   if (!confirmed) return;
 
-  const originalLabel = button.textContent;
+  const releaseLanguageSwitch = lockLanguageSwitch();
   button.disabled = true;
-  button.textContent = "刪除中…";
+  setText(button, "upload.deleting");
   try {
-    await apiFetch(`/api/uploads/${uploadId}`, {
+    await apiFetch(`/api/uploads/${encodeURIComponent(uploadId)}`, {
       method: "DELETE",
       headers: { "Tus-Resumable": "1.0.0" },
     });
+    if (!sessionIsCurrent(generation)) return;
     forgetLocalResumeSession(uploadId);
     lastUploadsSignature = "";
-    await loadActivity();
+    await Promise.all([
+      loadActivity(),
+      fromAdminDashboard ? loadAdminDashboard() : Promise.resolve(),
+    ]);
   } catch (error) {
-    window.alert(`無法刪除這筆上傳：${error.message}`);
-    button.disabled = false;
-    button.textContent = originalLabel;
+    if (await handleAuthorizationError(error, generation)) return;
+    window.alert(t("upload.deleteError", { error: error.message }));
+  } finally {
+    releaseLanguageSwitch();
+    if (sessionIsCurrent(generation) && button.isConnected) {
+      button.disabled = false;
+      setText(button, "upload.deleteRecord");
+    }
   }
 }
 
 function renderAnnotationDevJob(job, index) {
   const result = job.result;
-  const filename = result?.source_name || `影片 ${job.upload_id.slice(0, 8)}`;
+  const filename = result?.source_name || job.source_name || job.filename || t("video.fallbackName", { id: String(job.upload_id || job.id).slice(0, 8) });
   const duration = Number.isFinite(result?.media?.duration)
-    ? `${formatDuration(result.media.duration)} 原片`
-    : "處理完成";
+    ? t("video.sourceDuration", { duration: formatDuration(result.media.duration) })
+    : t("video.completed");
   return `<article class="annotation-dev-item">
     <span class="annotation-dev-index">${String(index + 1).padStart(2, "0")}</span>
     <div class="annotation-dev-copy">
       <strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong>
-      <small>${duration} · 開啟工作區後才會載入原始影片</small>
+      <small>${t("annotation.loadOnOpen", { duration })}</small>
     </div>
-    <button class="annotation-dev-open open-annotation-workspace" type="button" data-job-id="${escapeHtml(job.id)}" data-source-name="${escapeHtml(filename)}" aria-label="開啟 ${escapeHtml(filename)} 的標記工作區">
-      <span>開啟標記</span><small>I · O · Enter</small>
+    <button class="annotation-dev-open open-annotation-workspace" type="button" data-job-id="${escapeHtml(job.id)}" data-source-name="${escapeHtml(filename)}" aria-label="${escapeHtml(t("annotation.openLabel", { filename }))}">
+      <span>${t("annotation.open")}</span><small>I · O · Enter</small>
     </button>
   </article>`;
 }
@@ -948,39 +1484,98 @@ function renderAnnotationDevelopment(jobs) {
   const completedJobs = jobs.filter(
     (job) => job.status === "completed" && job.result,
   );
-  elements.annotationDevCount.textContent = completedJobs.length
-    ? `${completedJobs.length} 支可標記影片`
-    : "等待可標記影片";
+  setText(
+    elements.annotationDevCount,
+    completedJobs.length
+      ? (completedJobs.length === 1
+        ? "annotation.availableCount.one"
+        : "annotation.availableCount.other")
+      : "annotation.waiting",
+    { count: completedJobs.length },
+  );
   elements.annotationDevEmpty.hidden = completedJobs.length > 0;
   elements.annotationDevList.innerHTML = completedJobs
     .map(renderAnnotationDevJob)
     .join("");
 }
 
-function renderJob(job) {
+function jobOwnerName(job) {
+  return (
+    job.owner?.display_name ||
+    job.owner?.username ||
+    job.owner_username ||
+    job.username ||
+    job.user?.display_name ||
+    job.user?.username ||
+    job.user_id ||
+    t("common.unknownUser")
+  );
+}
+
+function jobSourceName(job) {
+  const source = job.source_type || job.source_kind || job.source;
+  if (typeof source === "string") {
+    if (source.toLowerCase().includes("drive")) return "Google Drive";
+    if (source.toLowerCase().includes("upload")) return t("common.deviceUpload");
+    return source;
+  }
+  return job.drive_import_id ? "Google Drive" : t("common.deviceUpload");
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return date.toLocaleString(i18n.locale(), {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function renderJobControls(job, { admin = false } = {}) {
+  const jobId = escapeHtml(job.id);
+  const canRetry = job.status === "failed";
+  const canReprocess = job.status === "completed" || job.status === "failed";
+  const canDelete = job.status !== "processing";
+  return `<div class="admin-job-meta">
+    ${admin ? `<span><b>${escapeHtml(jobOwnerName(job))}</b><small>${escapeHtml(jobSourceName(job))}${job.created_at ? ` · ${escapeHtml(formatDateTime(job.created_at))}` : ""}</small></span>` : ""}
+    <span class="admin-job-actions">
+      <a href="${escapeHtml(fileAccessUrl(`/api/jobs/${jobId}/source`, { download: true }))}" download>${t("job.downloadSource")}</a>
+      ${canRetry ? `<button type="button" data-job-action="retry" data-job-id="${jobId}">${t("job.retry")}</button>` : ""}
+      ${canReprocess ? `<button type="button" data-job-action="reprocess" data-job-id="${jobId}">${t("job.reprocess")}</button>` : ""}
+      ${canDelete ? `<button class="danger" type="button" data-job-action="delete" data-job-id="${jobId}">${t("job.delete")}</button>` : ""}
+    </span>
+  </div>`;
+}
+
+function renderJob(job, { admin = false } = {}) {
   const jobId = String(job.id);
   const result = job.result;
-  const filename = result?.source_name || `影片 ${job.upload_id.slice(0, 8)}`;
-  const progress = Math.round(job.progress * 100);
+  const filename = result?.source_name || job.source_name || job.filename || t("video.fallbackName", { id: String(job.upload_id || job.id).slice(0, 8) });
+  const progress = Math.round((Number(job.progress) || 0) * 100);
   const statusText =
     job.status === "completed"
-      ? "完成"
+      ? t("job.statusComplete")
       : job.status === "failed"
-        ? "失敗"
+        ? t("job.statusFailed")
         : job.status === "processing"
-          ? "分析中"
-          : "排隊中";
-  const summary = result?.summary;
-  const pointCount = summary?.point_count ?? summary?.highlight_count ?? 0;
+          ? t("job.statusProcessing")
+          : t("job.statusQueued");
+  const summary = result?.summary || {};
+  const rawPointCount = Number(summary?.point_count ?? summary?.highlight_count ?? 0);
+  const pointCount = Number.isFinite(rawPointCount) ? Math.max(0, Math.round(rawPointCount)) : 0;
   const details = job.error
     ? escapeHtml(job.error)
     : result
       ? pointCount
-        ? `選出 ${pointCount} 個精彩得分，已剪成得分集錦。`
-        : "這次沒有足夠可靠的得分回合；可下載分析報告檢查訊號。"
+        ? t(pointCount === 1 ? "job.summaryPoints.one" : "job.summaryPoints.other", {
+          count: pointCount,
+        })
+        : t("job.summaryNoPoints")
       : escapeHtml(jobStage(job));
   const stats = result
-    ? `<div class="job-stats"><span><b>${pointCount}</b> 個得分</span>${summary.reel_duration ? `<span><b>${formatDuration(summary.reel_duration)}</b> 集錦</span>` : ""}<span><b>${formatDuration(result.media.duration)}</b> 原片</span></div>`
+    ? `<div class="job-stats"><span>${t(pointCount === 1 ? "job.statPoints.one" : "job.statPoints.other", { count: `<b>${pointCount}</b>` })}</span>${summary.reel_duration ? `<span>${t("job.statReel", { duration: `<b>${formatDuration(summary.reel_duration)}</b>` })}</span>` : ""}<span>${t("job.statSource", { duration: `<b>${formatDuration(result.media?.duration)}</b>` })}</span></div>`
     : "";
   const resultPanel = result ? renderResultPanel(result, jobId, filename) : "";
   const progressBar =
@@ -988,6 +1583,7 @@ function renderJob(job) {
       ? `<div class="job-progress-meta"><span>${escapeHtml(jobStage(job))}</span><b>${progress}%</b></div><div class="job-progress"><span style="width:${progress}%"></span></div>`
       : "";
   return `<article class="job ${escapeHtml(job.status)}" data-job-id="${escapeHtml(jobId)}">
+    ${renderJobControls(job, { admin })}
     <div class="job-title"><strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong><span class="status ${escapeHtml(job.status)}">${statusText}</span></div>
     <p class="job-detail">${details}</p>
     ${progressBar}${stats}${resultPanel}
@@ -1017,6 +1613,44 @@ function dehydrateResultPanel(panel) {
   video.load();
 }
 
+function captureResultPanelState(container) {
+  return new Map(
+    [...container.querySelectorAll(".result-panel[data-result-job-id]")]
+      .filter((panel) => panel.open)
+      .map((panel) => {
+        const video = panel.querySelector(".result-panel-body > video");
+        return [panel.dataset.resultJobId, {
+          currentTime: Number(video?.currentTime) || 0,
+          muted: video?.muted || false,
+          paused: video?.paused ?? true,
+          playbackRate: Number(video?.playbackRate ?? 1),
+          volume: Number(video?.volume ?? 1),
+        }];
+      }),
+  );
+}
+
+function restoreResultPanelState(container, states) {
+  for (const [jobId, state] of states) {
+    const panel = [...container.querySelectorAll(".result-panel[data-result-job-id]")]
+      .find((candidate) => candidate.dataset.resultJobId === jobId);
+    if (!panel) continue;
+    panel.open = true;
+    hydrateResultPanel(panel);
+    const video = panel.querySelector(".result-panel-body > video");
+    if (!video) continue;
+    const restorePlayback = () => {
+      video.currentTime = state.currentTime;
+      video.muted = state.muted;
+      video.playbackRate = state.playbackRate;
+      video.volume = state.volume;
+      if (!state.paused) video.play().catch(() => {});
+    };
+    if (video.readyState >= 1) restorePlayback();
+    else video.addEventListener("loadedmetadata", restorePlayback, { once: true });
+  }
+}
+
 function renderJobs(jobs) {
   const existingNodes = new Map(
     [...elements.jobList.children].map((node) => [node.dataset.jobId, node]),
@@ -1026,7 +1660,7 @@ function renderJobs(jobs) {
 
   jobs.forEach((job, index) => {
     const jobId = String(job.id);
-    const signature = JSON.stringify(job);
+    const signature = JSON.stringify([i18n.language, job]);
     liveJobIds.add(jobId);
     if (job.status === "completed" && job.result) expandableJobIds.add(jobId);
 
@@ -1058,7 +1692,428 @@ function renderJobs(jobs) {
   });
 }
 
+function firstFinite(object, keys) {
+  for (const key of keys) {
+    const value = Number(object?.[key]);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function renderStorageSummary(payload) {
+  const summary = payload?.summary || payload || {};
+  const sourceBytes = firstFinite(summary, [
+    "source_bytes",
+    "sources_bytes",
+    "original_bytes",
+    "uploads_bytes",
+  ]);
+  const outputBytes = firstFinite(summary, [
+    "output_bytes",
+    "outputs_bytes",
+    "result_bytes",
+  ]);
+  const usedBytes =
+    firstFinite(summary, ["used_bytes", "total_used_bytes"]) ??
+    (sourceBytes !== null && outputBytes !== null ? sourceBytes + outputBytes : null);
+  const capacityBytes = firstFinite(summary, [
+    "capacity_bytes",
+    "total_bytes",
+    "disk_total_bytes",
+  ]);
+  const freeBytes =
+    firstFinite(summary, ["free_bytes", "available_bytes", "disk_free_bytes"]) ??
+    (capacityBytes !== null && usedBytes !== null ? Math.max(0, capacityBytes - usedBytes) : null);
+  const sourceCount = firstFinite(summary, ["source_count", "upload_count", "original_count"]);
+  const outputCount = firstFinite(summary, ["output_count", "result_count"]);
+  const usedNote = capacityBytes
+    ? t("storage.capacityPercent", {
+      percent: Math.min(100, ((usedBytes || 0) / capacityBytes) * 100).toFixed(1),
+    })
+    : t("storage.sourceAndOutput");
+  const card = (label, bytes, note) =>
+    `<article><span>${label}</span><b>${bytes === null ? "—" : formatBytes(bytes)}</b><small>${note}</small></article>`;
+  elements.storageSummary.innerHTML = [
+    card(t("storage.used"), usedBytes, usedNote),
+    card(
+      t("storage.sources"),
+      sourceBytes,
+      sourceCount === null
+        ? t("storage.userSources")
+        : t(sourceCount === 1 ? "storage.sourceCount.one" : "storage.sourceCount.other", {
+          count: sourceCount,
+        }),
+    ),
+    card(
+      t("storage.outputs"),
+      outputBytes,
+      outputCount === null
+        ? t("storage.outputDescription")
+        : t(outputCount === 1 ? "storage.outputCount.one" : "storage.outputCount.other", {
+          count: outputCount,
+        }),
+    ),
+    card(
+      t("storage.available"),
+      freeBytes,
+      capacityBytes === null
+        ? t("storage.hostDisk")
+        : t("storage.totalCapacity", { bytes: formatBytes(capacityBytes) }),
+    ),
+  ].join("");
+}
+
+function renderAdminUsers(users) {
+  setText(
+    elements.adminUserCount,
+    users.length === 1 ? "admin.accountCount.one" : "admin.accountCount.other",
+    { count: users.length },
+  );
+  if (!users.length) {
+    elements.adminUserList.innerHTML = `<p class="admin-empty">${t("admin.noAccounts")}</p>`;
+    return;
+  }
+  elements.adminUserList.innerHTML = users
+    .map((user) => {
+      const isSelf = String(user.id) === String(currentUser?.id);
+      const active = user.active !== false;
+      const name = user.display_name || user.username;
+      return `<article class="admin-user ${active ? "" : "inactive"}">
+        <span class="admin-user-avatar" aria-hidden="true">${escapeHtml(name.trim().charAt(0).toUpperCase() || "U")}</span>
+        <span class="admin-user-identity"><b>${escapeHtml(name)}</b><small>@${escapeHtml(user.username)}${isSelf ? t("admin.currentAccount") : ""}</small></span>
+        <span class="admin-user-badges"><i class="role ${escapeHtml(user.role)}">${t(user.role === "admin" ? "common.admin" : "common.user")}</i><i class="active">${t(active ? "admin.active" : "admin.inactive")}</i></span>
+        <span class="admin-user-actions">
+          <button type="button" data-user-action="name" data-user-id="${escapeHtml(user.id)}" data-current-name="${escapeHtml(user.display_name || "")}">${t("admin.nameAction")}</button>
+          <button type="button" data-user-action="password" data-user-id="${escapeHtml(user.id)}"${isSelf ? ` disabled title="${escapeHtml(t("admin.selfPasswordTitle"))}"` : ""}>${t("admin.passwordAction")}</button>
+          <button type="button" data-user-action="role" data-user-id="${escapeHtml(user.id)}" data-current-role="${escapeHtml(user.role)}"${isSelf ? ` disabled title="${escapeHtml(t("admin.selfRoleTitle"))}"` : ""}>${t(user.role === "admin" ? "admin.demote" : "admin.promote")}</button>
+          <button class="${active ? "danger" : "restore"}" type="button" data-user-action="active" data-user-id="${escapeHtml(user.id)}" data-current-active="${active}"${isSelf ? ` disabled title="${escapeHtml(t("admin.selfActiveTitle"))}"` : ""}>${t(active ? "admin.deactivate" : "admin.activate")}</button>
+        </span>
+      </article>`;
+    })
+    .join("");
+}
+
+function renderAdminPending(uploads, imports) {
+  const records = [
+    ...uploads.map((record) => ({ kind: "upload", record })),
+    ...imports.map((record) => ({ kind: "drive", record })),
+  ].sort(
+    (left, right) =>
+      (Date.parse(right.record.created_at) || 0) - (Date.parse(left.record.created_at) || 0),
+  );
+  setText(
+    elements.adminPendingCount,
+    records.length === 1 ? "admin.pendingCount.one" : "admin.pendingCount.other",
+    { count: records.length },
+  );
+  elements.adminPendingList.innerHTML = records.length
+    ? records
+      .map(({ kind, record }) =>
+        kind === "upload"
+          ? renderUpload(
+            {
+              ...record,
+              transfer_active: uploadIsActive(record),
+              local_resume: false,
+            },
+            { admin: true },
+          )
+          : renderDriveImport(record, { admin: true }),
+      )
+      .join("")
+    : `<p class="admin-empty">${t("admin.noPending")}</p>`;
+  return records.length;
+}
+
+function renderAdminJobs(payload, pendingCount = 0) {
+  const jobs = payload?.jobs || [];
+  adminTotal = Number(payload?.total) || jobs.length;
+  adminOffset = Number(payload?.offset) || adminOffset;
+  const itemCount = adminTotal + pendingCount;
+  setText(
+    elements.adminJobCount,
+    itemCount === 1 ? "admin.itemCount.one" : "admin.itemCount.other",
+    { count: itemCount },
+  );
+  elements.adminJobList.innerHTML = jobs.length
+    ? jobs.map((job) => renderJob(job, { admin: true })).join("")
+    : `<p class="admin-empty">${t("admin.noVideos")}</p>`;
+  const currentPage = Math.floor(adminOffset / adminLimit) + 1;
+  const totalPages = Math.max(1, Math.ceil(adminTotal / adminLimit));
+  elements.adminPagination.hidden = adminTotal <= adminLimit;
+  setText(elements.adminPageLabel, "admin.page", {
+    current: currentPage,
+    total: totalPages,
+  });
+  elements.adminPrevButton.disabled = adminOffset <= 0;
+  elements.adminNextButton.disabled = adminOffset + adminLimit >= adminTotal;
+}
+
+function renderAdminDashboard(payload) {
+  renderAdminUsers(payload.users);
+  const pendingCount = renderAdminPending(payload.uploads, payload.imports);
+  renderAdminJobs(payload.jobs, pendingCount);
+  renderStorageSummary(payload.storage);
+}
+
+async function changeOwnPassword(event) {
+  event.preventDefault();
+  const currentPassword = elements.currentPassword.value;
+  const newPassword = elements.changedPassword.value;
+  const confirmation = elements.changedPasswordConfirm.value;
+  elements.changePasswordMessage.classList.remove("error");
+  elements.changePasswordMessage.hidden = false;
+  if (newPassword !== confirmation) {
+    elements.changePasswordMessage.classList.add("error");
+    setText(elements.changePasswordMessage, "account.passwordMismatch");
+    elements.changedPasswordConfirm.focus();
+    return;
+  }
+
+  const generation = authGeneration;
+  const userId = currentUser?.id;
+  elements.changePasswordSubmit.disabled = true;
+  setText(elements.changePasswordMessage, "account.updatingPassword");
+  try {
+    const response = await apiFetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+    const updatedUser = userFromPayload(await response.json());
+    if (!sessionIsCurrent(generation, userId)) return;
+    await initializeApplication(updatedUser);
+    if (String(currentUser?.id) === String(userId)) {
+      elements.accountSecurity.open = true;
+      elements.changePasswordMessage.classList.remove("error");
+      setText(elements.changePasswordMessage, "account.passwordUpdated");
+      elements.changePasswordMessage.hidden = false;
+    }
+  } catch (error) {
+    if (isAborted(error) || !sessionIsCurrent(generation, userId)) return;
+    if (isUnauthorized(error) && String(error.message).includes("Current password")) {
+      elements.changePasswordMessage.classList.add("error");
+      setText(elements.changePasswordMessage, "account.currentPasswordWrong");
+      elements.currentPassword.select();
+      return;
+    }
+    if (await handleAuthorizationError(error, generation)) return;
+    elements.changePasswordMessage.classList.add("error");
+    setText(elements.changePasswordMessage, "account.passwordUpdateError", {
+      error: error.message,
+    });
+  } finally {
+    if (sessionIsCurrent(generation, userId)) elements.changePasswordSubmit.disabled = false;
+  }
+}
+
+async function loadAdminDashboard() {
+  if (!isAdmin() || adminLoading) return;
+  const generation = authGeneration;
+  const userId = currentUser.id;
+  adminLoading = true;
+  elements.adminRefreshButton.disabled = true;
+  try {
+    const responses = await Promise.all([
+      apiFetch("/api/admin/users"),
+      apiFetch("/api/uploads?scope=all"),
+      apiFetch("/api/drive-imports?scope=all"),
+      apiFetch(`/api/jobs?scope=all&limit=${adminLimit}&offset=${adminOffset}`),
+      apiFetch("/api/storage"),
+    ]);
+    const [usersPayload, uploadsPayload, importsPayload, jobsPayload, storagePayload] =
+      await Promise.all(responses.map((response) => response.json()));
+    if (!sessionIsCurrent(generation, userId) || !isAdmin()) return;
+    latestAdminPayload = {
+      users: usersPayload.users || usersPayload || [],
+      uploads: uploadsPayload.uploads || [],
+      imports: importsPayload.imports || [],
+      jobs: jobsPayload,
+      storage: storagePayload,
+    };
+    renderAdminDashboard(latestAdminPayload);
+  } catch (error) {
+    if (!(await handleAuthorizationError(error, generation)) && sessionIsCurrent(generation, userId)) {
+      elements.adminPendingList.innerHTML = `<p class="admin-empty error">${escapeHtml(t("admin.pendingLoadError", { error: error.message }))}</p>`;
+      elements.adminJobList.innerHTML = `<p class="admin-empty error">${escapeHtml(t("admin.dataLoadError", { error: error.message }))}</p>`;
+    }
+  } finally {
+    if (sessionIsCurrent(generation, userId)) {
+      adminLoading = false;
+      elements.adminRefreshButton.disabled = false;
+    }
+  }
+}
+
+async function createUser(event) {
+  event.preventDefault();
+  const generation = authGeneration;
+  const userId = currentUser?.id;
+  const payload = {
+    username: elements.newUsername.value.trim(),
+    display_name: elements.newDisplayName.value.trim() || null,
+    password: elements.newPassword.value,
+    role: elements.newRole.value,
+  };
+  elements.createUserButton.disabled = true;
+  elements.createUserMessage.hidden = false;
+  elements.createUserMessage.classList.remove("error");
+  setText(elements.createUserMessage, "admin.creatingAccount");
+  try {
+    await apiFetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!sessionIsCurrent(generation, userId)) return;
+    elements.createUserForm.reset();
+    setText(elements.createUserMessage, "admin.accountCreated", {
+      username: payload.username,
+    });
+    await loadAdminDashboard();
+  } catch (error) {
+    if (!(await handleAuthorizationError(error, generation)) && sessionIsCurrent(generation, userId)) {
+      elements.createUserMessage.classList.add("error");
+      clearLocalizedElement(elements.createUserMessage);
+      elements.createUserMessage.textContent = error.message;
+    }
+  } finally {
+    if (sessionIsCurrent(generation, userId)) elements.createUserButton.disabled = false;
+  }
+}
+
+async function patchAdminUser(button) {
+  const action = button.dataset.userAction;
+  const userId = button.dataset.userId;
+  if (!action || !userId || button.disabled) return;
+  const generation = authGeneration;
+  const adminUserId = currentUser?.id;
+  const payload = {};
+  if (action === "name") {
+    const displayName = window.prompt(
+      t("admin.displayNamePrompt"),
+      button.dataset.currentName || "",
+    );
+    if (displayName === null) return;
+    payload.display_name = displayName.trim() || null;
+  } else if (action === "password") {
+    const password = await requestAdminPassword();
+    if (password === null) return;
+    payload.password = password;
+  } else if (action === "role") {
+    payload.role = button.dataset.currentRole === "admin" ? "user" : "admin";
+    if (!window.confirm(t(
+      payload.role === "admin" ? "admin.confirmPromote" : "admin.confirmDemote",
+    ))) return;
+  } else if (action === "active") {
+    payload.active = button.dataset.currentActive !== "true";
+    if (!window.confirm(t("admin.confirmActive", {
+      action: t(payload.active ? "admin.activate" : "admin.deactivate"),
+    }))) return;
+  } else {
+    return;
+  }
+  const releaseLanguageSwitch = lockLanguageSwitch();
+  button.disabled = true;
+  try {
+    await apiFetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!sessionIsCurrent(generation, adminUserId)) return;
+    await loadAdminDashboard();
+  } catch (error) {
+    if (await handleAuthorizationError(error, generation)) return;
+    window.alert(t("admin.updateError", { error: error.message }));
+  } finally {
+    releaseLanguageSwitch();
+    if (sessionIsCurrent(generation, adminUserId) && button.isConnected) {
+      button.disabled = false;
+    }
+  }
+}
+
+function requestAdminPassword() {
+  if (adminPasswordResolver || elements.adminPasswordDialog.open) {
+    return Promise.resolve(null);
+  }
+  elements.adminPasswordForm.reset();
+  elements.adminPasswordMessage.hidden = true;
+  elements.adminPasswordDialog.showModal();
+  window.setTimeout(() => elements.adminResetPassword.focus({ preventScroll: true }), 0);
+  return new Promise((resolve) => {
+    adminPasswordResolver = resolve;
+  });
+}
+
+function finishAdminPassword(value) {
+  const resolve = adminPasswordResolver;
+  adminPasswordResolver = null;
+  if (elements.adminPasswordDialog.open) elements.adminPasswordDialog.close();
+  elements.adminPasswordForm.reset();
+  elements.adminPasswordMessage.textContent = "";
+  elements.adminPasswordMessage.hidden = true;
+  if (resolve) resolve(value);
+}
+
+async function runJobAction(button) {
+  const action = button.dataset.jobAction;
+  const jobId = button.dataset.jobId;
+  if (!action || !jobId || button.disabled) return;
+  const generation = authGeneration;
+  const fromAdminDashboard = elements.adminJobList.contains(button);
+  const actionKeys = {
+    retry: "job.actionRetry",
+    reprocess: "job.actionReprocess",
+    delete: "job.actionDelete",
+  };
+  const buttonKeys = {
+    retry: "job.retry",
+    reprocess: "job.reprocess",
+    delete: "job.delete",
+  };
+  if (!Object.hasOwn(actionKeys, action)) return;
+  const actionLabel = t(actionKeys[action]);
+  const detail = t(action === "delete" ? "job.deleteDetail" : "job.queueDetail");
+  if (!window.confirm(t("job.confirmAction", { action: actionLabel, detail }))) return;
+  const releaseLanguageSwitch = lockLanguageSwitch();
+  button.disabled = true;
+  setText(button, "job.processingAction");
+  try {
+    await apiFetch(`/api/jobs/${encodeURIComponent(jobId)}${action === "delete" ? "" : `/${action}`}`, {
+      method: action === "delete" ? "DELETE" : "POST",
+    });
+    if (!sessionIsCurrent(generation)) return;
+    lastJobsSignature = "";
+    if (
+      fromAdminDashboard &&
+      action === "delete" &&
+      adminOffset >= adminTotal - 1
+    ) {
+      adminOffset = Math.max(0, adminOffset - adminLimit);
+    }
+    await Promise.all([
+      loadActivity(),
+      fromAdminDashboard ? loadAdminDashboard() : Promise.resolve(),
+    ]);
+  } catch (error) {
+    if (await handleAuthorizationError(error, generation)) return;
+    window.alert(t("job.actionError", { action: t(actionKeys[action]), error: error.message }));
+  } finally {
+    releaseLanguageSwitch();
+    if (sessionIsCurrent(generation) && button.isConnected) {
+      button.disabled = false;
+      setText(button, buttonKeys[action]);
+    }
+  }
+}
+
 function renderActivity(imports, uploads, jobs) {
+  latestActivityPayload = { imports, uploads, jobs };
   const uploadViews = uploads.map((upload) => ({
     ...upload,
     transfer_active: uploadIsActive(upload),
@@ -1066,29 +2121,32 @@ function renderActivity(imports, uploads, jobs) {
   }));
   const total = imports.length + uploadViews.length + jobs.length;
   elements.emptyJobs.hidden = total > 0;
-  elements.jobCount.textContent = total
-    ? `${total} ${total > 1 ? "個項目" : "支影片"}`
-    : "等待第一支影片";
+  setText(
+    elements.jobCount,
+    total ? (total > 1 ? "library.itemCount" : "library.videoCount") : "library.waiting",
+    { count: total },
+  );
 
-  const importsSignature = JSON.stringify(imports);
+  const importsSignature = JSON.stringify([i18n.language, imports]);
   if (importsSignature !== lastImportsSignature) {
     lastImportsSignature = importsSignature;
     elements.importList.innerHTML = imports.map(renderDriveImport).join("");
   }
 
-  const uploadsSignature = JSON.stringify(uploadViews);
+  const uploadsSignature = JSON.stringify([i18n.language, uploadViews]);
   if (uploadsSignature !== lastUploadsSignature) {
     lastUploadsSignature = uploadsSignature;
     elements.uploadList.innerHTML = uploadViews.map(renderUpload).join("");
   }
 
-  const jobsSignature = JSON.stringify(jobs);
+  const jobsSignature = JSON.stringify([i18n.language, jobs]);
   if (jobsSignature !== lastJobsSignature) {
     lastJobsSignature = jobsSignature;
     renderJobs(jobs);
   }
 
-  const annotationDevSignature = JSON.stringify(
+  const annotationDevSignature = JSON.stringify([
+    i18n.language,
     jobs
       .filter((job) => job.status === "completed" && job.result)
       .map((job) => ({
@@ -1096,7 +2154,7 @@ function renderActivity(imports, uploads, jobs) {
         sourceName: job.result.source_name,
         duration: job.result.media?.duration ?? null,
       })),
-  );
+  ]);
   if (annotationDevSignature !== lastAnnotationDevSignature) {
     lastAnnotationDevSignature = annotationDevSignature;
     renderAnnotationDevelopment(jobs);
@@ -1104,40 +2162,68 @@ function renderActivity(imports, uploads, jobs) {
 }
 
 async function loadActivity() {
-  if (!token || activityLoading) return;
+  if (!authReady || activityLoading) return;
+  const generation = authGeneration;
+  const userId = currentUser.id;
   activityLoading = true;
   try {
-    const [importsResponse, uploadsResponse, jobsResponse] = await Promise.all([
+    const [importsResponse, uploadsResponse, jobs] = await Promise.all([
       apiFetch("/api/drive-imports"),
       apiFetch("/api/uploads"),
-      apiFetch("/api/jobs"),
+      loadAllMyJobs(),
     ]);
-    const [{ imports }, { uploads }, { jobs }] = await Promise.all([
+    const [{ imports }, { uploads }] = await Promise.all([
       importsResponse.json(),
       uploadsResponse.json(),
-      jobsResponse.json(),
     ]);
+    if (!sessionIsCurrent(generation, userId)) return;
     renderActivity(imports, uploads, jobs);
   } catch (error) {
-    if (String(error.message).includes("401")) elements.tokenWarning.hidden = false;
+    await handleAuthorizationError(error, generation);
   } finally {
-    activityLoading = false;
+    if (sessionIsCurrent(generation, userId)) activityLoading = false;
   }
+}
+
+async function loadAllMyJobs() {
+  const pageSize = 500;
+  const jobs = [];
+  const seen = new Set();
+  let offset = 0;
+  let total = null;
+  while (total === null || offset < total) {
+    const response = await apiFetch(
+      `/api/jobs?scope=mine&limit=${pageSize}&offset=${offset}`,
+    );
+    const payload = await response.json();
+    const page = Array.isArray(payload?.jobs) ? payload.jobs : [];
+    total = Number.isFinite(Number(payload?.total)) ? Number(payload.total) : page.length;
+    for (const job of page) {
+      const jobId = String(job?.id || "");
+      if (!jobId || seen.has(jobId)) continue;
+      seen.add(jobId);
+      jobs.push(job);
+    }
+    if (!page.length) break;
+    offset += page.length;
+  }
+  return jobs;
 }
 
 function selectVideo(file) {
   if (!file) return;
   const extension = file.name.split(".").at(-1)?.toLowerCase();
   if (!file.type.startsWith("video/") && !["mov", "mp4", "m4v", "mkv"].includes(extension)) {
-    elements.filePrompt.textContent = "這個檔案看起來不是影片";
-    elements.fileMeta.textContent = "請選擇 MOV、MP4、M4V 或 MKV 檔案";
+    setText(elements.filePrompt, "file.notVideo");
+    setText(elements.fileMeta, "file.chooseVideo");
     return;
   }
   selectedFile = file;
   elements.dropZone.classList.add("selected");
+  clearLocalizedElement(elements.filePrompt);
   elements.filePrompt.textContent = selectedFile.name;
-  elements.fileMeta.textContent = `${formatBytes(selectedFile.size)} · 選好後可直接開始`;
-  elements.uploadButton.querySelector("span").textContent = "上傳這支影片";
+  setText(elements.fileMeta, "file.ready", { size: formatBytes(selectedFile.size) });
+  setText(elements.uploadButton.querySelector("span"), "file.uploadThis");
   elements.uploadButton.disabled = !authReady;
 }
 
@@ -1167,10 +2253,15 @@ elements.driveForm.addEventListener("submit", submitDriveLink);
 elements.driveUrl.addEventListener("input", updateDriveButton);
 elements.pauseButton.addEventListener("click", () => {
   paused = !paused;
-  elements.pauseButton.textContent = paused ? "繼續" : "暫停";
-  elements.transferLabel.textContent = paused ? "已暫停（已傳部分會保留）" : "正在傳送影片";
+  setText(elements.pauseButton, paused ? "transfer.resume" : "transfer.pause");
+  setText(elements.transferLabel, paused ? "upload.pausedRetained" : "upload.sending");
 });
 elements.jobList.addEventListener("click", (event) => {
+  const actionButton = event.target.closest("button[data-job-action]");
+  if (actionButton) {
+    runJobAction(actionButton);
+    return;
+  }
   const shareButton = event.target.closest(".share-button");
   if (shareButton) shareOrSave(shareButton);
 });
@@ -1228,7 +2319,7 @@ elements.annotationWorkspace.addEventListener("click", (event) => {
     video.dataset.stopAt = previewButton.dataset.end;
     video
       .play()
-      .catch(() => showAnnotationWorkspaceMessage("瀏覽器無法播放這個原片編碼。", true));
+      .catch(() => showAnnotationWorkspaceMessageKey("annotation.playbackError", {}, true));
     return;
   }
   const deleteButton = event.target.closest(".annotation-workspace-delete");
@@ -1255,7 +2346,7 @@ elements.annotationWorkspaceVideo.addEventListener("timeupdate", () => {
   }
 });
 elements.annotationWorkspaceVideo.addEventListener("error", () => {
-  showAnnotationWorkspaceMessage("瀏覽器無法播放這個原片編碼。", true);
+  showAnnotationWorkspaceMessageKey("annotation.playbackError", {}, true);
 });
 document.addEventListener(
   "keydown",
@@ -1338,16 +2429,78 @@ elements.importList.addEventListener("click", (event) => {
   if (deleteButton) deleteDriveImport(deleteButton);
 });
 elements.refreshButton.addEventListener("click", loadActivity);
-elements.accessForm.addEventListener("submit", (event) => {
+elements.guideButton.addEventListener("click", () => {
+  elements.quickGuide.open = true;
+  elements.quickGuide.scrollIntoView({ behavior: "smooth", block: "center" });
+  elements.quickGuide.querySelector("summary")?.focus({ preventScroll: true });
+});
+elements.changePasswordForm.addEventListener("submit", changeOwnPassword);
+elements.adminPasswordForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const recoveredToken = accessTokenFrom(elements.accessValue.value);
-  if (!recoveredToken) {
-    showAccessMessage("找不到有效的存取碼，請貼上包含 #token= 的完整連結。");
+  const password = elements.adminResetPassword.value;
+  if (password.length < 8) {
+    setText(elements.adminPasswordMessage, "adminPassword.lengthError");
+    elements.adminPasswordMessage.hidden = false;
+    elements.adminResetPassword.focus();
     return;
   }
-  localStorage.setItem("pingpong-upload-token", recoveredToken);
-  showAccessMessage("已儲存，正在重新連線…");
-  window.location.replace(`${window.location.pathname}${window.location.search}`);
+  finishAdminPassword(password);
+});
+elements.adminPasswordCancel.addEventListener("click", () => finishAdminPassword(null));
+elements.adminPasswordDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  finishAdminPassword(null);
+});
+elements.adminPasswordDialog.addEventListener("close", () => {
+  if (adminPasswordResolver) finishAdminPassword(null);
+});
+elements.createUserForm.addEventListener("submit", createUser);
+elements.adminRefreshButton.addEventListener("click", loadAdminDashboard);
+elements.adminUserList.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-user-action]");
+  if (button) patchAdminUser(button);
+});
+elements.adminPendingList.addEventListener("click", (event) => {
+  const retryButton = event.target.closest(".retry-import-button");
+  if (retryButton) {
+    retryDriveImport(retryButton);
+    return;
+  }
+  const importDeleteButton = event.target.closest(".delete-import-button");
+  if (importDeleteButton) {
+    deleteDriveImport(importDeleteButton);
+    return;
+  }
+  const uploadDeleteButton = event.target.closest(".delete-upload-button");
+  if (uploadDeleteButton) deleteUploadSession(uploadDeleteButton);
+});
+elements.adminJobList.addEventListener("click", (event) => {
+  const actionButton = event.target.closest("button[data-job-action]");
+  if (actionButton) {
+    runJobAction(actionButton);
+    return;
+  }
+  const shareButton = event.target.closest(".share-button");
+  if (shareButton) shareOrSave(shareButton);
+});
+elements.adminJobList.addEventListener(
+  "toggle",
+  (event) => {
+    const panel = event.target;
+    if (!panel.matches?.(".result-panel[data-result-job-id]")) return;
+    if (panel.open) hydrateResultPanel(panel);
+    else dehydrateResultPanel(panel);
+  },
+  true,
+);
+elements.adminPrevButton.addEventListener("click", () => {
+  adminOffset = Math.max(0, adminOffset - adminLimit);
+  loadAdminDashboard();
+});
+elements.adminNextButton.addEventListener("click", () => {
+  if (adminOffset + adminLimit >= adminTotal) return;
+  adminOffset += adminLimit;
+  loadAdminDashboard();
 });
 
 window.addEventListener("beforeunload", (event) => {
@@ -1356,25 +2509,122 @@ window.addEventListener("beforeunload", (event) => {
   event.returnValue = "";
 });
 
-async function initialize() {
-  if (!token) {
-    elements.tokenWarning.hidden = false;
-    showAccessMessage("需要先解鎖，才能顯示這台電腦上的處理 session。");
+async function initializeApplication(user) {
+  if (!user?.id || !user?.username) {
+    showLogin("error.loginPayload");
     return;
   }
+  const generation = resetUserState(user);
+  const userId = user.id;
+  showApplication(user, { reveal: false });
+  authReady = true;
   try {
-    const [configResponse] = await Promise.all([apiFetch("/api/config"), loadActivity()]);
+    const configResponse = await apiFetch("/api/config");
     const config = await configResponse.json();
+    if (!sessionIsCurrent(generation, userId)) return;
     chunkSize = config.chunk_size || chunkSize;
-    authReady = true;
-    elements.tokenWarning.hidden = true;
-    elements.uploadButton.disabled = !selectedFile;
-    updateDriveButton();
   } catch (error) {
-    elements.tokenWarning.hidden = false;
-    showAccessMessage("存取碼無效或已更換，請重新貼上最新的完整連結。");
+    if (await handleAuthorizationError(error, generation)) return;
   }
-  setInterval(loadActivity, 2500);
+  if (!sessionIsCurrent(generation, userId)) return;
+  elements.uploadButton.disabled = !selectedFile;
+  updateDriveButton();
+  await Promise.all([loadActivity(), loadAdminDashboard()]);
+  if (!sessionIsCurrent(generation, userId)) return;
+  showApplication(currentUser);
+  if (!activityTimer) {
+    activityTimer = setInterval(loadActivity, 2500);
+  }
 }
 
+async function login(event) {
+  event.preventDefault();
+  const username = elements.loginUsername.value.trim();
+  const password = elements.loginPassword.value;
+  if (!username || !password) return;
+  elements.loginButton.disabled = true;
+  setText(elements.loginButton.querySelector("span"), "login.loading");
+  elements.loginMessage.hidden = true;
+  try {
+    const response = await apiFetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    let user = userFromPayload(await response.json());
+    if (!user?.username) {
+      const meResponse = await apiFetch("/api/auth/me");
+      user = userFromPayload(await meResponse.json());
+    }
+    elements.loginPassword.value = "";
+    await initializeApplication(user);
+  } catch (error) {
+    setText(
+      elements.loginMessage,
+      isUnauthorized(error) ? "error.loginInvalid" : "error.loginFailed",
+      { error: error.message },
+    );
+    elements.loginMessage.hidden = false;
+    elements.loginPassword.select();
+  } finally {
+    elements.loginButton.disabled = false;
+    setText(elements.loginButton.querySelector("span"), "login.submit");
+  }
+}
+
+async function logout() {
+  elements.logoutButton.disabled = true;
+  let serverLogoutSucceeded = false;
+  try {
+    await apiFetch("/api/auth/logout", { method: "POST" });
+    serverLogoutSucceeded = true;
+  } catch (_) {
+    // Always clear this page below, but do not claim the server session was revoked.
+  } finally {
+    elements.logoutButton.disabled = false;
+    showLogin(
+      serverLogoutSucceeded
+        ? "logout.success"
+        : "logout.uncertain",
+    );
+  }
+}
+
+function switchLanguage() {
+  const libraryResultState = captureResultPanelState(elements.jobList);
+  const adminResultState = captureResultPanelState(elements.adminJobList);
+  i18n.toggle();
+  lastImportsSignature = "";
+  lastUploadsSignature = "";
+  lastJobsSignature = "";
+  lastAnnotationDevSignature = "";
+  jobRenderSignatures.clear();
+  if (latestActivityPayload) {
+    renderActivity(
+      latestActivityPayload.imports,
+      latestActivityPayload.uploads,
+      latestActivityPayload.jobs,
+    );
+  }
+  if (latestAdminPayload && isAdmin()) renderAdminDashboard(latestAdminPayload);
+  if (latestAnnotationPayload) renderAnnotationWorkspaceList(latestAnnotationPayload);
+  renderAnnotationWorkspaceBoundaries();
+  restoreResultPanelState(elements.jobList, libraryResultState);
+  restoreResultPanelState(elements.adminJobList, adminResultState);
+}
+
+async function initialize() {
+  i18n.apply();
+  purgeLegacyResumeKeys();
+  try {
+    const response = await apiFetch("/api/auth/me");
+    await initializeApplication(userFromPayload(await response.json()));
+  } catch (error) {
+    showLogin(isUnauthorized(error) ? "" : "error.connection");
+  }
+}
+
+elements.languageToggle.addEventListener("click", switchLanguage);
+elements.loginForm.addEventListener("submit", login);
+elements.logoutButton.addEventListener("click", logout);
 initialize();

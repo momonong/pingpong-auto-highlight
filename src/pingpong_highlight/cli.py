@@ -5,7 +5,6 @@ import socket
 import sys
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote
 
 import qrcode
 import uvicorn
@@ -38,10 +37,11 @@ def _print_qr(url: str) -> None:
 
 
 def _service_url(settings: Settings, address: str) -> str:
-    base_url = settings.public_url.rstrip("/") if settings.public_url else (
-        f"http://{address}:{settings.port}"
+    return (
+        settings.public_url.rstrip("/")
+        if settings.public_url
+        else f"http://{address}:{settings.port}"
     )
-    return f"{base_url}/#token={quote(settings.upload_token)}"
 
 
 def _serve(args: argparse.Namespace) -> int:
@@ -58,6 +58,11 @@ def _serve(args: argparse.Namespace) -> int:
     print("2. 手機掃描 QR code，從相簿選片或貼上公開 Google Drive 連結。")
     print("3. 上傳完成後可關閉手機頁面，電腦會繼續處理。")
     print("4. 回到同一網址即可預覽、下載或分享完成的 MP4。")
+    print(f"\n管理員帳號：{settings.bootstrap_admin_username}")
+    if settings.bootstrap_admin_password:
+        print("管理員密碼：由 PINGPONG_BOOTSTRAP_ADMIN_PASSWORD 提供（不在此顯示）")
+    else:
+        print(f"管理員初始密碼檔：{settings.data_dir / '.admin-password'}")
     print(f"\n資料目錄：{settings.data_dir}")
     print("按 Ctrl+C 停止服務。Windows 第一次執行時請允許私人網路存取。\n")
     uvicorn.run(

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$CpuOnly,
+    [switch]$UsePublishedImage,
     [ValidateRange(30, 300)]
     [int]$TimeoutSeconds = 120
 )
@@ -9,9 +10,15 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "deployment-common.ps1")
+Assert-HighlightCraftComposeVersion
+$dataRoot = Get-HighlightCraftDataRoot -RepositoryRoot $repoRoot
 $composeFiles = @(
     "-f", (Join-Path $repoRoot "compose.yaml")
 )
+if ($UsePublishedImage) {
+    $composeFiles += @("-f", (Join-Path $repoRoot "compose.release.yaml"))
+}
 if ($CpuOnly) {
     $composeFiles += @("-f", (Join-Path $repoRoot "compose.cpu.yaml"))
 }
@@ -47,9 +54,30 @@ function Get-CloudflaredHealth {
 
 Push-Location $repoRoot
 try {
+    Assert-HighlightCraftNoActiveWork -RepositoryRoot $repoRoot -DataRoot $dataRoot
     $previousTunnelUrl = Get-LatestTunnelUrl
 
-    & docker compose @composeFiles up -d --build
+    if ($UsePublishedImage) {
+        & docker compose @composeFiles pull pingpong-highlight cloudflared
+        if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose could not pull the published HighlightCraft image from Docker Hub."
+        }
+    }
+    else {
+        & docker compose @composeFiles build pingpong-highlight
+        if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose could not build the HighlightCraft image."
+        }
+        & docker compose @composeFiles pull --policy missing cloudflared
+        if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose could not prepare the cloudflared image."
+        }
+    }
+
+    # Pulling or building can take long enough for new work to arrive. Check
+    # again immediately before `up`, the operation that may recreate the app.
+    Assert-HighlightCraftNoActiveWork -RepositoryRoot $repoRoot -DataRoot $dataRoot
+    & docker compose @composeFiles up -d --no-build pingpong-highlight cloudflared
     if ($LASTEXITCODE -ne 0) {
         if (-not $CpuOnly) {
             throw (
@@ -107,25 +135,23 @@ try {
         )
     }
 
-    $tokenPath = Join-Path $repoRoot "data\.upload-token"
-    if (-not (Test-Path -LiteralPath $tokenPath)) {
-        throw "Upload token was not created at $tokenPath."
-    }
-    $token = (Get-Content -Raw -LiteralPath $tokenPath).Trim()
-    if (-not $token) {
-        throw "Upload token is empty."
-    }
+    Stop-HighlightCraftOverlayService -RepositoryRoot $repoRoot `
+        -Overlay "compose.ngrok.yaml" -Service "ngrok"
 
-    $phoneUrl = "$tunnelUrl/#token=$([uri]::EscapeDataString($token))"
-    $urlPath = Join-Path $repoRoot "data\remote-access-url.txt"
+    $phoneUrl = "$tunnelUrl/"
+    $urlPath = Join-Path $dataRoot "remote-access-url.txt"
     Set-Content -LiteralPath $urlPath -Value $phoneUrl -Encoding UTF8
 
     Write-Host ""
     Write-Host "Cloudflare Quick Tunnel is ready." -ForegroundColor Green
-    Write-Host "Open this token-protected link on your phone:"
+    Write-Host "Open this HTTPS link on your phone and sign in:"
     Write-Output $phoneUrl
     Write-Host ""
-    Write-Warning "Anyone with the full link can use this service. Do not share it."
+    $generatedAdminPasswordPath = Join-Path $dataRoot ".admin-password"
+    if (Test-Path -LiteralPath $generatedAdminPasswordPath) {
+        Write-Host "A generated bootstrap password is stored at $generatedAdminPasswordPath"
+    }
+    Write-Warning "Share accounts individually; do not send an administrator password to testers."
     Write-Warning "Keep Docker Desktop and this computer running. The URL changes if cloudflared is recreated."
     Write-Host "The latest link is also saved to $urlPath"
 }
