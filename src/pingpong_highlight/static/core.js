@@ -86,17 +86,6 @@ const elements = {
   annotationWorkspaceMarkStart: document.querySelector("#annotationWorkspaceMarkStart"),
   annotationWorkspaceMarkEnd: document.querySelector("#annotationWorkspaceMarkEnd"),
   annotationWorkspaceForm: document.querySelector("#annotationWorkspaceForm"),
-  annotationWorkspaceLabel: document.querySelector("#annotationWorkspaceLabel"),
-  annotationWorkspaceNoteTags: Array.from(
-    document.querySelectorAll('input[name="annotation-note-tag"]'),
-  ),
-  annotationWorkspaceNoteOtherToggle: document.querySelector(
-    "#annotationWorkspaceNoteOtherToggle",
-  ),
-  annotationWorkspaceNoteOtherField: document.querySelector(
-    "#annotationWorkspaceNoteOtherField",
-  ),
-  annotationWorkspaceNoteOther: document.querySelector("#annotationWorkspaceNoteOther"),
   annotationWorkspaceSave: document.querySelector("#annotationWorkspaceSave"),
   annotationWorkspaceMessage: document.querySelector("#annotationWorkspaceMessage"),
   annotationWorkspaceCount: document.querySelector("#annotationWorkspaceCount"),
@@ -130,7 +119,6 @@ let annotationWorkspaceJobId = "";
 let annotationWorkspaceStart = null;
 let annotationWorkspaceEnd = null;
 let annotationWorkspaceReturnFocus = null;
-let annotationWorkspaceComposing = false;
 let adminPasswordResolver = null;
 let latestActivityPayload = null;
 let latestAdminPayload = null;
@@ -138,7 +126,6 @@ let latestAnnotationPayload = null;
 let languageSwitchLocks = 0;
 let languageSwitchEpoch = 0;
 
-const annotationNoteMaxLength = 300;
 
 const uploadActiveWindowMs = 60 * 1000;
 
@@ -310,7 +297,7 @@ function resetUserState(nextUser = null) {
   }
   releaseWakeLock();
   finishAdminPassword(null);
-  if (annotationWorkspaceIsOpen()) closeAnnotationWorkspace();
+  if (annotationWorkspaceIsOpen()) closeAnnotationWorkspace(true);
 
   for (const video of [
     ...elements.jobList.querySelectorAll("video"),
@@ -379,10 +366,9 @@ function resetUserState(nextUser = null) {
   elements.annotationWorkspaceCurrent.textContent = "0:00.0";
   setText(elements.annotationWorkspaceStart, "annotation.notSet");
   setText(elements.annotationWorkspaceEnd, "annotation.notSet");
-  elements.annotationWorkspaceLabel.value = "highlight";
-  resetAnnotationWorkspaceNote();
+
   elements.annotationWorkspaceSave.disabled = false;
-  setHtml(elements.annotationWorkspaceSave, "annotation.saveHtml");
+  setText(elements.annotationWorkspaceSave, "point.save");
   setText(elements.annotationWorkspaceCount, "annotation.zeroCount");
   elements.annotationWorkspaceList.innerHTML = `<p>${t("annotation.openToLoad")}</p>`;
   showAnnotationWorkspaceMessage("");
@@ -449,7 +435,7 @@ async function refreshIdentityAfterForbidden(expectedGeneration) {
         adminLoading = false;
         elements.adminPanel.hidden = true;
         elements.annotationDevBlock.hidden = true;
-        if (annotationWorkspaceIsOpen()) closeAnnotationWorkspace();
+        if (annotationWorkspaceIsOpen()) closeAnnotationWorkspace(true);
       } else if (!wasAdmin) {
         await loadAdminDashboard();
       }

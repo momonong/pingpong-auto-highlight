@@ -250,6 +250,22 @@ class Database:
                     updated_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS point_reviews (
+                    source_id TEXT PRIMARY KEY REFERENCES uploads(id) ON DELETE CASCADE,
+                    duration_ms INTEGER NOT NULL CHECK(duration_ms > 0),
+                    content_json TEXT NOT NULL,
+                    revision INTEGER NOT NULL CHECK(revision > 0),
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS point_review_requests (
+                    source_id TEXT NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
+                    request_id TEXT NOT NULL,
+                    request_hash TEXT NOT NULL,
+                    response_json TEXT NOT NULL,
+                    PRIMARY KEY (source_id, request_id)
+                );
+
                 CREATE INDEX IF NOT EXISTS jobs_status_idx ON jobs(status, created_at);
                 CREATE INDEX IF NOT EXISTS drive_imports_status_idx
                     ON drive_imports(status, created_at);
@@ -1607,6 +1623,28 @@ class Database:
             connection.execute("DELETE FROM jobs WHERE id = ?", (job.id,))
             connection.execute("DELETE FROM uploads WHERE id = ?", (upload.id,))
         return job, upload
+
+    def get_point_review(self, upload: UploadRecord, job: JobRecord) -> dict:
+        from pingpong_highlight.point_review import read_review
+
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN")
+            return read_review(connection, upload, job)
+
+    def change_point_review(
+        self, upload: UploadRecord, job: JobRecord, command, actor_id: str
+    ) -> dict:
+        from pingpong_highlight.point_review import apply_command
+
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            # Re-read job under the same lock: imports must match the current analysis receipt.
+            current = self._job(
+                connection.execute("SELECT * FROM jobs WHERE id=?", (job.id,)).fetchone()
+            )
+            if current is None:
+                raise StateConflict("Source job no longer exists")
+            return apply_command(connection, upload, current, command, actor_id)
 
     def create_annotation(
         self,

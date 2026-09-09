@@ -3539,3 +3539,30 @@ body.annotation-workspace-open {
 html[data-i18n-pending] body {
   visibility: hidden;
 }
+.annotation-workspace-stage { overflow: hidden; }
+.annotation-workspace-stage video { flex: 0 0 auto; height: clamp(180px, 28vh, 320px); }
+.annotation-workspace-stage > .point-row { flex-shrink: 0; }
+.annotation-workspace-stage .annotation-workspace-transport { flex-shrink: 0; }
+.point-editor { margin-top: 8px; overflow-y: auto; flex: 1; min-height: 0; }
+.point-editor #pointSelection { margin: 0 0 6px; font-size: .78rem; }
+.point-editor #annotationWorkspaceStart, .point-editor #annotationWorkspaceEnd { display: none; }
+.point-editor fieldset { margin: 0 0 10px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+.point-editor legend, .point-editor label > span, .point-row label > span { font-size: .78rem; color: #bfcad4; }
+.point-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+.point-row label { flex: 1; min-width: 130px; }
+.point-row label > span, .point-editor label > span { display: block; margin-bottom: 5px; }
+.annotation-workspace input[type="number"], .point-editor select, .point-editor textarea, #pointFilter { width: 100%; padding: 8px; border: 1px solid #4a5968; border-radius: 6px; color: #eef4f8; background: #19222e; }
+.point-editor textarea { resize: vertical; }
+.point-actions, .point-rating-buttons, .point-tags { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.point-editor .point-actions { position: sticky; bottom: 0; background: #10161e; padding: 8px; z-index: 1; }
+.point-tags label { display: inline-flex; align-items: center; gap: 5px; font-size: .8rem; }
+.point-tags input { accent-color: #c8ff4d; }
+.annotation-workspace .point-actions button, .point-row button, .point-rating-buttons button, .point-coverage button, #pointRetry { padding: 9px 11px; border: 1px solid #566776; border-radius: 8px; color: #e5edf2; background: #202d3c; cursor: pointer; }
+#annotationWorkspaceSave, #pointNext { border-color: #c8ff4d; color: #c8ff4d; }
+.point-list-item { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 12px; border: 1px solid #3e4f60; border-radius: 10px; background: #17212d; color: #dae4ea; text-align: left; cursor: pointer; }
+.point-list-item.selected { border-color: #c8ff4d; box-shadow: inset 3px 0 #c8ff4d; }
+.point-list-item span, .point-list-item small { font-size: .76rem; }
+.point-coverage { margin: 18px 0; padding-top: 12px; border-top: 1px solid #435261; }
+.annotation-workspace-sidebar p { font-size: .78rem; line-height: 1.55; overflow-wrap: anywhere; }
+.annotation-workspace button:disabled { opacity: .45; cursor: wait; }
+.annotation-workspace button:focus-visible { outline: 2px solid #c8ff4d; outline-offset: 2px; }

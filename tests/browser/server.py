@@ -23,6 +23,11 @@ class PreviewProcessor:
         time.sleep(2)
         shutil.copyfile(source, output_dir / "best_points_reel.mp4")
         result = {
+            "algorithm_version": "browser-synthetic/1",
+            "candidates": [
+                {"rally_start": 0.2, "rally_end": 0.8, "score": 987.654},
+                {"rally_start": 1.0, "rally_end": 1.7, "score": 654.321},
+            ],
             "source_name": source_name,
             "media": {"duration": 2},
             "summary": {"point_count": 1, "reel_duration": 2},

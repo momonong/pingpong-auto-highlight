@@ -46,7 +46,7 @@ function renderActivity(imports, uploads, jobs) {
   ]);
   if (annotationDevSignature !== lastAnnotationDevSignature) {
     lastAnnotationDevSignature = annotationDevSignature;
-    renderAnnotationDevelopment(jobs);
+    if (workspaceView !== "annotations") renderAnnotationDevelopment(jobs);
   }
 }
 

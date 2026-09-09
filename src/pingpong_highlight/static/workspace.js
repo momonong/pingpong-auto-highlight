@@ -43,6 +43,7 @@ function setWorkspaceView(view) {
   for (const video of elements.appShell.querySelectorAll("video")) video.pause();
   updateWorkspaceAccess();
   if (workspaceView === "admin") loadAdminDashboard();
+  if (workspaceView === "annotations") loadAnnotationDevelopment();
 }
 
 function applyLibraryFilter() {

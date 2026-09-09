@@ -80,6 +80,20 @@ point candidate 不會再彼此合併。系統先以同片最佳分數為基準�
 
 ## Failure and recovery model
 
+### Source-bound point review
+
+`point_review.py` 定義 v1 量表、結構化標籤、嚴格整數毫秒／語意驗證與操作；`db.py` 在同一份 SQLite 加入 `point_reviews`、`point_review_requests`。沒有第二份服務狀態庫，也不執行媒體解碼。每支影片的 points、coverage、候選批次以一份 JSON aggregate 儲存，保留 JSON 整數毫秒。這適用單機小型人工標記；每次讀寫／匯出是 O(該原片標記數)，尚無大型協作平台的分頁、完整逐欄位修訂稽核或任意 undo。
+
+原片 identity 為持久 `uploads.id`，非 job 或輸出路徑；重新上傳同一 bytes 視為不同來源，`content_hash=null`，不冒稱已驗證內容雜湊。首次寫入固定來源 duration metadata，重跑分析清空 result 時仍可讀取標記與覆蓋。分析重建只改 jobs／輸出，不觸及 review 表；只有既有「刪除整支影片」流程會依 upload FK 一起移除資料，與工作區內的軟刪除不同。
+
+同一原片採整體 `revision` compare-and-swap，操作於 `BEGIN IMMEDIATE` 交易內完成。每筆 point／coverage 的 `version` 是最後修改該筆的 source revision，保存 created_by、annotator_id、UTC 時間。`request_id` 的小型 receipt 與寫入同 transaction 提交；重試相同請求回傳現況和原操作 selected_id，不重做操作；不同內容重用 ID 回 409。不同視窗甚至不同回合的過期編輯一律 409，須明確重新讀取，不做靜默合併。
+
+拆分／合併／刪除保留 inactive 原紀錄、原評分及 parent_ids/superseded_by；新點無評分、未確認邊界，避免把不同時間區間的分數自動繼承。一般時間修正維持 ID。候選批次 ID 為 job ID 加 result JSON 的 SHA-256，僅匯出白名單 metadata 與核心邊界，無模型分數／任意 JSON／路徑。相同批次明確匯入為冪等，新批次不自動匯入、不覆寫舊點；可能與舊點重疊，由人工處理。
+
+舊 annotations 表與既有 API 不改動；工作區原樣列出並匯出 highlight/exclude/note，明確匯入只建立待確認的關聯副本，無 0–3 推定也無 coverage 推定。品質 tag 與精彩原因的代碼集分離。coverage 是有標記者與版本的獨立區間宣告；讀取時計算 active coverage 的聯集與 complement，從不以評完候選推算覆蓋。
+
+`GET /api/jobs/{job_id}/point-review` 與 `/point-review/export?format=json|jsonl` 遵循現有 owner read/admin global 契約；`POST /point-review` 需真正的管理員 session（舊 token 不會獲得 admin 權限）。工作區延伸既有 annotations.js，保存中鎖定表單；auth generation／workspace epoch 拒收過期回應。草稿 localStorage key 含帳號 ID 與 source ID，包含待重試請求，無 session/token；這只是未提交表單恢復，SQLite 是已儲存資料的唯一來源。
+
 | Failure | Recovery |
 | --- | --- |
 | 手機 Wi-Fi 短暫中斷 | client `HEAD` offset 後重試 |

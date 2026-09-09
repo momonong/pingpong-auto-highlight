@@ -149,6 +149,34 @@ Quick Tunnel 適合少量受邀測試，不適合長期公開、多使用者的�
 
 只要先試用帳號、上傳／Drive 匯入與自動 Reel，可將 `PINGPONG_DATA_PATH` 指向獨立空目錄，使用另一個 Compose project name 與未佔用的 localhost port。新目錄的管理員帳號與資料獨立於既有服務。pCloud 封存紀錄或只保留 Git 分支都不能代替完整 `data` 備份。
 
+### 逐分工作區的隔離合成預覽
+
+此分支只新增 review 表；沒有驗收現役 `data/state.sqlite3` 的整套素材庫／封存相容性。**不要執行指向正式 data 的啟動器、migration、reprocess 或 cleanup。** 本輪只用獨立 metadata fixture 驗證舊 annotations 保留；原始影片及 output 未修改、未解碼。
+
+本機 worktree：`D:\projects\pingpong-auto-highlight\data\worktrees\point-workspace`，分支 `codex/point-workspace`，由 main `3c2ff26` 建立。原目錄 main 與未提交 `docs/evaluation.md` 保持原狀。這個 worktree 放在原 repo 已忽略的 data/worktrees 下以符合可寫範圍，不是正式 runtime data；備份與資料部署不得把它誤當媒體資料。
+
+在 worktree 執行以下 PowerShell。使用既有 dev Python，但 `PYTHONPATH` 必須指向 worktree 的 src（避免 editable install 誤載 main）。Playwright 必須已安裝 Chromium；本機可用 Codex bundled Node packages：
+
+```powershell
+Set-Location D:\projects\pingpong-auto-highlight\data\worktrees\point-workspace
+$env:PYTHONPATH = (Resolve-Path src).Path
+$env:HIGHLIGHTCRAFT_TEST_PYTHON = 'D:\projects\pingpong-auto-highlight\.venv\Scripts\python.exe'
+$env:NODE_PATH = 'C:\Users\morris\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules'
+node tests/browser/point-review.cjs
+```
+
+測試產生全新 `data/browser-test-*`、合成 `sample.mp4`、獨立 `state/state.sqlite3`、中英截圖及 review.jsonl，結束後只關閉自己啟動的程序。若 sandbox 擋住 Chromium spawn，需要允許此本機測試子程序，不要改用正式服務。其他機器可用自己的 Python／Playwright 路徑。
+
+測試後開啟持續預覽：
+
+```powershell
+& $env:HIGHLIGHTCRAFT_TEST_PYTHON scripts/preview-point-review.py --port 8769
+```
+
+開啟 `http://127.0.0.1:8769`，以**僅限合成 fixture 的帳號** `admin / browser-test-password` 登入，選「人工標記」→「開啟標記」。預覽腳本只接受 worktree data 下已標記的 `browser-test-*` fixture，預設取最新；若 port 已佔用即拒絕。`--fixture browser-test-名稱` 可指定某次測試；Ctrl+C 只停止此次預覽，標記留在該 fixture 的 SQLite。合成內容只有移動方塊，不用它評估桌球品質，也不要把使用者影片上傳到 fixture processor。
+
+整合注意：保留原目錄 evaluation.md 的未提交驗收補充，再整合本分支新增章節。不要用兩個版本同時開正式 DB；本次不合 main、不 push、不部署。新 review 與 legacy annotations 分開保存、匯出時同列；舊 API 仍保有原契約，後續若需刪除整支原片，先匯出人工資料，因 upload FK 會連帶刪除 review。
+
 ### 已支援資料版本的升級
 
 1. 確認目前沒有 active upload/import/job，記錄現有 `PINGPONG_IMAGE` digest。

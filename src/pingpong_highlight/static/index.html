@@ -259,7 +259,7 @@
           <div>
             <span class="section-kicker">DEVELOPMENT / MANUAL LABELING</span>
             <h2 id="annotationDevTitle" data-i18n="annotation.devTitle">人工標記精彩球</h2>
-            <p data-i18n="annotation.devLead">短期模型優化工具，與上方的手機上傳、處理及成品下載流程分開。</p>
+            <p data-i18n="point.lead">從發球到得分結束，檢查完整的一分。候選不代表人工真值。</p>
           </div>
           <span class="annotation-dev-badge"><i aria-hidden="true"></i><span data-i18n="annotation.desktopOnly">僅限電腦</span></span>
         </div>
@@ -318,7 +318,7 @@
         <header class="annotation-workspace-header">
           <div>
             <span class="section-kicker">DESKTOP / POINT REVIEW</span>
-            <h2 id="annotationWorkspaceTitle" data-i18n="annotation.workspaceTitle">精彩球標記工作區</h2>
+            <h2 id="annotationWorkspaceTitle" data-i18n="point.title">逐分標記工作區</h2>
             <p id="annotationWorkspaceFilename" data-i18n="annotation.noVideo">尚未選擇影片</p>
           </div>
           <div class="annotation-workspace-header-actions">
@@ -345,59 +345,45 @@
               <button type="button" data-workspace-seek="1" data-i18n="annotation.forwardOne">+1 秒</button>
               <button type="button" data-workspace-seek="5" data-i18n="annotation.forwardFive">+5 秒</button>
             </div>
-            <div class="annotation-shortcuts" aria-label="鍵盤快捷鍵" data-i18n-aria-label="annotation.shortcutsLabel">
-              <span data-i18n-html="annotation.shortcutPlayHtml"><kbd>Space</kbd> 播放／暫停</span>
-              <span data-i18n-html="annotation.shortcutOneHtml"><kbd>←</kbd><kbd>→</kbd> 前後 1 秒</span>
-              <span data-i18n-html="annotation.shortcutFiveHtml"><kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd> 前後 5 秒</span>
-              <span data-i18n-html="annotation.shortcutStartHtml"><kbd>I</kbd> 起點</span>
-              <span data-i18n-html="annotation.shortcutEndHtml"><kbd>O</kbd> 終點</span>
-              <span data-i18n-html="annotation.shortcutSaveHtml"><kbd>Enter</kbd> 儲存</span>
-            </div>
+<p class="annotation-shortcuts" data-i18n="point.shortcuts">I / O 設邊界 · 0–3 評分 · Enter 儲存並下一分 · Space 播放 · N 新增（輸入欄內停用）</p><div class="point-row"><button id="pointPreview" type="button" data-i18n="point.preview">預覽這一分</button><label><span data-i18n="point.padding">預覽前後留白（秒；不改標記）</span><input id="pointPadding" type="number" min="0" max="10" step="0.1" value="1.5" /></label></div>
+<form id="annotationWorkspaceForm" class="point-editor">
+ <fieldset id="pointFields" disabled>
+ <p id="pointSelection"></p>
+ <div class="point-row">
+ <label><span data-i18n="annotation.start">回合起點</span><input id="pointStart" type="number" min="0" step="0.001" required /></label>
+ <label><span data-i18n="annotation.end">回合終點</span><input id="pointEnd" type="number" min="0" step="0.001" required /></label>
+ </div>
+ <div class="point-row">
+ <output id="annotationWorkspaceStart"></output><button id="annotationWorkspaceMarkStart" type="button" data-i18n-html="annotation.markStartHtml"><kbd>I</kbd> 設為起點</button>
+ <output id="annotationWorkspaceEnd"></output><button id="annotationWorkspaceMarkEnd" type="button" data-i18n-html="annotation.markEndHtml"><kbd>O</kbd> 設為終點</button>
+ </div>
+ <div class="point-row">
+ <label><span data-i18n="point.validity">回合有效性</span><select id="pointValidity"><option value="pending" data-i18n="point.pending">待確認</option><option value="valid" data-i18n="point.valid">真正的回合</option><option value="not_rally" data-i18n="point.not_rally">不是回合</option><option value="unclear" data-i18n="point.unclear">看不清</option></select></label>
+ <label><span data-i18n="point.boundary">邊界狀態</span><select id="pointBoundary"><option value="pending" data-i18n="point.pending">待確認</option><option value="confirmed" data-i18n="point.confirmed">已人工確認</option><option value="needs_adjustment" data-i18n="point.needs_adjustment">仍待修正</option><option value="unclear" data-i18n="point.unclear">看不清</option></select></label> <label><span data-i18n="point.rating">精彩度（0–3）</span><select id="pointRating"><option value="unrated" data-i18n="point.unrated">未評分</option><option value="unable" data-i18n="point.unable">無法判斷</option><option value="0" data-i18n="point.score0">0 · 普通，不會收錄</option><option value="1" data-i18n="point.score1">1 · 有看點，通常不優先</option><option value="2" data-i18n="point.score2">2 · 精彩，願意收錄</option><option value="3" data-i18n="point.score3">3 · 特別精彩，優先保留</option></select></label>
+ </div>
+
+ <div class="point-rating-buttons"><button id="pointRate0" type="button" data-i18n="point.score0">0 · 普通，不會收錄</button><button id="pointRate1" type="button" data-i18n="point.score1">1 · 有看點，通常不優先</button><button id="pointRate2" type="button" data-i18n="point.score2">2 · 精彩，願意收錄</button><button id="pointRate3" type="button" data-i18n="point.score3">3 · 特別精彩，優先保留</button></div>
+ <fieldset><legend data-i18n="point.reasons">精彩原因（選填、複選）</legend><div id="pointReasons" class="point-tags"></div></fieldset>
+ <fieldset><legend data-i18n="point.quality">品質問題（與精彩原因分開）</legend><div id="pointQuality" class="point-tags"></div></fieldset>
+ <label><span data-i18n="point.note">補充備註</span><textarea id="pointNote" maxlength="4000" rows="2"></textarea></label>
+ <div class="point-actions"><button id="annotationWorkspaceSave" type="button" data-i18n="point.save">儲存</button><button id="pointNext" type="button" data-i18n="point.next">儲存並下一分</button><button id="pointSplit" type="button" data-i18n="point.split">在播放位置拆分</button><button id="pointMerge" type="button" data-i18n="point.merge">與下一分合併</button><button id="pointDelete" type="button" data-i18n="point.delete">刪除此標記</button></div>
+ </fieldset>
+</form>
           </section>
 
-          <aside class="annotation-workspace-sidebar">
-            <section class="annotation-workspace-section">
-              <div class="annotation-workspace-section-heading">
-                <span>01</span><div><b data-i18n="annotation.boundaryTitle">標出一個回合</b><small data-i18n="annotation.boundaryBody">直接用播放器目前時間，不必抄秒數</small></div>
-              </div>
-              <div class="annotation-workspace-boundaries">
-                <div><span data-i18n="annotation.start">回合起點</span><output id="annotationWorkspaceStart" data-i18n="annotation.notSet">尚未設定</output><button id="annotationWorkspaceMarkStart" type="button" data-i18n-html="annotation.markStartHtml"><kbd>I</kbd> 設為起點</button></div>
-                <div><span data-i18n="annotation.end">回合終點</span><output id="annotationWorkspaceEnd" data-i18n="annotation.notSet">尚未設定</output><button id="annotationWorkspaceMarkEnd" type="button" data-i18n-html="annotation.markEndHtml"><kbd>O</kbd> 設為終點</button></div>
-              </div>
-              <form id="annotationWorkspaceForm">
-                <div class="annotation-workspace-meta">
-                  <label><span data-i18n="annotation.thisRally">這一球</span><select id="annotationWorkspaceLabel"><option value="highlight" data-i18n="annotation.include">值得收錄</option><option value="exclude" data-i18n="annotation.exclude">不該收錄</option></select></label>
-                  <fieldset class="annotation-workspace-tags">
-                    <legend data-i18n="annotation.tagsLegend">精彩標籤（可複選）</legend>
-                    <div class="annotation-workspace-tag-options">
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="相持" /><span data-i18n="annotation.tagRally">相持</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="搶攻" /><span data-i18n="annotation.tagAttack">搶攻</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="反拉" /><span data-i18n="annotation.tagCounterloop">反拉</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="反壓" /><span data-i18n="annotation.tagCounter">反壓</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="落點" /><span data-i18n="annotation.tagPlacement">落點</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="落點控制" /><span data-i18n="annotation.tagPlacementControl">落點控制</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="擋球" /><span data-i18n="annotation.tagBlock">擋球</span></label>
-                      <label class="annotation-workspace-tag"><input type="checkbox" name="annotation-note-tag" value="防守" /><span data-i18n="annotation.tagDefense">防守</span></label>
-                      <label class="annotation-workspace-tag"><input id="annotationWorkspaceNoteOtherToggle" type="checkbox" name="annotation-note-tag-other" /><span data-i18n="annotation.tagOther">其他…</span></label>
-                    </div>
-                  </fieldset>
-                  <label id="annotationWorkspaceNoteOtherField" class="annotation-workspace-note-other" for="annotationWorkspaceNoteOther" hidden>
-                    <span data-i18n="annotation.otherLabel">其他標籤</span>
-                    <input id="annotationWorkspaceNoteOther" type="text" maxlength="274" placeholder="輸入這一球的特別之處" data-i18n-placeholder="annotation.otherPlaceholder" autocomplete="off" />
-                  </label>
-                </div>
-                <button id="annotationWorkspaceSave" class="annotation-workspace-save" type="submit" data-i18n-html="annotation.saveHtml"><kbd>Enter</kbd> 儲存這一球</button>
-                <p id="annotationWorkspaceMessage" class="annotation-workspace-message" hidden aria-live="polite"></p>
-              </form>
-            </section>
-
-            <section class="annotation-workspace-section annotation-workspace-saved">
-              <div class="annotation-workspace-section-heading">
-                <span>02</span><div><b data-i18n="annotation.savedTitle">已儲存標記</b><small id="annotationWorkspaceCount" data-i18n="annotation.zeroCount">0 個回合</small></div>
-              </div>
-              <div id="annotationWorkspaceList" class="annotation-workspace-list" aria-live="polite"><p data-i18n="annotation.openToLoad">開啟影片後讀取標記…</p></div>
-            </section>
-          </aside>
+<aside class="annotation-workspace-sidebar">
+ <p id="annotationWorkspaceMessage" class="annotation-workspace-message" role="status" aria-live="polite"></p>
+ <div class="point-actions"><button id="pointNew" type="button" data-i18n="point.new">新增漏掉的一分</button><button id="pointImport" type="button" data-i18n="point.import">匯入目前候選與舊標記</button><button id="pointReload" type="button" data-i18n="point.reload">重新讀取／放棄草稿</button><button id="pointExport" type="button" data-i18n="point.export">匯出 JSON</button><button id="pointExportLines" type="button" data-i18n="point.exportLines">匯出 JSONL</button></div>
+ <button id="pointRetry" type="button" hidden data-i18n="point.retry">重試上次儲存</button><p id="pointProposalInfo"></p>
+ <h3 data-i18n="point.list">依時間排列的回合</h3><p id="annotationWorkspaceCount"></p>
+ <label><span data-i18n="point.list">依時間排列的回合</span><select id="pointFilter"><option value="all" data-i18n="point.all">全部</option><option value="unrated" data-i18n="point.unrated">未評分</option><option value="boundary" data-i18n="point.boundaryPending">邊界待確認</option><option value="complete" data-i18n="point.complete">已完成</option></select></label>
+ <div id="annotationWorkspaceList" class="annotation-workspace-list"></div>
+ <section class="point-coverage"><h3 data-i18n="point.coverage">已完整檢查的原片範圍</h3><p data-i18n="point.coverageHelp">只記錄已逐段檢查、尋找所有回合的原片範圍。候選全評完不代表全片已檢查；其餘區間仍是未知。</p>
+ <div class="point-row"><label><span data-i18n="annotation.start">回合起點</span><input id="coverageStart" type="number" min="0" step="0.001" value="0" /></label>
+ <label><span data-i18n="annotation.end">回合終點</span><input id="coverageEnd" type="number" min="0" step="0.001" /></label></div>
+ <button id="pointCoverageAdd" type="button" data-i18n="point.coverageAdd">確認此區間已完整檢查</button><div id="pointCoverageList"></div><p id="pointUnknown"></p></section>
+ <details><summary data-i18n="point.legacy">舊 highlight/exclude 原始紀錄（不換算評分）</summary><div id="pointLegacy"></div></details>
+</aside>
         </div>
       </div>
     </section>

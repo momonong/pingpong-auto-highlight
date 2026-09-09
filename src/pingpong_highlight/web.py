@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import ipaddress
+import json
 import math
 import mimetypes
 import os
@@ -51,6 +52,7 @@ from pingpong_highlight.drive import (
 )
 from pingpong_highlight.jobs import JobManager
 from pingpong_highlight.pipeline.processor import HighlightProcessor
+from pingpong_highlight.point_review import ReviewCommand
 from pingpong_highlight.uploads import UploadError, UploadStore
 
 TUS_VERSION = "1.0.0"
@@ -1293,6 +1295,54 @@ def create_app(
             request,
             media_type=media_type,
             filename=upload.filename if download else None,
+        )
+
+    @app.get("/api/jobs/{job_id}/point-review")
+    async def get_point_review(job_id: str, user: AuthenticatedUser) -> dict:
+        job, upload = job_and_upload(job_id, user)
+        return database.get_point_review(upload, job)
+
+    @app.post("/api/jobs/{job_id}/point-review")
+    async def change_point_review(job_id: str, payload: ReviewCommand, user: Administrator) -> dict:
+        job, upload = job_and_upload(job_id, user)
+        try:
+            return database.change_point_review(upload, job, payload, user.id)
+        except StateConflict as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/jobs/{job_id}/point-review/export")
+    async def export_point_review(
+        job_id: str,
+        user: AuthenticatedUser,
+        format: Literal["json", "jsonl"] = "json",
+    ) -> Response:
+        job, upload = job_and_upload(job_id, user)
+        payload = database.get_point_review(upload, job)
+        if format == "jsonl":
+            records = [
+                {
+                    "type": "manifest",
+                    **{
+                        k: v
+                        for k, v in payload.items()
+                        if k not in {"points", "coverage", "legacy_annotations"}
+                    },
+                }
+            ]
+            records += [{"type": "point", **p} for p in payload["points"]]
+            records += [{"type": "coverage", **c} for c in payload["coverage"]]
+            records += [{"type": "legacy_annotation", **a} for a in payload["legacy_annotations"]]
+            body = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records)
+        else:
+            body = json.dumps(payload, ensure_ascii=False, indent=2)
+        return Response(
+            body,
+            media_type="application/json" if format == "json" else "application/x-ndjson",
+            headers={
+                "Content-Disposition": f'attachment; filename="point-review-{upload.id}.{format}"'
+            },
         )
 
     @app.get("/api/jobs/{job_id}/annotations")

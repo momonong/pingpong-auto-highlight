@@ -480,19 +480,9 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert '"toggle",' in app_source
         assert "renderAnnotationPanel" not in app_source
         assert ".annotation-video" not in app_source
-        assert 'event.code === "KeyI"' in app_source
-        assert 'event.code === "KeyO"' in app_source
-        assert "function annotationWorkspaceNoteValue()" in app_source
-        assert 'return selectedTags.join("、");' in app_source
-        assert 'elements.annotationWorkspaceForm.addEventListener("submit"' in app_source
-        assert "elements.annotationWorkspaceForm.requestSubmit();" in app_source
-        assert 'input[type="checkbox"][name^="annotation-note-tag"]' in app_source
-        assert (
-            "annotationWorkspaceComposing || event.isComposing || event.keyCode === 229"
-            in app_source
-        )
-        assert "note.length > annotationNoteMaxLength" in app_source
-        assert 'input, select, textarea, button, a, [contenteditable="true"]' in app_source
+        # Point-review interaction semantics are exercised by the browser suite.
+        assert "bindPointWorkspace" in app_source
+        assert "pointFieldsPayload" in app_source
         assert 'removeLocalStorage("pingpong-upload-token");' in app_source
         assert 't("admin.selfPasswordTitle")' in app_source
         assert "function finishAdminPassword(value)" in app_source
@@ -508,11 +498,10 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         assert "HighlightCraft — 桌球精彩集錦" in index_html.text
         assert "RallyCut" not in index_html.text
         assert 'id="annotationWorkspaceForm"' in index_html.text
-        assert 'name="annotation-note-tag" value="相持"' in index_html.text
-        assert 'name="annotation-note-tag" value="搶攻"' in index_html.text
-        assert 'id="annotationWorkspaceNoteOtherToggle"' in index_html.text
-        assert 'id="annotationWorkspaceNoteOtherField"' in index_html.text
-        assert 'id="annotationWorkspaceNoteOther" type="text" maxlength="274"' in index_html.text
+        assert 'id="pointRating"' in index_html.text
+        assert 'id="pointReasons"' in index_html.text
+        assert 'id="pointQuality"' in index_html.text
+        assert 'id="pointNote" maxlength="4000"' in index_html.text
 
         styles = client.get("/static/styles.css")
         assert styles.status_code == 200
