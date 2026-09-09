@@ -94,6 +94,8 @@ point candidate 不會再彼此合併。系統先以同片最佳分數為基準�
 
 `GET /api/jobs/{job_id}/point-review` 與 `/point-review/export?format=json|jsonl` 遵循現有 owner read/admin global 契約；`POST /point-review` 需真正的管理員 session（舊 token 不會獲得 admin 權限）。工作區延伸既有 annotations.js，保存中鎖定表單；auth generation／workspace epoch 拒收過期回應。草稿 localStorage key 含帳號 ID 與 source ID，包含待重試請求，無 session/token；這只是未提交表單恢復，SQLite 是已儲存資料的唯一來源。
 
+逐分操作採固定左右布局：左側原片／時間排序清單，右側「確認邊界 → 評分 → 儲存下一分」。明確點擊完整回合確認才同時設 validity=valid、boundary_status=confirmed；時間修改仍清回 pending，評分不會替使用者確認邊界。評分按鈕有 aria-pressed 選取狀態，未評分／無法判斷另列；儲存列固定可見且與 request busy／conflict 同步。選填原因、拆合修正、coverage 與匯出為可展開的次要區域，收合不清除欄位。頁面標題隨 library／annotations／admin 切換，自動 Reel 說明只在影片庫顯示。只有明確標為 browser-synthetic/1 的 fixture 顯示練習素材提示。
+
 | Failure | Recovery |
 | --- | --- |
 | 手機 Wi-Fi 短暫中斷 | client `HEAD` offset 後重試 |

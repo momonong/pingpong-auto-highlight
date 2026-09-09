@@ -173,7 +173,7 @@ node tests/browser/point-review.cjs
 & $env:HIGHLIGHTCRAFT_TEST_PYTHON scripts/preview-point-review.py --port 8769
 ```
 
-開啟 `http://127.0.0.1:8769`，以**僅限合成 fixture 的帳號** `admin / browser-test-password` 登入，選「人工標記」→「開啟標記」。預覽腳本只接受 worktree data 下已標記的 `browser-test-*` fixture，預設取最新；若 port 已佔用即拒絕。`--fixture browser-test-名稱` 可指定某次測試；Ctrl+C 只停止此次預覽，標記留在該 fixture 的 SQLite。合成內容只有移動方塊，不用它評估桌球品質，也不要把使用者影片上傳到 fixture processor。
+開啟 `http://127.0.0.1:8769`，以**僅限合成 fixture 的帳號** `admin / browser-test-password` 登入，選「逐分標記」→「開始／繼續標記」。預覽腳本只接受 worktree data 下已標記的 `browser-test-*` fixture，預設取最新；若 port 已佔用即拒絕。`--fixture browser-test-名稱` 可指定某次測試；Ctrl+C 只停止此次預覽，標記留在該 fixture 的 SQLite。合成內容只有移動方塊，不用它評估桌球品質，也不要把使用者影片上傳到 fixture processor。
 
 整合注意：保留原目錄 evaluation.md 的未提交驗收補充，再整合本分支新增章節。不要用兩個版本同時開正式 DB；本次不合 main、不 push、不部署。新 review 與 legacy annotations 分開保存、匯出時同列；舊 API 仍保有原契約，後續若需刪除整支原片，先匯出人工資料，因 upload FK 會連帶刪除 review。
 

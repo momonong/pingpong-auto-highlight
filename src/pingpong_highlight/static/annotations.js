@@ -58,6 +58,7 @@ function pointChanged() {
   showAnnotationWorkspaceMessageKey("point.draft");
   rememberPointDraft();
   renderAnnotationWorkspaceBoundaries();
+  pointRenderGuidance();
 }
 function renderAnnotationWorkspaceBoundaries() {
   for (const [name, key] of [["Start", "start_ms"], ["End", "end_ms"]]) {
@@ -68,7 +69,8 @@ function renderAnnotationWorkspaceBoundaries() {
 }
 function pointRenderEditor() {
   pointEl("pointFields").disabled = !pointDraft || pointBusy || !!pointPendingRequest;
-  setText(pointEl("pointSelection"), "point.selection", {id: pointDraft?.id?.slice(0, 10) || t("point.new")});
+  const number = pointActive().findIndex(p => p.id === pointDraft?.id) + 1;
+  setText(pointEl("pointSelection"), !pointDraft ? "flow.noPoint" : number ? "flow.number" : "flow.newPoint", {number});
   pointEl("pointStart").value = pointDraft?.start_ms == null ? "" : pointDraft.start_ms / 1000;
   pointEl("pointEnd").value = pointDraft?.end_ms == null ? "" : pointDraft.end_ms / 1000;
   pointEl("pointValidity").value = pointDraft?.validity || "pending";
@@ -80,6 +82,32 @@ function pointRenderEditor() {
       `<label><input type="checkbox" value="${escapeHtml(code)}" ${pointDraft?.[key].includes(code) ? "checked" : ""}>${escapeHtml(labels[i18n.language === "en" ? 1 : 0])}</label>`).join("");
   }
   renderAnnotationWorkspaceBoundaries();
+  pointRenderGuidance();
+}
+function pointRenderGuidance() {
+  const confirmed = pointDraft?.validity === "valid" && pointDraft?.boundary_status === "confirmed";
+  setText(pointEl("pointConfirm"), confirmed ? "flow.confirmed" : "flow.confirm");
+  pointEl("pointConfirm").setAttribute("aria-pressed", String(confirmed));
+  for (let score = 0; score < 4; score++) {
+    const button = pointEl(`pointRate${score}`);
+    button.setAttribute("aria-pressed", String(pointDraft?.rating_status === "rated" && pointDraft.excitement === score));
+    button.disabled = pointDraft?.validity === "not_rally";
+  }
+  pointEl("pointUnrated").setAttribute("aria-pressed", String(pointDraft?.rating_status === "unrated"));
+  pointEl("pointUnable").setAttribute("aria-pressed", String(pointDraft?.rating_status === "unable"));
+  pointEl("pointUnable").disabled = pointDraft?.validity === "not_rally";
+  const all = pointActive();
+  let key = "flow.hintSelect";
+  if (!all.length && !pointDraft) key = "flow.hintStart";
+  else if (!pointDirty && all.length && all.every(pointComplete)) key = "flow.hintDone";
+  else if (pointDraft?.validity === "not_rally") key = "flow.hintNotRally";
+  else if (pointDraft && !confirmed) key = "flow.hintBoundary";
+  else if (pointDraft?.rating_status === "unrated") key = "flow.hintRating";
+  else if (pointDraft) key = "flow.hintSave";
+  setText(pointEl("pointNextHint"), key);
+  const cannotSave = !pointDraft || pointBusy || !!pointPendingRequest;
+  elements.annotationWorkspaceSave.disabled = cannotSave;
+  pointEl("pointNext").disabled = cannotSave;
 }
 function pointVisible() {
   const filter = pointEl("pointFilter").value;
@@ -92,16 +120,20 @@ function renderAnnotationWorkspaceList(payload) {
   if (!payload?.source) return;
   latestAnnotationPayload = payload;
   const points = pointActive();
-  setText(elements.annotationWorkspaceCount, "point.count", {count: points.length, complete: points.filter(pointComplete).length});
+  setText(elements.annotationWorkspaceCount, "flow.progress", {total: points.length, done: points.filter(pointComplete).length});
   elements.annotationWorkspaceList.innerHTML = pointVisible().map(p => {
+    const number = points.findIndex(item => item.id === p.id) + 1;
     const originKey = {automatic: "point.automatic", manual: "point.manual", legacy: "point.legacyOrigin", split: "point.splitOrigin", merge: "point.mergeOrigin"}[p.origin.kind];
     return `<button type="button" class="point-list-item ${p.id === pointDraft?.id ? "selected" : ""}" data-point-id="${p.id}" aria-pressed="${p.id === pointDraft?.id}">
-      <strong>${formatTimestamp(p.start_ms / 1000)}–${formatTimestamp(p.end_ms / 1000)}</strong>
-      <span>${escapeHtml(t(`point.${p.validity}`))} · ${escapeHtml(t(`point.${p.boundary_status}`))}</span>
+      <strong><b class="point-list-number">${String(number).padStart(2, "0")}</b> ${formatTimestamp(p.start_ms / 1000)}–${formatTimestamp(p.end_ms / 1000)}</strong>
+      <span>${escapeHtml(t(pointComplete(p) ? "point.complete" : p.boundary_status !== "confirmed" ? "point.boundaryPending" : "point.unrated"))} · ${escapeHtml(t(`point.${p.validity}`))}</span>
       <span>${escapeHtml(p.rating_status === "rated" ? t(`point.score${p.excitement}`) : t(`point.${p.rating_status}`))}</span>
-      <small>${escapeHtml(t(originKey))} · ${p.id.slice(0, 8)}${p.origin.legacy_label ? ` · ${escapeHtml(p.origin.legacy_label)}` : ""}</small></button>`;
+      <small>${escapeHtml(t(originKey))}${p.origin.legacy_label ? ` · ${escapeHtml(p.origin.legacy_label)}` : ""}</small></button>`;
   }).join("") || `<p>${t("point.empty")}</p>`;
   const batch = payload.available_proposals;
+  pointEl("pointPractice").hidden = batch.algorithm_version !== "browser-synthetic/1";
+  setText(pointEl("pointImport"), points.length ? "flow.importMore" : "flow.load");
+  pointEl("pointSetupTitle").hidden = points.length > 0;
   setText(pointEl("pointProposalInfo"), "point.importHelp", {count: batch.candidates.length, skipped: batch.skipped});
   if (payload.imports.some(b => b.id === batch.id)) pointEl("pointProposalInfo").append(` ${t("point.imported")}`);
   pointEl("pointCoverageList").innerHTML = payload.coverage.filter(c => c.active).map(c =>
@@ -110,6 +142,13 @@ function renderAnnotationWorkspaceList(payload) {
   else setText(pointEl("pointUnknown"), "point.unknown", {ranges: (payload.unknown_intervals || []).map(c => `${formatTimestamp(c.start_ms / 1000)}–${formatTimestamp(c.end_ms / 1000)}`).join(", ") || "?"});
   pointEl("pointLegacy").innerHTML = payload.legacy_annotations.map(a =>
     `<p>${formatTimestamp(a.start)}–${formatTimestamp(a.end)} · ${escapeHtml(a.label)}<br>${escapeHtml(a.note)}</p>`).join("");
+  const totalMs = payload.source.duration_ms;
+  const unknownMs = (payload.unknown_intervals || []).reduce((sum, r) => sum + r.end_ms - r.start_ms, 0);
+  setText(pointEl("pointCoverageProgress"), "flow.coverageProgress", {
+    checked: totalMs == null ? "?" : formatDuration((totalMs - unknownMs) / 1000),
+    total: totalMs == null ? "?" : formatDuration(totalMs / 1000),
+  });
+  pointEl("pointCoveragePlay").disabled = !payload.unknown_intervals?.length;
   pointRenderEditor();
 }
 function pointSetBusy(busy) {
@@ -119,7 +158,7 @@ function pointSetBusy(busy) {
   // Retry sits outside the disabled editor so an uncertain write can be replayed safely.
   pointEl("pointRetry").hidden = !pointPendingRequest;
   pointEl("pointRetry").disabled = busy;
-  // Keep scroll position and the player independent of form focus.
+  pointRenderGuidance();
 }
 async function pointWrite(fields) {
   if (pointBusy || !pointReview) return null;
@@ -174,7 +213,11 @@ async function saveAnnotationWorkspace(next = false) {
   pointDraft = structuredClone(pointActive().find(p => p.id === selected) || null);
   if (next) {
     const after = oldVisible.slice(oldVisible.indexOf(oldId) + 1).find(id => pointVisible().some(p => p.id === id));
-    if (after) { await pointSelect(after); return true; }
+    if (after) {
+      await pointSelect(after);
+      showAnnotationWorkspaceMessageKey("flow.savedNext", {number: pointActive().findIndex(p => p.id === after) + 1});
+      return true;
+    }
     showAnnotationWorkspaceMessageKey("point.noNext");
   }
   renderAnnotationWorkspaceList(pointReview);
@@ -186,6 +229,8 @@ async function pointSelect(id) {
   pointDraft = structuredClone(pointActive().find(p => p.id === id));
   if (!pointDraft) return;
   pointDraftRevision = pointReview.revision;
+  pointEl("pointOptional").open = false;
+  pointEl("pointStructure").open = false;
   renderAnnotationWorkspaceList(pointReview);
   elements.annotationWorkspaceForm.scrollTop = 0;
   pointPreview();
@@ -257,6 +302,8 @@ async function loadAnnotationWorkspaceList(restore = false) {
     }
     if (!pointDraft) pointDraft = structuredClone(pointActive().find(p => !pointComplete(p)) || pointActive()[0] || null);
     renderAnnotationWorkspaceList(payload);
+    pointEl("pointProposals").open = !pointActive().length;
+    pointEl("pointOptional").open = !!pointDirty && !!(pointDraft?.note || pointDraft?.reason_tags.length || pointDraft?.quality_tags.length);
     if (!pointDirty) showAnnotationWorkspaceMessageKey("point.loaded");
   } catch (error) {
     if (epoch === pointEpoch && sessionIsCurrent(generation, userId)) {
@@ -271,6 +318,7 @@ function openAnnotationWorkspace(button) {
   annotationWorkspaceReturnFocus = button; pointEpoch += 1;
   pointReview = null; pointDraft = null; pointDirty = false; pointPendingRequest = null;
   pointEl("pointFilter").value = "all";
+  for (const id of ["pointCoveragePanel", "pointDataTools", "pointStructure", "pointOptional", "pointPreviewOptions"]) pointEl(id).open = false;
   elements.annotationWorkspace.hidden = false;
   document.body.classList.add("annotation-workspace-open");
   clearLocalizedElement(elements.annotationWorkspaceFilename);
@@ -321,7 +369,13 @@ async function pointStructure(action) {
 async function pointAuxiliary(fields) {
   if (pointBusy || (pointDirty && !(await saveAnnotationWorkspace()))) return;
   const payload = await pointWrite(fields);
-  if (payload) renderAnnotationWorkspaceList(payload);
+  if (payload) {
+    renderAnnotationWorkspaceList(payload);
+    if (fields.action === "import") {
+      pointEl("pointProposals").open = false;
+      if (!pointDraft && pointActive().length) await pointSelect((pointActive().find(p => !pointComplete(p)) || pointActive()[0]).id);
+    }
+  }
 }
 async function pointExport(format) {
   if (pointDirty && !(await saveAnnotationWorkspace())) return;
@@ -336,6 +390,26 @@ async function pointExport(format) {
   } catch (error) { if (epoch === pointEpoch) showAnnotationWorkspaceMessage(error.message, true); }
 }
 function bindPointWorkspace() {
+  pointEl("pointConfirm").addEventListener("click", () => {
+    pointEl("pointValidity").value = "valid";
+    pointEl("pointBoundary").value = "confirmed";
+    pointChanged();
+  });
+  for (const [id, value] of [["pointUnrated", "unrated"], ["pointUnable", "unable"]]) {
+    pointEl(id).addEventListener("click", () => {
+      pointEl("pointRating").value = value; pointChanged();
+    });
+  }
+  pointEl("pointCoveragePlay").addEventListener("click", () => {
+    const interval = pointReview?.unknown_intervals?.[0];
+    if (!interval) return;
+    const video = elements.annotationWorkspaceVideo;
+    video.currentTime = interval.start_ms / 1000;
+    delete video.dataset.stopAt;
+    pointEl("coverageStart").value = interval.start_ms / 1000;
+    pointEl("coverageEnd").value = "";
+    pointPlay(video);
+  });
   elements.annotationWorkspaceClose.addEventListener("click", () => closeAnnotationWorkspace());
   elements.annotationWorkspaceMarkStart.addEventListener("click", () => markAnnotationWorkspaceBoundary("start"));
   elements.annotationWorkspaceMarkEnd.addEventListener("click", () => markAnnotationWorkspaceBoundary("end"));
@@ -420,9 +494,10 @@ function renderAnnotationDevJob(job, index) {
     <div class="annotation-dev-copy">
       <strong title="${escapeHtml(filename)}">${escapeHtml(filename)}</strong>
       <small>${escapeHtml(job.owner?.display_name || job.owner?.username || "")} · ${t("annotation.loadOnOpen", { duration })}</small>
+      ${result?.algorithm_version === "browser-synthetic/1" ? `<span class="practice-badge" data-i18n="flow.practice">${t("flow.practice")}</span>` : ""}
     </div>
     <button class="annotation-dev-open open-annotation-workspace" type="button" data-job-id="${escapeHtml(job.id)}" data-source-name="${escapeHtml(filename)}" aria-label="${escapeHtml(t("annotation.openLabel", { filename }))}">
-      <span>${t("annotation.open")}</span><small>I · O · Enter</small>
+      <span data-i18n="flow.open">${t("flow.open")}</span>
     </button>
   </article>`;
 }

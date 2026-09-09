@@ -3566,3 +3566,79 @@ html[data-i18n-pending] body {
 .annotation-workspace-sidebar p { font-size: .78rem; line-height: 1.55; overflow-wrap: anywhere; }
 .annotation-workspace button:disabled { opacity: .45; cursor: wait; }
 .annotation-workspace button:focus-visible { outline: 2px solid #c8ff4d; outline-offset: 2px; }
+
+/* Guided point review: stable player/list on the left; one point's workflow on the right. */
+.review-roadmap { display: flex; gap: 26px; counter-reset: review-step; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; }
+.review-roadmap li { display: flex; gap: 8px; align-items: center; color: #d8e3e9; font-size: .85rem; }
+.review-roadmap li::before { counter-increment: review-step; content: counter(review-step); background: #c8ff4d; color: #12170b; border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; font-weight: 800; }
+.practice-badge { display: inline-block; color: #e6c876; font-size: .72rem; margin-top: 6px; }
+.guided-review { grid-template-columns: minmax(0, 1fr) minmax(420px, 480px); }
+.guided-review .annotation-workspace-stage { padding: 16px; gap: 10px; }
+.guided-review .annotation-workspace-stage video { height: clamp(180px, 36vh, 400px); }
+.guided-review .annotation-workspace-transport { margin: 0; grid-template-columns: 55px minmax(100px, 1fr) 90px 55px auto; gap: 6px; align-items: center; }
+.guided-review .annotation-workspace-transport button { font-size: .76rem; }
+.guided-review .annotation-workspace-transport details { position: relative; }
+.guided-review .annotation-workspace-transport details[open] { position: relative; padding: 8px; background: #1a2734; }
+.guided-review summary { cursor: pointer; font-size: .8rem; line-height: 1.5; }
+.guided-review p { font-size: .79rem; line-height: 1.55; color: #aebbc8; }
+.guided-review h3, .guided-review h4 { margin: 0; }
+.guided-review button:not(.point-list-item) { border: 1px solid #42596b; border-radius: 8px; padding: 9px 11px; background: #172635; color: #e9eff3; font-size: .8rem; cursor: pointer; min-height: 38px; }
+.guided-review .annotation-workspace-transport button { white-space: nowrap; padding: 6px; }
+.point-list-filter label span { white-space: nowrap; }
+.guided-review button[aria-pressed="true"]:not(.point-list-item) { color: #d4ff72; border-color: #c8ff4d; background: #26351b; }
+.point-list-panel { flex: 1; min-height: 0; overflow-y: auto; padding-right: 5px; }
+.point-list-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 8px 0; }
+.point-list-heading h3 { font-size: .92rem; }
+.point-list-heading p { margin: 4px 0; font-size: .78rem; }
+.point-list-filter { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 10px 0; }
+.point-list-filter p { font-size: .76rem; margin: 0; }
+.point-list-filter label { display: flex; align-items: center; gap: 6px; font-size: .74rem; flex-shrink: 0; }
+.point-list-filter select { max-width: 140px; }
+.guided-review .annotation-workspace-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.point-list-number { color: #c8ff4d; margin-right: 6px; font-size: .8rem; }
+.guided-review .point-list-item { padding: 10px; gap: 4px; }
+.guided-review .point-list-item strong { font-size: .85rem; }
+#pointProposals { padding: 10px 12px; border: 1px solid #354859; border-radius: 10px; }
+#pointProposals[open] { background: #142130; }
+#pointProposals h4 { margin-top: 10px; }
+.guided-review #pointProposals .point-primary { background: #c8ff4d; color: #12170b; font-weight: 800; }
+.guided-review .annotation-workspace-sidebar { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.point-current-heading { padding: 17px 18px 12px; border-bottom: 1px solid #324353; background: #152331; flex-shrink: 0; }
+.point-current-heading h3 { font-size: 1.08rem; }
+.point-current-heading p { margin: 6px 0 0; color: #d6e4eb; }
+.guided-review .point-editor { margin: 0; padding: 14px 18px; }
+.guided-review #pointFields { border: 0; padding: 0; margin: 0; }
+.point-step { margin-bottom: 18px; }
+.point-step h4 { display: flex; gap: 8px; align-items: center; font-size: .92rem; }
+.point-step-number { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #283e51; color: #d4e6f1; font-size: .8rem; }
+.point-step p { margin: 8px 0 12px; }
+.point-step .point-row { gap: 8px; }
+.point-step .point-row button { width: 100%; margin-top: 5px; }
+.guided-review #pointConfirm { width: 100%; font-weight: 700; margin: 4px 0; }
+.guided-review .point-rating-buttons { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.guided-review .point-rating-buttons button { text-align: left; min-height: 52px; padding: 10px; }
+.point-rating-other { display: flex; gap: 8px; }
+.guided-review #pointOptional, .guided-review #pointStructure { border-top: 1px solid #354554; padding: 12px 0; }
+.guided-review #pointOptional[open] summary, .guided-review #pointStructure[open] summary { margin-bottom: 12px; }
+.guided-review .point-editor .point-actions { position: static; background: transparent; padding: 0; }
+.point-savebar { flex-shrink: 0; border-top: 1px solid #425260; padding: 12px 18px; background: #14212e; }
+.point-savebar > div { display: flex; gap: 8px; }
+.guided-review #pointNext { flex: 1; background: #c8ff4d; color: #12170b; border-color: #c8ff4d; font-weight: 850; min-height: 46px; }
+.point-savebar small { display: block; color: #a8bac8; line-height: 1.5; font-size: .72rem; margin-top: 8px; }
+.point-savebar #annotationWorkspaceMessage { margin: 0 0 10px; color: #d0eaa2; }
+.point-savebar #annotationWorkspaceMessage.error { color: #ff9181; }
+.point-coverage summary span { display: inline; }
+.point-coverage summary small { display: block; }
+.point-coverage summary small { color: #a6bbca; margin-top: 5px; }
+.point-coverage-distinction { color: #e5ce8e !important; }
+.point-data-tools { padding: 12px 0; border-top: 1px solid #435261; }
+.practice-notice { margin: 0; color: #e6c876 !important; border-left: 3px solid #bea35e; padding-left: 10px; font-size: .74rem !important; }
+@media (max-width: 1100px) {
+  .guided-review { grid-template-columns: minmax(0,1fr) 410px; }
+  .guided-review .annotation-workspace-list { grid-template-columns: 1fr; }
+  .guided-review .annotation-workspace-transport { grid-template-columns: 45px 1fr 75px 45px; }
+  #pointPreviewOptions { grid-column: 1 / -1; }
+  .point-list-filter { align-items: flex-start; flex-direction: column; }
+}
+
+.point-save-heading { display: flex; align-items: center; gap: 8px; font-size: .85rem; margin-bottom: 8px !important; }

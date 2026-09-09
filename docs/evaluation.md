@@ -105,3 +105,9 @@ coverage 外也能有明確人工點標記，但 coverage 外沒標記的部分�
 `tests/browser/point-review.cjs` 使用全新資料目錄、動態 localhost port 與 Chromium canvas 產生的約 2 秒 MP4，實際通過登入／上傳／Range 播放、候選匯入、邊界修改、0 與 3 分／unable、拆合刪、快捷鍵輸入保護、草稿 reload、伺服器已提交但回應遺失的重試、過期版本衝突、coverage、JSONL 下載、中英介面及重新登入。處理器與候選均為 fixture，無使用者影片、GPU 模型運算、FFmpeg 分析或外部模型呼叫；不代表模型邊界準確率、精彩度效度、真實手機或正式 DB 相容性。
 
 既有 `tests/browser/workspace.cjs` 亦通過 desktop/mobile viewport、上傳中斷續傳、播放／下載、fake Drive handoff、admin、斷線／503／health 格式錯誤／逾時恢復、語言切換與帳號隔離。最後修改的 targeted Python 驗證 **15 passed**，Ruff 通過；快速暫停引發的 AbortError 已驗證不再誤報 codec failure。最終逐分 fixture 證據在本 worktree `data/browser-test-bFR6AX`（point-review-zh.png、point-review-en.png、review.jsonl）；固定播放器補充截圖在 `data/browser-test-0IAfO4/point-review-final.png`，既有 workspace 證據在 `data/browser-test-RjftAf`；這些合成產物不進 Git。
+
+### 逐分操作流程修正
+
+使用者指出邊界、評分、儲存／下一分順序不清楚，因此改為左側播放器／清單、右側編號 1–3 的操作區；完整回合確認為明確的人工按鈕，選分與儲存仍分開。原因、拆合與資料工具收合但保留內容。儲存下一分會回報上一分已保存；下一筆不繼承上一筆評分或邊界狀態。原片 coverage 仍獨立，不因候選清單完成而增加。
+
+此修正未變更後端或資料格式。9 項 i18n／靜態資源測試通過；逐分 Playwright 通過（`data/browser-test-M2yPK5/guided-review.png`），涵蓋初次載入指引、完整一分確認、按鈕評分／快捷鍵、下一筆狀態重置、拆合、草稿恢復、遺失回應重試、409 與匯出。既有 workspace browser suite 亦通過（`data/browser-test-uZ4Div`）。另於 1024×768 桌面視窗確認右側儲存列完整可見（`data/guided-1024.png`）。仍僅使用合成素材，沒有接入正式資料庫或播放既有使用者影片。

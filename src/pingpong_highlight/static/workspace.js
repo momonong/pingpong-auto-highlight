@@ -36,6 +36,13 @@ function updateWorkspaceAccess() {
   document.querySelector(".workspace").hidden = workspaceView !== "library";
   elements.adminPanel.hidden = workspaceView !== "admin" || !isAdmin();
   elements.annotationDevBlock.hidden = workspaceView !== "annotations" || !isAdmin();
+  const titleKey = workspaceView === "annotations" ? "flow.title" : workspaceView === "admin" ? "flow.adminTitle" : "workspace.title";
+  const leadKey = workspaceView === "annotations" ? "flow.intro" : workspaceView === "admin" ? "flow.adminLead" : "workspace.lead";
+  setText(document.querySelector(".workspace-heading h1"), titleKey);
+  setText(document.querySelector(".workspace-heading p"), leadKey);
+  document.querySelector(".workspace-heading .section-kicker").hidden = workspaceView !== "library";
+  addVideoButton.hidden = workspaceView !== "library";
+  document.querySelector(".process-strip").hidden = workspaceView !== "library";
 }
 
 function setWorkspaceView(view) {
