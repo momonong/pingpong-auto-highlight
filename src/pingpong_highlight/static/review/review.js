@@ -34,6 +34,7 @@ function render(){const r=state.review;const previous=runId; $('runs').replaceCh
   $('scope').textContent=`本次分析範圍：${(state.source.scope||[]).map(span).join('、')}。範圍外仍可人工補漏，但尚無本次模型分析。`;
   for(const run of state.runs){const o=new Option(`${run.model_id} · ${run.id.slice(0,8)}`,run.id);$('runs').add(o);}
   runId=state.runs.some(r=>r.id===previous)?previous:state.runs.at(-1)?.id||'';$('runs').value=runId;
+  const currentRun=state.runs.find(r=>r.id===runId);if(currentRun)$('scope').textContent+=` 此批次 ${currentRun.proposals.length} 個候選、${currentRun.output_error_count||0} 個視窗輸出失敗；空清單不代表沒有回合。`;
   $('compatible').hidden=!state.runs.find(r=>r.id===runId)?.preview_available;
   const reviewed=new Set(r.points.flatMap(p=>p.proposal_ids));
   list('proposals',state.runs.find(r=>r.id===runId)?.proposals||[],p=>{const human=r.points.find(x=>x.proposal_ids.includes(p.id));choose(human||p,!!human);},p=>`${reviewed.has(p.id)?'已審核':'尚未審核'} · ${span(p)}${p.blind?' · 盲審':''}`);

@@ -8,6 +8,27 @@
 
 登入後以「我的影片」為工作區首頁：按「新增影片」展開手機上傳與 Google Drive 匯入，可依全部、進行中、已完成或需處理篩選。管理員的「管理」與桌面的「人工標記」有獨立入口。右上角的「中 / EN」可在繁體中文與英文間切換，瀏覽器會保留選擇；頁面內也提供使用教學。部署與維運人員請另看 [部署、備份與搬機手冊](docs/deployment.md)。
 
+## 模型輔助回合預標註（本機第一版）
+
+桌面「人工標記」清單新增「回合預標註審核」，沿用原片 Range 播放與帳號權限。可以明確載入既有 baseline 建議，或從零補漏；舊 highlight/exclude 標記保留在原入口。回合確認、是否完整、精彩程度（不收錄／可收錄／必收錄／未判斷）分開保存。模型建議不會自動成為人工標註。
+
+開發實驗使用同一審核工作區，獨立保存模型批次與人工 SQLite 紀錄；不啟動正式 `data/state.sqlite3`。一般網站啟動不需 Transformers 或模型下載。
+
+在本次 worktree 的 PowerShell 執行（先讓可用的 FFmpeg/ffprobe 在此程序 PATH）：
+
+```powershell
+$env:PYTHONPATH = 'src'
+$python = 'D:/projects/pingpong-auto-highlight/.venv/Scripts/python.exe'
+& $python -m pingpong_highlight.preannotate run --manifest examples/preannotation-development.json --output data/experiments/my-review/dev/baseline --backend baseline
+& $python -m pingpong_highlight.preannotate serve --store data/experiments/my-review/dev/review.sqlite3 --port 8799
+```
+
+開啟 `http://127.0.0.1:8799`。選候選可播放前後 1.5 秒脈絡，修改起訖後保存。選人工紀錄才能拆分／合併；結構修改後需重新判斷。候選未覆蓋與未審核區段各有清單。coverage 必須由人確認已檢查所有回合；播放不會自動完成 coverage。計時預設暫停，背景頁會暫停，應先按暫停再關頁。網路失敗保留草稿；版本衝突須重載核對。此版工作區介面為繁體中文。
+
+範例 manifest 使用已存在的 development 影片絕對路徑；在其他主機請改成本機路徑。每次 `--output` 必須是新目錄；相同父目錄共用 `review.sqlite3`，因此重跑模型不會取代人工紀錄。來源以完整檔案 SHA-256 綁定；更改 scope 或資料分組時使用另一個實驗父目錄。
+
+Qwen 選用依賴、固定模型 revision、下載限制、8 秒 smoke、評估命令與證據限制見 [evaluation](docs/evaluation.md#模型輔助預標註-v12026-09-11)。
+
 ## 成品形式
 
 - 每支影片只收錄分數至少達到該片最佳候選 87% 的得分；球數可以不同，不再為了湊滿 6 球而回填。

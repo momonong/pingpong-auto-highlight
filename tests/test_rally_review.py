@@ -176,7 +176,7 @@ def test_duplicate_matching_cannot_inflate_recall_and_source_isolation():
         match(pred, actual)
 
 
-@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -1, 10001, True])
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -1, 6, 10001, True])
 def test_output_time_validation(bad):
     fields = Judgment(start_ms=0, end_ms=1000).model_dump() | {"end_ms": bad}
     with pytest.raises(ValueError):
@@ -210,7 +210,7 @@ def test_manifest_source_hash_mismatch_fails_before_decode(tmp_path):
 
 
 def test_absolute_window_times_and_duplicates():
-    raw = json.dumps({"rallies": [Judgment(start_ms=100, end_ms=500).model_dump()]})
+    raw = json.dumps({"rallies": [Judgment(start_ms=100, end_ms=700).model_dump()]})
     assert normalize_response(raw, {"start_ms": 50000, "end_ms": 60000})[0]["start_ms"] == 50100
     assert windows(0, 35000, 16000, 2000) == [
         dict(start_ms=0, end_ms=16000),

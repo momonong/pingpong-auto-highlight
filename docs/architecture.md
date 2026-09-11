@@ -78,6 +78,22 @@ point candidate 不會再彼此合併。系統先以同片最佳分數為基準�
 
 完成頁以同一個需要有效登入、且會檢查 owner／管理員權限的檔案端點提供兩種回應：inline response 供 `<video>` range playback，`download=true` 則加入 attachment header。手機可以先預覽，再使用一般下載或 Web Share 儲存；單分片段與分析報告收在次要展開區。
 
+## 模型提案與人工回合審核
+
+`preannotate.py` 是不接觸正式 DB 的有界實驗入口：最多三段 development 素材、總長不超過 600 秒。`Provider.infer(clip,audio_events)` 可替換；第一個 VLM adapter 為 Qwen3-VL-8B-Instruct。baseline 仍呼叫現有 analyze_audio/analyze_motion/detect_points，沒有移植保存分支 v4。兩者共用經 FFmpeg autorotate、30 fps／640 寬的短片代理；這是分段比較，不代表整支原片的 main pipeline 重跑。
+
+VLM 以重疊視窗掃描指定區段全部內容，另抽樣 2 fps／384 寬影格。PyAV 讀取 PTS 並核對抽樣 grid，再傳遞明確 VideoMetadata 給 processor；時間以 `source_ms=segment_start+window_offset+local_ms` 換回原片。模型看不到音軌，只有 baseline 提供的未驗證音訊 transient 時間。prompt 禁止稀疏影格數拍／勝負猜測；JSON 必須包含完整欄位、整數毫秒與列舉值。格式或越界失敗保留原文與錯誤，不修補成看似有效的回合。已規劃但輸出失敗的視窗仍保留在評估 scope，不從 recall 分母移除。跨窗近似重複以 IoU≥0.8 且起點差≤1 秒去重，保存被抑制的提案；部分相鄰回合留給人合併，不自動延長成完整一分。
+
+`rally_review.py` 將 `sources`、不可變 `runs`、人工 `reviews` 及冪等 `commands` 分表保存。人工判斷包含回合有效性、完整性、精彩程度、理由、actor、時間、父標註與 proposal IDs；拆合保留 lineage 並清除原判斷。每次寫入使用 SQLite transaction、revision CAS 與 request ID。新推論只新增 runs，不修改 reviews。人工 coverage 表示人已在該區間檢查所有回合，空白區間維持 UNKNOWN。計時與修改數是觀測記錄，不是省時效果證據。
+
+`review_web.py` 的 loopback 實驗服務與 `job_review.py` 的網站 adapter 共用 `static/review/`。前者只讀 manifest 原片，綁定 127.0.0.1，檢查 Host 與 SameSite session cookie；後者沿用 job owner/admin 權限，並按影片 owner 分開審核 DB，避免同 bytes 的跨使用者資料洩漏。網站審核 DB 位於 `data/rally-review/<owner-hash>.sqlite3`；不修改既有 annotations schema。主網站匯入舊 analysis 時 commit/耗時未知者明列 UNKNOWN，不冒充本次推論。
+
+固定來源時間區間可指定 blind_intervals。首次人工判斷前，API 不傳模型判斷、精彩建議、理由、原始回答或去重原文；人工紀錄保留之後才顯示該提案。它降低建議錨定風險，但候選區間本身仍由模型提出，不能稱為完全盲測。
+
+實驗服務優先播放 run 記錄的 H.264 短片，且只能讀取該實驗 DB 所在目錄內的代理檔；原生播放列顯示短片局部時間，I/O、候選預覽、拆分與保存均加回原片起點。可切回原片查看範圍外內容，但瀏覽器若不支援 HEVC，需為該區段另外建立相容預覽。實際播放驗收需確認 videoWidth/videoHeight 與畫面，只有播放時間前進可能是僅音訊播放。
+
+`review_evaluation.py` 以 source-local 最大一對一匹配（交集≥50% 人工區間）分開評估候選核心、入選核心、padding、切點誤差與未匹配項。候選 precision 需完整 scope coverage 及無未决回合／邊界；入選 precision 另需完整精彩評分。歷史正標註只能評估已知精彩球覆蓋。55 秒 Reel 效用、回合 purity、held-out 準確度與真人省時均需另外取得證據。
+
 ## Failure and recovery model
 
 | Failure | Recovery |

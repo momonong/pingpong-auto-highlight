@@ -242,6 +242,7 @@ class ReviewStore:
         if blind:
             judged = {p for x in state["points"] for p in x["proposal_ids"]}
             for run in runs:
+                run["output_error_count"] = len(run.get("errors", []))
                 # Same fixed source-time blind intervals across providers and reruns.
                 for p in run["proposals"]:
                     hidden = any(

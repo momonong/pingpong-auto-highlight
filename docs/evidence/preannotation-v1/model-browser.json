@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "evidence": "automated browser on disposable DB copy, not human labels",
+  "media": {
+    "width": 640,
+    "height": 360,
+    "currentTime": 0.257598
+  },
+  "model": "Qwen/Qwen3-VL-8B-Instruct",
+  "output_errors": 1,
+  "review_revision": 1,
+  "original_store_unchanged": true
+}

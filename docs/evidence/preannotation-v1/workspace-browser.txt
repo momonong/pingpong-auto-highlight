@@ -1,0 +1,1 @@
+{"result":"PASS","artifacts":"D:\\projects\\pingpong-auto-highlight\\data\\worktrees\\model-assisted-review\\data\\browser-test-fr5pq3","checks":["desktop/mobile","resume after reload","playback/download","Drive fixture","admin/annotations","offline/503/malformed health","stale progress/recovery","language","account isolation"]}

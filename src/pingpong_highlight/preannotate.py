@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import subprocess
@@ -25,9 +26,12 @@ from pingpong_highlight.rally_review import (
 PROMPT = """You are proposing table-tennis rally intervals for HUMAN review, not final labels.
 Analyze the entire video window, including play outside any audio events. Video has NO AUDIO.
 Audio events provided separately are heuristic transients, not verified hits.
-Return ONLY a JSON object {"rallies":[{"start_ms":0,"end_ms":1000,
-"rally":"yes|no|uncertain|unable","complete":"yes|no|uncertain|unable",
-"highlight":"omit|include|must|unrated","reason":"observable visual evidence and limitations"}]}.
+Return ONLY one JSON object with a "rallies" array. Each item must contain exactly these fields:
+start_ms and end_ms: integer timestamps determined from THIS window, not example values;
+rally and complete: each one of "yes", "no", "uncertain", "unable";
+highlight: one of "omit", "include", "must", "unrated";
+reason: your specific visual observations (player actions, table position, start/end transitions)
+and limitations. Do not repeat these instructions as the reason. Do not invent missing evidence.
 Times are INTEGER MILLISECONDS LOCAL to this video window. Mark each distinct serve-to-point-end
 interval, not individual hits. Boundary precision is limited by sampled frames. If the serve or
 point end is outside the window, complete=no. Do not infer precise hit counts, ball trajectories,
@@ -72,6 +76,10 @@ def normalize_response(raw: str, window: dict) -> list[dict]:
         if set(item) != set(Judgment.model_fields):
             raise ValueError("Missing or extra judgment fields")
         fields = Judgment.model_validate(item).model_dump()
+        if fields["end_ms"] - fields["start_ms"] < 500:
+            raise ValueError(
+                "Interval shorter than the 500 ms sampling resolution; check time units"
+            )
         if fields["end_ms"] > window["end_ms"] - window["start_ms"]:
             raise ValueError("Model timestamp outside window")
         fields["start_ms"] += window["start_ms"]
@@ -233,7 +241,12 @@ class QwenProvider:
                 "type": "text",
                 "text": PROMPT
                 + "\nLocal audio transient times (ms), not hit counts: "
-                + json.dumps(audio_events),
+                + json.dumps(audio_events)
+                + f"\nThis window lasts {len(frames) * 500} MILLISECONDS. "
+                "Embedded video timestamps are in seconds; "
+                "multiply those by 1000 for start_ms/end_ms. "
+                "Minimum observable interval is 500 ms. "
+                "Never return seconds in millisecond fields.",
             },
         ]
         chat = self.processor.apply_chat_template(
@@ -249,6 +262,17 @@ class QwenProvider:
         with torch.inference_mode():
             output = self.model.generate(**inputs, max_new_tokens=768, do_sample=False)
         self.receipt["peak_vram_bytes"] = torch.cuda.max_memory_allocated()
+        self.receipt.setdefault("inferences", []).append(
+            {
+                "clip": str(clip.resolve()),
+                "frames": len(frames),
+                "frame_shape": list(images.shape),
+                "timestamps_seconds": timestamps,
+                "input_tokens": inputs.input_ids.shape[1],
+                "output_tokens": output.shape[1] - inputs.input_ids.shape[1],
+                "video_grid_thw": inputs.video_grid_thw.tolist(),
+            }
+        )
         return self.processor.batch_decode(
             output[:, inputs.input_ids.shape[1] :], skip_special_tokens=True
         )[0]
@@ -460,7 +484,7 @@ def run_experiment(
                         )
                 # Persist every completed inference, including malformed output.
                 write_json(folder / "partial.json", run)
-            run["runtime"] = provider.receipt
+            run["runtime"] = copy.deepcopy(provider.receipt)
             run["proposals"], run["duplicates"] = deduplicate(run["proposals"])
             # Independent simple rank policy; budget is per analyzed segment, not full-film quality.
             budget = 55000

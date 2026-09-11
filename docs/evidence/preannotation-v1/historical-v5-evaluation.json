@@ -1,0 +1,821 @@
+{
+  "evidence": "recomputed historical artifacts, not current HEAD inference",
+  "group": "development",
+  "label_semantics": "legacy positive highlights only; not all rallies",
+  "unannotated": "UNKNOWN",
+  "precision": "UNKNOWN",
+  "reel_utility": "UNKNOWN",
+  "annotations_sha256": "3c5969605a6a59a75f977af699de6b30a34ca8ce1abf9a64a84fcd71a5a5cd86",
+  "sources": [
+    {
+      "source_id": "ef8ffaa143e9665f1e762263b9b2b5aaff6dd81400b166117463ec15b97952e0",
+      "run_id": "b979c6ddd4e9452faf6de8105e3d59a7",
+      "model_id": "point-reel-v5",
+      "commit": "UNKNOWN-old-artifact",
+      "artifact_sha256": "143fe75fbe87c3ab37dde77fa4955403f829d25a6086cddf76da1e4ef09a96b2",
+      "known_positive_count": 31,
+      "scope": [
+        {
+          "start_ms": 0,
+          "end_ms": 2652527
+        }
+      ],
+      "candidate_core": {
+        "matched": 2,
+        "truth_count": 31,
+        "prediction_count": 83,
+        "recall": 0.06451612903225806,
+        "pairs": [
+          {
+            "prediction": "21",
+            "truth": "7b790dd0b99f45b199b560241aad23ed",
+            "start_error_ms": 2784,
+            "end_error_ms": -1680
+          },
+          {
+            "prediction": "55",
+            "truth": "ac21b8b3ea1b4da8870c7c5deaa71884",
+            "start_error_ms": 1272,
+            "end_error_ms": 3016
+          }
+        ],
+        "unmatched_truth": [
+          "ad08949b6d21465cb23ff684faf04252",
+          "da0f318e4d244e4fa082b6bface9e248",
+          "84362e94f6c54e1a9377fd7d28ce1248",
+          "d48388dd68864c6a88d2606c30f494ab",
+          "3ce93d8e6153434899d4cd87127354f4",
+          "645ea9b21623473cb6d4a352d798db8e",
+          "c915d4b507184b7384afcc1e08ca32e9",
+          "b2fb871434cc42d1a1bb340f09a8196f",
+          "bcd13ba673074bedb8fbdac15e387cd4",
+          "9fd12490d5734c929b9b49bccaecc6ec",
+          "c1ec72cc106242e3a0757daced27376e",
+          "05a6dba034f444dbab7f971bf91b5ed8",
+          "76e759441918427097f21fd28b23a5a6",
+          "258657134508474f9bfc2d1b68792abb",
+          "208fff6978834c86afc2df26fc761569",
+          "24e40bcb52f240d59e0930c1b0a694a6",
+          "c9266d50edbf42b9a6cd2de23963cfa9",
+          "f761cb5a24694d5dbd1b6df3deab583e",
+          "8e52febfab284871b2015b31e83df5f1",
+          "00869e83ebb646b0bb06f5f9f1ca3870",
+          "93505cf2152548a4898c9a4d3a128621",
+          "f0576c7bd2f147929d4fb67202168058",
+          "961df2ec6ae0492baeacb44f92ed8967",
+          "acbe63ebacfa4a0d91ad26f5c0cd8844",
+          "48d4f46796e942059b94be5bb1dabe76",
+          "88c0683abf1e4ffa95d6309173340974",
+          "62332fdf646744ff96e7c8cbd8ecbd51",
+          "860d76de981a4d33b93f943791041f2b",
+          "d67c93fccc9946859a0586d0d0f8bb8f"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82"
+        ],
+        "median_start_absolute_ms": 2028.0,
+        "median_end_absolute_ms": 2348.0
+      },
+      "selected_core": {
+        "matched": 2,
+        "truth_count": 31,
+        "prediction_count": 4,
+        "recall": 0.06451612903225806,
+        "pairs": [
+          {
+            "prediction": "1",
+            "truth": "7b790dd0b99f45b199b560241aad23ed",
+            "start_error_ms": 2784,
+            "end_error_ms": -1680
+          },
+          {
+            "prediction": "2",
+            "truth": "ac21b8b3ea1b4da8870c7c5deaa71884",
+            "start_error_ms": 1272,
+            "end_error_ms": 3016
+          }
+        ],
+        "unmatched_truth": [
+          "ad08949b6d21465cb23ff684faf04252",
+          "da0f318e4d244e4fa082b6bface9e248",
+          "84362e94f6c54e1a9377fd7d28ce1248",
+          "d48388dd68864c6a88d2606c30f494ab",
+          "3ce93d8e6153434899d4cd87127354f4",
+          "645ea9b21623473cb6d4a352d798db8e",
+          "c915d4b507184b7384afcc1e08ca32e9",
+          "b2fb871434cc42d1a1bb340f09a8196f",
+          "bcd13ba673074bedb8fbdac15e387cd4",
+          "9fd12490d5734c929b9b49bccaecc6ec",
+          "c1ec72cc106242e3a0757daced27376e",
+          "05a6dba034f444dbab7f971bf91b5ed8",
+          "76e759441918427097f21fd28b23a5a6",
+          "258657134508474f9bfc2d1b68792abb",
+          "208fff6978834c86afc2df26fc761569",
+          "24e40bcb52f240d59e0930c1b0a694a6",
+          "c9266d50edbf42b9a6cd2de23963cfa9",
+          "f761cb5a24694d5dbd1b6df3deab583e",
+          "8e52febfab284871b2015b31e83df5f1",
+          "00869e83ebb646b0bb06f5f9f1ca3870",
+          "93505cf2152548a4898c9a4d3a128621",
+          "f0576c7bd2f147929d4fb67202168058",
+          "961df2ec6ae0492baeacb44f92ed8967",
+          "acbe63ebacfa4a0d91ad26f5c0cd8844",
+          "48d4f46796e942059b94be5bb1dabe76",
+          "88c0683abf1e4ffa95d6309173340974",
+          "62332fdf646744ff96e7c8cbd8ecbd51",
+          "860d76de981a4d33b93f943791041f2b",
+          "d67c93fccc9946859a0586d0d0f8bb8f"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "3"
+        ],
+        "median_start_absolute_ms": 2028.0,
+        "median_end_absolute_ms": 2348.0
+      },
+      "selected_padding": {
+        "matched": 3,
+        "truth_count": 31,
+        "prediction_count": 4,
+        "recall": 0.0967741935483871,
+        "pairs": [
+          {
+            "prediction": "0",
+            "truth": "c915d4b507184b7384afcc1e08ca32e9",
+            "start_error_ms": 996,
+            "end_error_ms": -212
+          },
+          {
+            "prediction": "1",
+            "truth": "7b790dd0b99f45b199b560241aad23ed",
+            "start_error_ms": 1284,
+            "end_error_ms": -180
+          },
+          {
+            "prediction": "2",
+            "truth": "ac21b8b3ea1b4da8870c7c5deaa71884",
+            "start_error_ms": -228,
+            "end_error_ms": 4516
+          }
+        ],
+        "unmatched_truth": [
+          "ad08949b6d21465cb23ff684faf04252",
+          "da0f318e4d244e4fa082b6bface9e248",
+          "84362e94f6c54e1a9377fd7d28ce1248",
+          "d48388dd68864c6a88d2606c30f494ab",
+          "3ce93d8e6153434899d4cd87127354f4",
+          "645ea9b21623473cb6d4a352d798db8e",
+          "b2fb871434cc42d1a1bb340f09a8196f",
+          "bcd13ba673074bedb8fbdac15e387cd4",
+          "9fd12490d5734c929b9b49bccaecc6ec",
+          "c1ec72cc106242e3a0757daced27376e",
+          "05a6dba034f444dbab7f971bf91b5ed8",
+          "76e759441918427097f21fd28b23a5a6",
+          "258657134508474f9bfc2d1b68792abb",
+          "208fff6978834c86afc2df26fc761569",
+          "24e40bcb52f240d59e0930c1b0a694a6",
+          "c9266d50edbf42b9a6cd2de23963cfa9",
+          "f761cb5a24694d5dbd1b6df3deab583e",
+          "8e52febfab284871b2015b31e83df5f1",
+          "00869e83ebb646b0bb06f5f9f1ca3870",
+          "93505cf2152548a4898c9a4d3a128621",
+          "f0576c7bd2f147929d4fb67202168058",
+          "961df2ec6ae0492baeacb44f92ed8967",
+          "acbe63ebacfa4a0d91ad26f5c0cd8844",
+          "48d4f46796e942059b94be5bb1dabe76",
+          "88c0683abf1e4ffa95d6309173340974",
+          "62332fdf646744ff96e7c8cbd8ecbd51",
+          "860d76de981a4d33b93f943791041f2b",
+          "d67c93fccc9946859a0586d0d0f8bb8f"
+        ],
+        "unmatched_predictions": [
+          "3"
+        ],
+        "median_start_absolute_ms": 996,
+        "median_end_absolute_ms": 212
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    },
+    {
+      "source_id": "38af3c4e3b09436015fe96177cd0689ff2f26f477c31d4ddb0221e15df9f62f3",
+      "run_id": "4354716dd8a14053823a77cdd3827c00",
+      "model_id": "point-reel-v5",
+      "commit": "UNKNOWN-old-artifact",
+      "artifact_sha256": "d69a8c63da84939a69f228821f61cff493c9d2eceadbfc32653e4a0e8d08f88a",
+      "known_positive_count": 16,
+      "scope": [
+        {
+          "start_ms": 0,
+          "end_ms": 2819324
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 16,
+        "prediction_count": 77,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "4cf682ca6bec42a19c95c590a818ba30",
+          "666768853f3846c59354e45da6d747fb",
+          "47b33f2a1db0475aafbefb71cc88bbfa",
+          "f135d497ecaf4b8ba34dc3c36a83dab3",
+          "19bd3fe236dd46f7bec4495becb8a380",
+          "e8f5a30935c441ed89dc63f1ce576288",
+          "7fd33b2c4165442b8139fdfe66e8d66b",
+          "41e701ad52264c71a2d44dac5c4f2d14",
+          "15fbb03938b04688805ee0710e9d244f",
+          "0a5757cd768d4edd9372bb8605445aa9",
+          "d651a6ee245440c8a89a4b07f67e9a32",
+          "58a7f660bd1a4ed4afa08346a120b764",
+          "0064785e0173427f8243f3aec61f78bd",
+          "eda95169e1974d3787c1ca234f881964",
+          "2baa32c1ee364331af5e4aaeea3b3eb0",
+          "dc6fc23fb12649cca994ef04abfcb594"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 16,
+        "prediction_count": 3,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "4cf682ca6bec42a19c95c590a818ba30",
+          "666768853f3846c59354e45da6d747fb",
+          "47b33f2a1db0475aafbefb71cc88bbfa",
+          "f135d497ecaf4b8ba34dc3c36a83dab3",
+          "19bd3fe236dd46f7bec4495becb8a380",
+          "e8f5a30935c441ed89dc63f1ce576288",
+          "7fd33b2c4165442b8139fdfe66e8d66b",
+          "41e701ad52264c71a2d44dac5c4f2d14",
+          "15fbb03938b04688805ee0710e9d244f",
+          "0a5757cd768d4edd9372bb8605445aa9",
+          "d651a6ee245440c8a89a4b07f67e9a32",
+          "58a7f660bd1a4ed4afa08346a120b764",
+          "0064785e0173427f8243f3aec61f78bd",
+          "eda95169e1974d3787c1ca234f881964",
+          "2baa32c1ee364331af5e4aaeea3b3eb0",
+          "dc6fc23fb12649cca994ef04abfcb594"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 0,
+        "truth_count": 16,
+        "prediction_count": 3,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "4cf682ca6bec42a19c95c590a818ba30",
+          "666768853f3846c59354e45da6d747fb",
+          "47b33f2a1db0475aafbefb71cc88bbfa",
+          "f135d497ecaf4b8ba34dc3c36a83dab3",
+          "19bd3fe236dd46f7bec4495becb8a380",
+          "e8f5a30935c441ed89dc63f1ce576288",
+          "7fd33b2c4165442b8139fdfe66e8d66b",
+          "41e701ad52264c71a2d44dac5c4f2d14",
+          "15fbb03938b04688805ee0710e9d244f",
+          "0a5757cd768d4edd9372bb8605445aa9",
+          "d651a6ee245440c8a89a4b07f67e9a32",
+          "58a7f660bd1a4ed4afa08346a120b764",
+          "0064785e0173427f8243f3aec61f78bd",
+          "eda95169e1974d3787c1ca234f881964",
+          "2baa32c1ee364331af5e4aaeea3b3eb0",
+          "dc6fc23fb12649cca994ef04abfcb594"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    },
+    {
+      "source_id": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+      "run_id": "6e7e1019273942d8babb122188d64a30",
+      "model_id": "point-reel-v5",
+      "commit": "UNKNOWN-old-artifact",
+      "artifact_sha256": "4891099716cdb365e7f6aff05fef1f8b5399091a8dda4d1f7fb778509b78f6e6",
+      "known_positive_count": 4,
+      "scope": [
+        {
+          "start_ms": 0,
+          "end_ms": 223394
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 4,
+        "prediction_count": 11,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "f0a9291d25db49b2a27501a49849f80f",
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6",
+          "9b83d62f82de43839e79b274215ec851"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 4,
+        "prediction_count": 5,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "f0a9291d25db49b2a27501a49849f80f",
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6",
+          "9b83d62f82de43839e79b274215ec851"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 1,
+        "truth_count": 4,
+        "prediction_count": 5,
+        "recall": 0.25,
+        "pairs": [
+          {
+            "prediction": "1",
+            "truth": "f0a9291d25db49b2a27501a49849f80f",
+            "start_error_ms": 3064,
+            "end_error_ms": -1304
+          }
+        ],
+        "unmatched_truth": [
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6",
+          "9b83d62f82de43839e79b274215ec851"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "2",
+          "3",
+          "4"
+        ],
+        "median_start_absolute_ms": 3064,
+        "median_end_absolute_ms": 1304
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    },
+    {
+      "source_id": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "run_id": "a6ef1ae5b64d4f62b19bf2d850b9282b",
+      "model_id": "point-reel-v5",
+      "commit": "UNKNOWN-old-artifact",
+      "artifact_sha256": "da597b9ebabe9008925a3a8f07f951c53f91e6915b9c50c0b9b9f3e67a00df84",
+      "known_positive_count": 1,
+      "scope": [
+        {
+          "start_ms": 0,
+          "end_ms": 221687
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 8,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "cd934039319e4f218cb3ca8334f290ba"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 4,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "cd934039319e4f218cb3ca8334f290ba"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 1,
+        "truth_count": 1,
+        "prediction_count": 4,
+        "recall": 1.0,
+        "pairs": [
+          {
+            "prediction": "2",
+            "truth": "cd934039319e4f218cb3ca8334f290ba",
+            "start_error_ms": 1120,
+            "end_error_ms": -2520
+          }
+        ],
+        "unmatched_truth": [],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "3"
+        ],
+        "median_start_absolute_ms": 1120,
+        "median_end_absolute_ms": 2520
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    },
+    {
+      "source_id": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+      "run_id": "f470599a5b5e434c8ab809db749436b2",
+      "model_id": "point-reel-v5",
+      "commit": "UNKNOWN-old-artifact",
+      "artifact_sha256": "cd922aa0672c39845b82c4a0b8751c6d85aa96a0294988c508e8fc21e16120d2",
+      "known_positive_count": 4,
+      "scope": [
+        {
+          "start_ms": 0,
+          "end_ms": 602570
+        }
+      ],
+      "candidate_core": {
+        "matched": 2,
+        "truth_count": 4,
+        "prediction_count": 71,
+        "recall": 0.5,
+        "pairs": [
+          {
+            "prediction": "64",
+            "truth": "abe18160896d45699d3a4d7f29bba2ee",
+            "start_error_ms": 2096,
+            "end_error_ms": -1404
+          },
+          {
+            "prediction": "68",
+            "truth": "db9180a301544f1a8efe6a9c6b759378",
+            "start_error_ms": 3328,
+            "end_error_ms": -304
+          }
+        ],
+        "unmatched_truth": [
+          "28c571b5112d4a748c33e2dec13f1dfa",
+          "8930c23aeba44a63ba5888c47c7e4e89"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "65",
+          "66",
+          "67",
+          "69",
+          "70"
+        ],
+        "median_start_absolute_ms": 2712.0,
+        "median_end_absolute_ms": 854.0
+      },
+      "selected_core": {
+        "matched": 2,
+        "truth_count": 4,
+        "prediction_count": 6,
+        "recall": 0.5,
+        "pairs": [
+          {
+            "prediction": "4",
+            "truth": "abe18160896d45699d3a4d7f29bba2ee",
+            "start_error_ms": 2096,
+            "end_error_ms": -1404
+          },
+          {
+            "prediction": "5",
+            "truth": "db9180a301544f1a8efe6a9c6b759378",
+            "start_error_ms": 3328,
+            "end_error_ms": -304
+          }
+        ],
+        "unmatched_truth": [
+          "28c571b5112d4a748c33e2dec13f1dfa",
+          "8930c23aeba44a63ba5888c47c7e4e89"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "median_start_absolute_ms": 2712.0,
+        "median_end_absolute_ms": 854.0
+      },
+      "selected_padding": {
+        "matched": 2,
+        "truth_count": 4,
+        "prediction_count": 6,
+        "recall": 0.5,
+        "pairs": [
+          {
+            "prediction": "4",
+            "truth": "abe18160896d45699d3a4d7f29bba2ee",
+            "start_error_ms": 596,
+            "end_error_ms": 96
+          },
+          {
+            "prediction": "5",
+            "truth": "db9180a301544f1a8efe6a9c6b759378",
+            "start_error_ms": 1828,
+            "end_error_ms": 1196
+          }
+        ],
+        "unmatched_truth": [
+          "28c571b5112d4a748c33e2dec13f1dfa",
+          "8930c23aeba44a63ba5888c47c7e4e89"
+        ],
+        "unmatched_predictions": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "median_start_absolute_ms": 1212.0,
+        "median_end_absolute_ms": 646.0
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    }
+  ],
+  "totals": {
+    "positive_count": 56,
+    "candidate_core": 4,
+    "selected_core": 4,
+    "selected_padding": 7
+  }
+}

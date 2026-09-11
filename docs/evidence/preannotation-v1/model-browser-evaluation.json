@@ -1,0 +1,146 @@
+{
+  "source_id": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+  "group": "development",
+  "semantics": "serve-to-point-end; all rallies; unreviewed=UNKNOWN; integer-ms",
+  "review_revision": 1,
+  "review_coverage": [],
+  "active_review_ms": 0,
+  "modification_count": 1,
+  "time_savings": "UNKNOWN",
+  "reel_utility": "UNKNOWN - requires watching the actual 55-second Reel",
+  "matching": "maximum cardinality, source-local, >=50% human interval overlap",
+  "runs": [
+    {
+      "run_id": "8dd72c58a95b40269ee80500e926b55f",
+      "model_id": "baseline-audio-motion-v5",
+      "commit": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+      "model_revision": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 0,
+        "prediction_count": 2,
+        "recall": "UNKNOWN",
+        "pairs": [],
+        "unmatched_truth": [],
+        "unmatched_predictions": [
+          "8dd72c58a95b40269ee80500e926b55f-0",
+          "8dd72c58a95b40269ee80500e926b55f-1"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 0,
+        "prediction_count": 1,
+        "recall": "UNKNOWN",
+        "pairs": [],
+        "unmatched_truth": [],
+        "unmatched_predictions": [
+          "8dd72c58a95b40269ee80500e926b55f-1"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 0,
+        "truth_count": 0,
+        "prediction_count": 1,
+        "recall": "UNKNOWN",
+        "pairs": [],
+        "unmatched_truth": [],
+        "unmatched_predictions": [
+          "8dd72c58a95b40269ee80500e926b55f-1"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "candidate_precision": "UNKNOWN",
+      "selection_precision": "UNKNOWN",
+      "precision_scope": "fully reviewed analyzed intervals only; otherwise UNKNOWN",
+      "scope": [
+        {
+          "start_ms": 10000,
+          "end_ms": 74000
+        }
+      ],
+      "coverage_complete": false,
+      "boundary_crossing_truth": [],
+      "boundary_corrections": [],
+      "elapsed_seconds": 15.692462100007106,
+      "raw_output_errors": 0
+    },
+    {
+      "run_id": "318ea4210d004081acee3e1d751ef454",
+      "model_id": "Qwen/Qwen3-VL-8B-Instruct",
+      "commit": "100337fd549c3530ce385dba8dc6443d760bfc36",
+      "model_revision": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 0,
+        "prediction_count": 11,
+        "recall": "UNKNOWN",
+        "pairs": [],
+        "unmatched_truth": [],
+        "unmatched_predictions": [
+          "318ea4210d004081acee3e1d751ef454-1-0",
+          "318ea4210d004081acee3e1d751ef454-2-0",
+          "318ea4210d004081acee3e1d751ef454-2-1",
+          "318ea4210d004081acee3e1d751ef454-2-2",
+          "318ea4210d004081acee3e1d751ef454-2-3",
+          "318ea4210d004081acee3e1d751ef454-2-4",
+          "318ea4210d004081acee3e1d751ef454-3-0",
+          "318ea4210d004081acee3e1d751ef454-2-5",
+          "318ea4210d004081acee3e1d751ef454-3-1",
+          "318ea4210d004081acee3e1d751ef454-3-2",
+          "318ea4210d004081acee3e1d751ef454-3-3"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 0,
+        "prediction_count": 0,
+        "recall": "UNKNOWN",
+        "pairs": [],
+        "unmatched_truth": [],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 0,
+        "truth_count": 0,
+        "prediction_count": 0,
+        "recall": "UNKNOWN",
+        "pairs": [],
+        "unmatched_truth": [],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "candidate_precision": "UNKNOWN",
+      "selection_precision": "UNKNOWN",
+      "precision_scope": "fully reviewed analyzed intervals only; otherwise UNKNOWN",
+      "scope": [
+        {
+          "start_ms": 10000,
+          "end_ms": 74000
+        }
+      ],
+      "coverage_complete": false,
+      "boundary_crossing_truth": [],
+      "boundary_corrections": [
+        {
+          "proposal": "318ea4210d004081acee3e1d751ef454-0-0",
+          "human": "75b52d69573a4fdc923b1c4fe01e5ca5",
+          "start_delta_ms": 0,
+          "end_delta_ms": 0
+        }
+      ],
+      "elapsed_seconds": 151.67267159999756,
+      "raw_output_errors": 1
+    }
+  ]
+}
