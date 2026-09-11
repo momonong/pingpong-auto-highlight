@@ -1,0 +1,23 @@
+{
+  "selection": "Targeted development regression, 116 seconds, five existing positive highlights; not held-out",
+  "segments": [
+    {
+      "path": "D:/projects/pingpong-auto-highlight/data/uploads/6e7e1019273942d8babb122188d64a30.mp4",
+      "expected_sha256": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+      "start_ms": 10000, "end_ms": 74000, "group": "development", "session_id": "2026-04-25",
+      "blind_intervals": [{"start_ms": 10000, "end_ms": 28000}]
+    },
+    {
+      "path": "D:/projects/pingpong-auto-highlight/data/uploads/a6ef1ae5b64d4f62b19bf2d850b9282b.mp4",
+      "expected_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "start_ms": 132000, "end_ms": 160000, "group": "development", "session_id": "2026-04-25",
+      "blind_intervals": []
+    },
+    {
+      "path": "D:/projects/pingpong-auto-highlight/data/uploads/f470599a5b5e434c8ab809db749436b2.mp4",
+      "expected_sha256": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+      "start_ms": 330000, "end_ms": 354000, "group": "development", "session_id": "2026-01-26",
+      "blind_intervals": []
+    }
+  ]
+}

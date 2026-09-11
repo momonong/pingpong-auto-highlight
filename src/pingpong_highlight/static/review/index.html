@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HighlightCraft 回合審核</title><link rel="stylesheet" href="review.css"><script defer src="review.js"></script></head>
+<body><header><a href="/">HighlightCraft</a><h1>回合預標註與人工修正</h1>
+<label>影片 <select id="sources"></select></label><button id="reload">重新載入</button><a id="export">匯出紀錄</a></header>
+<p id="message" role="status">載入中</p>
+<main><section><video id="video" controls preload="metadata"></video>
+<div class="toolbar"><button id="compatible" hidden>播放相容短片</button><button id="original">切回原片</button><span id="mediaMode"></span></div>
+<div class="toolbar"><button id="back">−2 秒</button><button id="play">播放／暫停</button><button id="forward">+2 秒</button><button id="preview">播放前後脈絡</button></div>
+<p>回合：發球到該分結束。回合判斷與精彩程度分開；未審核區間不是負樣本。</p>
+<p id="scope"></p>
+<label>候選批次 <select id="runs"></select></label><div class="toolbar"><button id="import" hidden>載入既有 baseline 建議</button><button id="new">補漏回合</button><button id="next">下一個未審核候選</button></div>
+<h2>模型候選</h2><div id="proposals" class="list"></div><h2>人工紀錄</h2><div id="points" class="list"></div>
+</section><aside><h2 id="editing">新增人工回合</h2><p id="suggestion">請先觀看片段，再作判斷。</p>
+<div class="row"><label>開始（秒）<input id="start" type="number" min="0" step="0.001" value="0"></label><button id="markStart">I 設起點</button></div>
+<div class="row"><label>結束（秒）<input id="end" type="number" min="0" step="0.001" value="1"></label><button id="markEnd">O 設終點</button></div>
+<label>是否為回合<select id="rally"><option value="uncertain">不確定／待判斷</option><option value="yes">確認回合</option><option value="no">拒絕：不是回合</option><option value="unable">無法判斷</option></select></label>
+<label>是否完整<select id="complete"><option value="uncertain">不確定／待確認</option><option value="yes">完整</option><option value="no">不完整</option><option value="unable">無法判斷</option></select></label>
+<label>人工精彩程度<select id="highlight"><option value="unrated">未判斷</option><option value="omit">不收錄</option><option value="include">可收錄</option><option value="must">必收錄</option></select></label>
+<label>可觀察理由／限制<textarea id="reason" maxlength="2000"></textarea></label>
+<div class="toolbar"><button id="save" class="primary">保存人工判斷</button><button id="reject">拒絕候選</button></div>
+<p>拆分／合併會保留來源關聯，並重設為待判斷。</p><div class="toolbar"><button id="split">在播放位置拆分</button><select id="mergeTarget" aria-label="合併另一回合"></select><button id="merge">合併</button></div>
+<h2>審核範圍與耗時</h2><p>觀看片段並檢查所有回合後，才標記已審核；播放不會自動完成 coverage。</p>
+<div class="row"><label>審核起點（秒）<input id="coverStart" type="number" min="0" step="0.001" value="0"></label><label>審核終點（秒）<input id="coverEnd" type="number" min="0" step="0.001" value="1"></label></div>
+<div class="toolbar"><button id="coverage">保存已審核範圍</button><button id="uncover">撤回此範圍</button></div>
+<button id="timer">開始計時</button><p id="stats"></p><h3>尚未審核</h3><div id="gaps" class="list"></div><h3>候選未覆蓋</h3><div id="proposalGaps" class="list"></div>
+</aside></main></body></html>

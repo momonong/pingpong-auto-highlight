@@ -3,6 +3,7 @@
 
   const storageKey = "highlightcraft-language";
   const catalog = Object.freeze({
+    "annotation.assistedReview": ["回合預標註審核", "Review proposed rallies"],
     "service.checking": ["正在確認連線", "Checking connection"],
     "service.offline": ["裝置已離線", "Device offline"],
     "service.unavailable": ["無法連線至服務", "Service unreachable"],

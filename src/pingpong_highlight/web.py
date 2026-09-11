@@ -1387,5 +1387,7 @@ def create_app(
     async def index() -> FileResponse:
         return FileResponse(static_dir / "index.html")
 
+    from pingpong_highlight.job_review import install
+    install(app, settings, job_and_upload)
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
     return app

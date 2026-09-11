@@ -411,6 +411,27 @@ def test_two_users_are_isolated_while_admin_can_manage_all_jobs(live_app) -> Non
     _wait_for_job(alice, alice_job_id, "completed")
     _wait_for_job(bob, bob_job_id, "completed")
 
+    # Review endpoints retain owner scope, even when two users upload identical bytes.
+    alice_review = f"/api/jobs/{alice_job_id}/rally-review"
+    assert bob.request("GET", alice_review).status_code == 404
+    assert bob.request("POST", alice_review + "/baseline").status_code == 404
+    initial = alice.request("GET", alice_review)
+    assert initial.status_code == 200, initial.body
+    assert alice.request("POST", alice_review + "/baseline").status_code == 200
+    saved = alice.request("POST", alice_review, json_body={
+        "action": "save", "revision": 0, "request_id": "owner-review-001",
+        "point": {"start_ms": 100, "end_ms": 900, "rally": "yes", "highlight": "include"},
+    })
+    assert saved.status_code == 200, saved.body
+    assert admin.request("GET", alice_review).json()["review"]["points"][0]["highlight"] == "include"
+    duplicate_id = _upload_video(bob, "same-bytes.mp4", b"alice-video")
+    _wait_for_job(bob, duplicate_id, "completed")
+    duplicate_review = bob.request("GET", f"/api/jobs/{duplicate_id}/rally-review").json()
+    assert duplicate_review["source"]["id"] == initial.json()["source"]["id"]
+    assert duplicate_review["review"]["points"] == []
+    # Remove the test-only duplicate job so the pre-existing list assertions retain their scope.
+    assert bob.request("DELETE", f"/api/jobs/{duplicate_id}").status_code == 204
+
     alice_uploads = alice.request("GET", "/api/uploads?scope=mine").json()["uploads"]
     bob_uploads = bob.request("GET", "/api/uploads?scope=mine").json()["uploads"]
     assert [item["filename"] for item in alice_uploads] == ["alice-pending.mp4"]

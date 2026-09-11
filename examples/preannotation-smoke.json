@@ -1,0 +1,8 @@
+{
+  "segments": [{
+    "path": "D:/projects/pingpong-auto-highlight/data/uploads/6e7e1019273942d8babb122188d64a30.mp4",
+    "expected_sha256": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+    "start_ms": 16000, "end_ms": 24000, "group": "development", "session_id": "2026-04-25",
+    "blind_intervals": [{"start_ms": 16000, "end_ms": 24000}]
+  }]
+}
