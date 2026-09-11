@@ -153,6 +153,8 @@ Quick Tunnel 適合少量受邀測試，不適合長期公開、多使用者的�
 
 回合預標註第一版請先使用 `python -m pingpong_highlight.preannotate serve --store <experiment>/review.sqlite3 --port <unused-port>` 的獨立 loopback 服務。它不建立網站正式 state store，也不執行素材庫 migration。主網站的新審核紀錄另存於 `data/rally-review/`；備份時須包含該目錄。這不是現役素材庫升級已通過的宣告。
 
+整片人工審核的「準備整片播放」需要服務程序的 PATH 可找到 FFmpeg/ffprobe；不需要 VLM 套件。播放副本與 manifest 位於對應 review.sqlite3 同目錄的 `review-media/`，只供瀏覽器相容播放，來源檔不變。主網站端點沿用 job owner/admin 權限，實驗服務只綁定 loopback。重新啟動同一 URL 後，使用者重新整理可恢復本機未保存草稿；已保存人工紀錄仍在原審核 DB。
+
 模型是選用依賴，正式網站 image 不必包含。Windows 模型固定存入 `D:\hf\_models`；`model_cache.py` 在 Hugging Face import 前設定本程序 HF_HOME、Hub、Xet、assets、modules、Torch、編譯快取及 TEMP/TMP，offload 目錄也在此根目錄。模型載入只允許已存在的固定 snapshot、CUDA BF16、單一模型／單推論 worker，沒有 D 槽失敗後改存 C 槽的路徑。不要複製權重進 worktree/image，不改全系統環境。權重可跨工作目錄共用，但下載或推論前仍需確認既有工作與 VRAM；不終止其他 GPU 工作。
 
 1. 確認目前沒有 active upload/import/job，記錄現有 `PINGPONG_IMAGE` digest。

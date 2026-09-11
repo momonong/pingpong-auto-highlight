@@ -5,8 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import subprocess
+import threading
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
 from pingpong_highlight.rally_review import (
     Conflict,
@@ -15,11 +17,18 @@ from pingpong_highlight.rally_review import (
     ReviewStore,
     source_identity,
 )
+from pingpong_highlight.review_media import full_preview, prepare_review
 from pingpong_highlight.web import AuthenticatedUser
 
 
 def install(app, settings, job_and_upload):
     identities = {}
+    preparing = threading.Lock()
+
+    def payload(store, sid):
+        value = store.export(sid, blind=True)
+        value["full_preview_available"] = full_preview(store, sid) is not None
+        return value
 
     def context(job_id, user):
         job, upload = job_and_upload(job_id, user)
@@ -52,7 +61,7 @@ def install(app, settings, job_and_upload):
     @app.get("/api/jobs/{job_id}/rally-review")
     def get_review(job_id: str, user: AuthenticatedUser):
         store, sid, _ = context(job_id, user)
-        return store.export(sid, blind=True)
+        return payload(store, sid)
 
     @app.get("/api/jobs/{job_id}/rally-review/export")
     def export_review(job_id: str, user: AuthenticatedUser):
@@ -68,7 +77,32 @@ def install(app, settings, job_and_upload):
             raise HTTPException(409, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
-        return store.export(sid, blind=True)
+        return payload(store, sid)
+
+    @app.get("/api/jobs/{job_id}/rally-review/full-preview")
+    def full_video(job_id: str, request: Request, user: AuthenticatedUser):
+        from pingpong_highlight.web import MediaFileResponse
+
+        store, sid, _ = context(job_id, user)
+        spec = full_preview(store, sid)
+        if spec is None:
+            raise HTTPException(404, "Whole-video preview not prepared")
+        from pathlib import Path
+
+        return MediaFileResponse(Path(spec["path"]), request, media_type="video/mp4")
+
+    @app.post("/api/jobs/{job_id}/rally-review/full-preview")
+    def prepare_video(job_id: str, user: AuthenticatedUser):
+        store, sid, _ = context(job_id, user)
+        if not preparing.acquire(blocking=False):
+            raise HTTPException(409, "另一支影片正在準備，請稍後重試")
+        try:
+            prepare_review(store, sid)
+        except (ValueError, OSError, subprocess.SubprocessError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        finally:
+            preparing.release()
+        return payload(store, sid)
 
     @app.post("/api/jobs/{job_id}/rally-review/baseline")
     def baseline(job_id: str, user: AuthenticatedUser):
@@ -119,4 +153,4 @@ def install(app, settings, job_and_upload):
                 "proposals": rows,
             }
         )
-        return store.export(sid, blind=True)
+        return payload(store, sid)

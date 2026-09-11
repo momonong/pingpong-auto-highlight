@@ -90,7 +90,9 @@ VLM 以重疊視窗掃描指定區段全部內容，另抽樣 2 fps／384 寬影
 
 固定來源時間區間可指定 blind_intervals。首次人工判斷前，API 不傳模型判斷、精彩建議、理由、原始回答或去重原文；人工紀錄保留之後才顯示該提案。它降低建議錨定風險，但候選區間本身仍由模型提出，不能稱為完全盲測。
 
-實驗服務優先播放 run 記錄的 H.264 短片，且只能讀取該實驗 DB 所在目錄內的代理檔；原生播放列顯示短片局部時間，I/O、候選預覽、拆分與保存均加回原片起點。可切回原片查看範圍外內容，但瀏覽器若不支援 HEVC，需為該區段另外建立相容預覽。實際播放驗收需確認 videoWidth/videoHeight 與畫面，只有播放時間前進可能是僅音訊播放。
+人工工作區以完整來源影片為單位，優先播放 `review_media.py` 建立的整片 H.264／yuv420p 副本（時間從零開始，與原片一致）。播放 manifest 存於審核 DB 同目錄下的 `review-media/<source-sha>/preview.json`，與不可變模型 run、人工 DB 狀態分離；先重驗來源 SHA-256，再 accurate seek／autorotate／8-bit 轉碼，驗證長度後 atomic 寫入 manifest。相同來源可重用已完成副本。prepare-review CLI 與受權限保護的 full-preview API 均不呼叫模型，不擴大 model scope。
+
+「保存回合，繼續播放」只保存一筆標註並從終點續播；「確認已檢查到此處」才明確保存 coverage。重新載入以第一個未檢查區段起點作為續審位置，草稿可恢復或明確放棄。模型建議、原始檔與實驗短片切換放在選用區；選候選批次不再切換影片。實驗短片仍保留原片時間換算供比較。實際播放驗收需確認 videoWidth/videoHeight 與畫面，只有播放時間前進可能是僅音訊播放。
 
 `review_evaluation.py` 以 source-local 最大一對一匹配（交集≥50% 人工區間）分開評估候選核心、入選核心、padding、切點誤差與未匹配項。候選 precision 需完整 scope coverage 及無未决回合／邊界；入選 precision 另需完整精彩評分。歷史正標註只能評估已知精彩球覆蓋。55 秒 Reel 效用、回合 purity、held-out 準確度與真人省時均需另外取得證據。
 

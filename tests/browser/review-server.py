@@ -6,6 +6,7 @@ import uvicorn
 
 from pingpong_highlight.rally_review import Proposal, ReviewStore, source_identity
 from pingpong_highlight.review_web import create_review_app
+from pingpong_highlight.review_media import prepare_review
 
 directory, port, media = Path(sys.argv[1]), int(sys.argv[2]), Path(sys.argv[3])
 store = ReviewStore(directory / "review.sqlite3")
@@ -13,6 +14,7 @@ source = source_identity(media)
 source.update(duration_ms=10000, group="development", scope=[{"start_ms":0,"end_ms":10000}],
               blind_intervals=[{"start_ms":0,"end_ms":4000}])
 store.register(source)
+prepare_review(store, source["id"])
 store.add_run({"id":"browser-fixture", "source_id":source["id"], "commit":"fixture",
                "code_sha256":"fixture", "model_id":"synthetic-fixture", "model_revision":"fixture",
                "prompt":"fixture", "parameters":{},"sampling":{},"elapsed_seconds":0,

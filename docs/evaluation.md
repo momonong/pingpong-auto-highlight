@@ -175,3 +175,15 @@ Qwen 一共回傳 20 個通過格式校驗的提案，其中 3 個判定 rally=n
 ### 公開資料適用性（僅查核，未下載）
 
 [Extended OpenTTGames 官方資料庫](https://github.com/moamal01/table_tennis_data) 提供靜態側視 120 fps、stroke/serve/rally-ending events 等標註，授權 CC BY-NC-SA 4.0。可研究回合事件邊界，但攝影域與手機球館影片不同，也沒有個人精彩偏好標籤；非商用及相同方式分享條件需要在後續實際用途確認，不能默認可作任何產品訓練。第一版不依賴外部資料完成流程。
+
+## 整片人工標註流程修正（2026-09-11）
+
+使用者操作後指出播放與使用順序不清楚，原本期待先標完一整支影片。核對後確認前版把模型實驗短片當預設播放入口，造成「播放器局部時間／標註原片時間」並存，還要求直接操作候選批次與 coverage 數字欄位。這些是先前 fixture 通過仍未涵蓋的使用流程問題。
+
+本次將人工審核與模型實驗分開：整片觀看 → I/O 記錄回合 → 保存並續播 → 明確確認已檢查範圍。模型候選預設收合；精彩程度可稍後再評。重載從第一個未檢查區段接續，未完成草稿仍可恢復，新增明確放棄草稿操作。保存一筆回合不自動完成 coverage，播放也不會自動產生負例或已審核真值。
+
+僅為第一支來源 `636c4bb3…` 製作 223.4 秒、640×360、H.264 Constrained Baseline／yuv420p 的完整播放副本，存在既有獨立實驗目錄的 `review-media/`；沒有模型重跑、資料分組變更、正式 DB migration 或原片修改。原模型仍只分析其既有 10–74 秒 scope；整片人工標註可覆蓋 0–223.394 秒。CLI 入口是 `preannotate prepare-review --store … --source <sha256>`，亦可從頁面按「準備整片播放」。
+
+驗證：完整 pytest **116 passed、2 skipped**（原 Windows 平台限制）；新增整片媒體測試驗證 model scope 不限制播放長度、8-bit 格式、Range、可重用副本及人工 DB bytes 不變。`tests/browser/full-review.cjs` 驗證整片預設、單一時間軸、I/O、保存續播、顯式 coverage、重載接續、未填完草稿恢復、明確放棄及保存資料保留。既有 `rally-review.cjs` 的盲審／拆合／補漏／失敗重試／短片映射亦通過。
+
+真實瀏覽器在 0、110、220 秒播放均有 640×360 影像，總長度 223.4 秒，前後 review export 相同。這是播放與自動化操作證據；尚未由真人完成整片標註，也沒有新增模型效果或省時結論。紀錄位於 `docs/evidence/preannotation-v1/full-review-*`，截圖與影片衍生物留在 `data/experiments/preannotation-v1/`。模型擴大實驗的 STOP 結論維持。

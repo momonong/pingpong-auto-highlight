@@ -14,7 +14,9 @@ const {spawn,spawnSync}=require('node:child_process');const assert=require('node
  try{
   for(let i=0;i<100;i++){try{if((await fetch(url)).ok)break;}catch{}if(server.exitCode!==null)throw Error(log);await new Promise(r=>setTimeout(r,100));}
   browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1280,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(url);await page.locator('#proposals button').first().waitFor();
+  await page.goto(url);await page.locator('#resume').waitFor();
+  await page.locator('#modelDetails summary').click();await page.locator('#proposals button').first().waitFor();
+  await page.locator('#editDetails summary').click();await page.locator('#advancedCoverage summary').click();await page.locator('#timing summary').click();
   await page.locator('#original').click();
   await page.locator('#proposals button').first().click();assert.match(await page.locator('#suggestion').textContent(),/盲審/);
   assert(!(await page.locator('body').textContent()).includes('model fixture reason'));
@@ -23,7 +25,8 @@ const {spawn,spawnSync}=require('node:child_process');const assert=require('node
   await page.locator('#start').fill('1.2');await page.locator('#end').fill('3.2');
   await page.locator('#rally').selectOption('yes');await page.locator('#complete').selectOption('yes');await page.locator('#highlight').selectOption('include');
   await page.locator('#save').click();await page.locator('#points button').waitFor();
-  await page.reload();await page.locator('#points button').click();await page.locator('#original').click();assert.equal(await page.locator('#start').inputValue(),'1.2');assert.equal(await page.locator('#highlight').inputValue(),'include');
+  await page.reload();await page.locator('#points button').click();await page.locator('#editDetails summary').click();await page.locator('#advancedCoverage summary').click();await page.locator('#modelDetails summary').click();await page.locator('#timing summary').click();await page.locator('#original').click();assert.equal(await page.locator('#start').inputValue(),'1.2');assert.equal(await page.locator('#highlight').inputValue(),'include');
+  await page.waitForFunction(()=>document.querySelector('video').readyState>=2);
   await page.evaluate(()=>document.querySelector('video').currentTime=2);await page.locator('#split').click();await page.waitForFunction(()=>document.querySelectorAll('#points button').length===2);
   await page.locator('#points button').first().click();assert.equal(await page.locator('#highlight').inputValue(),'unrated');
   const other=await page.locator('#mergeTarget option').last().getAttribute('value');await page.locator('#mergeTarget').selectOption(other);await page.locator('#merge').click();await page.waitForFunction(()=>document.querySelectorAll('#points button').length===1);
@@ -32,7 +35,7 @@ const {spawn,spawnSync}=require('node:child_process');const assert=require('node
   await page.locator('#coverStart').fill('0');await page.locator('#coverEnd').fill('5');await page.locator('#coverage').click();await page.waitForFunction(()=>document.querySelector('#stats').textContent.includes('0.00–5.00'));
   await page.locator('#timer').click();await page.waitForTimeout(200);await page.locator('#timer').click();await page.waitForFunction(()=>!document.querySelector('#stats').textContent.includes('計時 0.0 秒'));
   await page.reload();await page.locator('#points button').first().waitFor();assert.equal(await page.locator('#points button').count(),3);
-  await page.locator('#points button').last().click();await page.locator('#reason').fill('draft survives failure');
+  await page.locator('#points button').last().click();await page.locator('#editDetails summary').click();await page.locator('#advancedCoverage summary').click();await page.locator('#reason').fill('draft survives failure');
   await page.route('**/api/review/*',route=>route.request().method()==='POST'?route.abort():route.continue());
   await page.locator('#save').click();await page.waitForFunction(()=>document.querySelector('#message').classList.contains('error'));
   assert.equal(await page.locator('#reason').inputValue(),'draft survives failure');await page.unroute('**/api/review/*');

@@ -1,0 +1,6 @@
+...........s....................s....................................... [ 61%]
+..............................................                           [100%]
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_cleanup.py:226: Windows symlink creation requires Developer Mode or elevation
+SKIPPED [1] tests\test_config.py:156: POSIX mode bits are not enforced on Windows
+116 passed, 2 skipped in 17.87s

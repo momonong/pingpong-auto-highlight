@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import secrets
+import subprocess
+import threading
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from pingpong_highlight.rally_review import Conflict, ReviewCommand, ReviewStore
+from pingpong_highlight.review_media import full_preview, prepare_review
 
 ASSETS = Path(__file__).parent / "static" / "review"
 
@@ -17,6 +20,7 @@ def create_review_app(store: ReviewStore) -> FastAPI:
     # Loopback-only CLI; a random per-process key prevents foreign-origin mutation/read.
     app = FastAPI()
     key = secrets.token_urlsafe(32)
+    preparing = threading.Lock()
 
     @app.middleware("http")
     async def local_only(request: Request, call_next):
@@ -46,7 +50,10 @@ def create_review_app(store: ReviewStore) -> FastAPI:
 
     @app.get("/api/review/sources")
     def sources():
-        return [{"id": s["id"], "name": s["name"]} for s in store.sources()]
+        return [
+            {"id": s["id"], "name": s["name"], "duration_ms": s["duration_ms"]}
+            for s in store.sources()
+        ]
 
     def preview_spec(run):
         spec = run.get("preview")
@@ -70,6 +77,7 @@ def create_review_app(store: ReviewStore) -> FastAPI:
 
     def payload(source_id):
         data = store.export(source_id, blind=True)
+        data["full_preview_available"] = full_preview(store, source_id) is not None
         for run in data["runs"]:
             spec = preview_spec(run)
             run["preview_available"] = spec is not None
@@ -119,6 +127,29 @@ def create_review_app(store: ReviewStore) -> FastAPI:
         if not path.is_file() or path.stat().st_size != source["size"]:
             raise HTTPException(409, "Source unavailable or changed")
         return MediaFileResponse(path, request, media_type="video/mp4")
+
+    @app.get("/api/review/{source_id}/full-preview")
+    def full_video(source_id: str, request: Request):
+        from pingpong_highlight.web import MediaFileResponse
+
+        require_source(source_id)
+        spec = full_preview(store, source_id)
+        if spec is None:
+            raise HTTPException(404, "Whole-video preview not prepared")
+        return MediaFileResponse(Path(spec["path"]), request, media_type="video/mp4")
+
+    @app.post("/api/review/{source_id}/full-preview")
+    def prepare_video(source_id: str):
+        require_source(source_id)
+        if not preparing.acquire(blocking=False):
+            raise HTTPException(409, "另一支影片正在準備，請稍後重試")
+        try:
+            prepare_review(store, source_id)
+        except (ValueError, OSError, subprocess.SubprocessError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        finally:
+            preparing.release()
+        return payload(source_id)
 
     @app.get("/api/review/{source_id}/export")
     def export(source_id: str):

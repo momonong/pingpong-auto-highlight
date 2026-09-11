@@ -124,7 +124,9 @@ def code_receipt() -> dict:
     return {"commit": commit, "code_sha256": digest.hexdigest(), "dirty": bool(dirty)}
 
 
-def extract(source: Path, target: Path, start_ms: int, end_ms: int, *, fps=30, width=640):
+def extract(
+    source: Path, target: Path, start_ms: int, end_ms: int, *, fps=30, width=640, pixel_format=None
+):
     if target.exists():
         raise FileExistsError(target)
     command = [
@@ -158,6 +160,8 @@ def extract(source: Path, target: Path, start_ms: int, end_ms: int, *, fps=30, w
         "+faststart",
         str(target),
     ]
+    if pixel_format:
+        command[-1:-1] = ["-pix_fmt", pixel_format]
     subprocess.run(command, check=True, capture_output=True, timeout=180)
     return command
 
@@ -516,6 +520,11 @@ def main():
     serve = subs.add_parser("serve")
     serve.add_argument("--store", type=Path, required=True)
     serve.add_argument("--port", type=int, default=8799)
+    prepare = subs.add_parser(
+        "prepare-review", help="Prepare one whole-video review proxy; no model"
+    )
+    prepare.add_argument("--store", type=Path, required=True)
+    prepare.add_argument("--source", required=True)
     evaluate = subs.add_parser("evaluate")
     evaluate.add_argument("--store", type=Path, required=True)
     evaluate.add_argument("--source", required=True)
@@ -536,6 +545,10 @@ def main():
             args.overlap_ms,
         )
         print(json.dumps({"runs": len(runs), "proposals": sum(len(r["proposals"]) for r in runs)}))
+    elif args.command == "prepare-review":
+        from pingpong_highlight.review_media import prepare_review
+
+        print(json.dumps(prepare_review(ReviewStore(args.store), args.source), ensure_ascii=False))
     elif args.command == "serve":
         import uvicorn
 

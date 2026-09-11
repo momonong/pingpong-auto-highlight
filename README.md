@@ -23,7 +23,19 @@ $python = 'D:/projects/pingpong-auto-highlight/.venv/Scripts/python.exe'
 & $python -m pingpong_highlight.preannotate serve --store data/experiments/my-review/dev/review.sqlite3 --port 8799
 ```
 
-開啟 `http://127.0.0.1:8799`。選候選可播放前後 1.5 秒脈絡，修改起訖後保存。選人工紀錄才能拆分／合併；結構修改後需重新判斷。候選未覆蓋與未審核區段各有清單。coverage 必須由人確認已檢查所有回合；播放不會自動完成 coverage。計時預設暫停，背景頁會暫停，應先按暫停再關頁。網路失敗保留草稿；版本衝突須重載核對。此版工作區介面為繁體中文。
+開啟 `http://127.0.0.1:8799` 後，以**整支影片**為人工標註單位。若原片不支援瀏覽器播放，先按「準備整片播放」；系統只產生 H.264 8-bit 副本，不改原片、不執行模型。
+
+1. 按「從頭開始審核」，在發球前按 **I**，該分結束後按 **O**。
+2. 確認是否拍到完整一分，按「保存回合，繼續播放」。精彩程度可以先不評。
+3. 一段內容的回合與空檔都檢查完後，按「確認 … 已檢查」。這才保存整片檢查進度；下次從尚未檢查的位置繼續。
+
+等待／撿球不用逐秒標記。保存單一回合與確認檢查範圍是兩個動作；播放不自動完成 coverage。未保存草稿可在重新載入後恢復，也可明確放棄；不會刪除已保存標註。模型建議預設收合，模型的 116 秒實驗範圍不限制整片人工標註。拆合、精確範圍調整與選用計時收在對應展開區。選人工紀錄才能拆分／合併，結構修改後需重新判斷。
+
+也可預先準備特定來源的整片播放版本：
+
+```powershell
+& $python -m pingpong_highlight.preannotate prepare-review --store data/experiments/my-review/dev/review.sqlite3 --source 636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8
+```
 
 範例 manifest 使用已存在的 development 影片絕對路徑；在其他主機請改成本機路徑。每次 `--output` 必須是新目錄；相同父目錄共用 `review.sqlite3`，因此重跑模型不會取代人工紀錄。來源以完整檔案 SHA-256 綁定；更改 scope 或資料分組時使用另一個實驗父目錄。
 
