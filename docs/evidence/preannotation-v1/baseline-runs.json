@@ -1,0 +1,630 @@
+[
+  {
+    "id": "8dd72c58a95b40269ee80500e926b55f",
+    "source_id": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+    "created_at": "2026-09-11T06:30:22.961845+00:00",
+    "commit": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+    "code_sha256": "152314e753361cbefed5622433733182865a67dccc077f5d8bf44e6fafbb3059",
+    "dirty": true,
+    "model_id": "baseline-audio-motion-v5",
+    "model_revision": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+    "prompt": null,
+    "parameters": {
+      "minimum_impacts": 3,
+      "maximum_impact_gap": 1.45,
+      "minimum_point_span": 0.5,
+      "maximum_point_span": 18.0,
+      "pre_roll": 1.5,
+      "post_roll": 1.5,
+      "minimum_point_score_ratio": 0.87,
+      "max_points": null,
+      "target_reel_duration": 55.0
+    },
+    "sampling": {
+      "normalized_fps": 30,
+      "width": 640,
+      "vlm_fps": 2,
+      "vlm_width": 384,
+      "window_ms": 16000,
+      "overlap_ms": 2000,
+      "time_mapping": "source_ms=segment_start+window_offset+local_ms",
+      "autorotate": true,
+      "decode_command": [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+        "-n",
+        "-ss",
+        "10.0",
+        "-i",
+        "D:\\projects\\pingpong-auto-highlight\\data\\uploads\\6e7e1019273942d8babb122188d64a30.mp4",
+        "-t",
+        "64.0",
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a:0?",
+        "-vf",
+        "fps=30,scale=640:-2",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "20",
+        "-c:a",
+        "aac",
+        "-movflags",
+        "+faststart",
+        "data\\experiments\\preannotation-v1\\dev-current\\baseline\\0\\segment.mp4"
+      ]
+    },
+    "source_media": {
+      "path": "D:\\projects\\pingpong-auto-highlight\\data\\uploads\\6e7e1019273942d8babb122188d64a30.mp4",
+      "duration": 223.393767,
+      "width": 1920,
+      "height": 1080,
+      "fps": 29.991884285640317,
+      "video_codec": "hevc",
+      "has_audio": true,
+      "audio_codec": "aac",
+      "rotation": 0,
+      "video_profile": "Main 10",
+      "pixel_format": "yuv420p10le"
+    },
+    "audio_events": [
+      {
+        "time_ms": 10848,
+        "strength": 0.5136082808176676
+      },
+      {
+        "time_ms": 11344,
+        "strength": 0.5782432289918263
+      },
+      {
+        "time_ms": 12064,
+        "strength": 0.6923233477274576
+      },
+      {
+        "time_ms": 12784,
+        "strength": 0.6673511981964112
+      },
+      {
+        "time_ms": 16752,
+        "strength": 0.5469873356819154
+      },
+      {
+        "time_ms": 20080,
+        "strength": 0.6523927988608679
+      },
+      {
+        "time_ms": 20464,
+        "strength": 0.7521240222454071
+      },
+      {
+        "time_ms": 21792,
+        "strength": 0.5011519734064738
+      },
+      {
+        "time_ms": 22160,
+        "strength": 0.6558304325739542
+      },
+      {
+        "time_ms": 22592,
+        "strength": 0.6448585345347723
+      },
+      {
+        "time_ms": 23312,
+        "strength": 0.6086268018682798
+      },
+      {
+        "time_ms": 24672,
+        "strength": 0.5085696539282799
+      },
+      {
+        "time_ms": 28960,
+        "strength": 0.6127632856369019
+      },
+      {
+        "time_ms": 37952,
+        "strength": 0.7639919050534566
+      },
+      {
+        "time_ms": 38640,
+        "strength": 0.5601540744304656
+      },
+      {
+        "time_ms": 45520,
+        "strength": 0.5222797447443009
+      },
+      {
+        "time_ms": 47504,
+        "strength": 0.5742995659510294
+      },
+      {
+        "time_ms": 48144,
+        "strength": 1.0097721934318542
+      },
+      {
+        "time_ms": 51904,
+        "strength": 0.640333259900411
+      },
+      {
+        "time_ms": 53520,
+        "strength": 0.8149148972829184
+      },
+      {
+        "time_ms": 56464,
+        "strength": 0.5375448115666708
+      },
+      {
+        "time_ms": 66080,
+        "strength": 1.2981894214948018
+      },
+      {
+        "time_ms": 67680,
+        "strength": 0.528196309407552
+      },
+      {
+        "time_ms": 68896,
+        "strength": 0.7157301688194275
+      }
+    ],
+    "proposals": [
+      {
+        "start_ms": 10848,
+        "end_ms": 12784,
+        "rally": "uncertain",
+        "complete": "uncertain",
+        "highlight": "unrated",
+        "reason": "4 rhythmic impact transients within one point",
+        "id": "8dd72c58a95b40269ee80500e926b55f-0",
+        "selected": false,
+        "clip_start_ms": 10848,
+        "clip_end_ms": 12784,
+        "evidence": [
+          "heuristic ranking score=9.475332234266325; not calibrated"
+        ]
+      },
+      {
+        "start_ms": 20080,
+        "end_ms": 24672,
+        "rally": "uncertain",
+        "complete": "uncertain",
+        "highlight": "unrated",
+        "reason": "7 rhythmic impact transients within one point",
+        "id": "8dd72c58a95b40269ee80500e926b55f-1",
+        "selected": true,
+        "clip_start_ms": 18580,
+        "clip_end_ms": 26172,
+        "evidence": [
+          "heuristic ranking score=11.75473801344268; not calibrated"
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "start_ms": 10000,
+        "end_ms": 74000
+      }
+    ],
+    "raw": [],
+    "errors": [],
+    "media_runtime": "ffmpeg version 8.1.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+    "elapsed_seconds": 15.692462100007106
+  },
+  {
+    "id": "4713eca3fd92405783eb61d14b0b407f",
+    "source_id": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+    "created_at": "2026-09-11T06:30:31.951364+00:00",
+    "commit": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+    "code_sha256": "152314e753361cbefed5622433733182865a67dccc077f5d8bf44e6fafbb3059",
+    "dirty": true,
+    "model_id": "baseline-audio-motion-v5",
+    "model_revision": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+    "prompt": null,
+    "parameters": {
+      "minimum_impacts": 3,
+      "maximum_impact_gap": 1.45,
+      "minimum_point_span": 0.5,
+      "maximum_point_span": 18.0,
+      "pre_roll": 1.5,
+      "post_roll": 1.5,
+      "minimum_point_score_ratio": 0.87,
+      "max_points": null,
+      "target_reel_duration": 55.0
+    },
+    "sampling": {
+      "normalized_fps": 30,
+      "width": 640,
+      "vlm_fps": 2,
+      "vlm_width": 384,
+      "window_ms": 16000,
+      "overlap_ms": 2000,
+      "time_mapping": "source_ms=segment_start+window_offset+local_ms",
+      "autorotate": true,
+      "decode_command": [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+        "-n",
+        "-ss",
+        "132.0",
+        "-i",
+        "D:\\projects\\pingpong-auto-highlight\\data\\uploads\\a6ef1ae5b64d4f62b19bf2d850b9282b.mp4",
+        "-t",
+        "28.0",
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a:0?",
+        "-vf",
+        "fps=30,scale=640:-2",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "20",
+        "-c:a",
+        "aac",
+        "-movflags",
+        "+faststart",
+        "data\\experiments\\preannotation-v1\\dev-current\\baseline\\1\\segment.mp4"
+      ]
+    },
+    "source_media": {
+      "path": "D:\\projects\\pingpong-auto-highlight\\data\\uploads\\a6ef1ae5b64d4f62b19bf2d850b9282b.mp4",
+      "duration": 221.687256,
+      "width": 1920,
+      "height": 1080,
+      "fps": 29.992702933406736,
+      "video_codec": "hevc",
+      "has_audio": true,
+      "audio_codec": "aac",
+      "rotation": 0,
+      "video_profile": "Main 10",
+      "pixel_format": "yuv420p10le"
+    },
+    "audio_events": [
+      {
+        "time_ms": 134240,
+        "strength": 0.929139146010081
+      },
+      {
+        "time_ms": 134528,
+        "strength": 0.5574671973784765
+      },
+      {
+        "time_ms": 135088,
+        "strength": 0.6745654569069545
+      },
+      {
+        "time_ms": 140080,
+        "strength": 1.4022162421544395
+      },
+      {
+        "time_ms": 143152,
+        "strength": 1.109344522158305
+      },
+      {
+        "time_ms": 143968,
+        "strength": 0.512715346813202
+      },
+      {
+        "time_ms": 144368,
+        "strength": 0.5821940956513088
+      },
+      {
+        "time_ms": 144672,
+        "strength": 0.5734040191769599
+      },
+      {
+        "time_ms": 145792,
+        "strength": 0.6851078178485235
+      },
+      {
+        "time_ms": 146448,
+        "strength": 0.567461459239324
+      },
+      {
+        "time_ms": 147760,
+        "strength": 0.6060117248694102
+      },
+      {
+        "time_ms": 148912,
+        "strength": 0.5634377670288085
+      },
+      {
+        "time_ms": 150656,
+        "strength": 0.7377367623647054
+      },
+      {
+        "time_ms": 154896,
+        "strength": 0.6124159912268321
+      },
+      {
+        "time_ms": 158912,
+        "strength": 0.5240098470449448
+      }
+    ],
+    "proposals": [
+      {
+        "start_ms": 134240,
+        "end_ms": 135088,
+        "rally": "uncertain",
+        "complete": "uncertain",
+        "highlight": "unrated",
+        "reason": "3 rhythmic impact transients within one point",
+        "id": "4713eca3fd92405783eb61d14b0b407f-0",
+        "selected": false,
+        "clip_start_ms": 134240,
+        "clip_end_ms": 135088,
+        "evidence": [
+          "heuristic ranking score=9.86278772310221; not calibrated"
+        ]
+      },
+      {
+        "start_ms": 143152,
+        "end_ms": 148912,
+        "rally": "uncertain",
+        "complete": "uncertain",
+        "highlight": "unrated",
+        "reason": "8 rhythmic impact transients within one point",
+        "id": "4713eca3fd92405783eb61d14b0b407f-1",
+        "selected": true,
+        "clip_start_ms": 141652,
+        "clip_end_ms": 150412,
+        "evidence": [
+          "heuristic ranking score=12.673602614257716; not calibrated"
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "start_ms": 132000,
+        "end_ms": 160000
+      }
+    ],
+    "raw": [],
+    "errors": [],
+    "media_runtime": "ffmpeg version 8.1.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+    "elapsed_seconds": 7.5640814999933355
+  },
+  {
+    "id": "9af90cc1ba024c708eeadaeeab5736f2",
+    "source_id": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+    "created_at": "2026-09-11T06:30:38.236264+00:00",
+    "commit": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+    "code_sha256": "152314e753361cbefed5622433733182865a67dccc077f5d8bf44e6fafbb3059",
+    "dirty": true,
+    "model_id": "baseline-audio-motion-v5",
+    "model_revision": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+    "prompt": null,
+    "parameters": {
+      "minimum_impacts": 3,
+      "maximum_impact_gap": 1.45,
+      "minimum_point_span": 0.5,
+      "maximum_point_span": 18.0,
+      "pre_roll": 1.5,
+      "post_roll": 1.5,
+      "minimum_point_score_ratio": 0.87,
+      "max_points": null,
+      "target_reel_duration": 55.0
+    },
+    "sampling": {
+      "normalized_fps": 30,
+      "width": 640,
+      "vlm_fps": 2,
+      "vlm_width": 384,
+      "window_ms": 16000,
+      "overlap_ms": 2000,
+      "time_mapping": "source_ms=segment_start+window_offset+local_ms",
+      "autorotate": true,
+      "decode_command": [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+        "-n",
+        "-ss",
+        "330.0",
+        "-i",
+        "D:\\projects\\pingpong-auto-highlight\\data\\uploads\\f470599a5b5e434c8ab809db749436b2.mp4",
+        "-t",
+        "24.0",
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a:0?",
+        "-vf",
+        "fps=30,scale=640:-2",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "20",
+        "-c:a",
+        "aac",
+        "-movflags",
+        "+faststart",
+        "data\\experiments\\preannotation-v1\\dev-current\\baseline\\2\\segment.mp4"
+      ]
+    },
+    "source_media": {
+      "path": "D:\\projects\\pingpong-auto-highlight\\data\\uploads\\f470599a5b5e434c8ab809db749436b2.mp4",
+      "duration": 602.570378,
+      "width": 1920,
+      "height": 1080,
+      "fps": 29.88198667582103,
+      "video_codec": "hevc",
+      "has_audio": true,
+      "audio_codec": "aac",
+      "rotation": 0,
+      "video_profile": "Main",
+      "pixel_format": "yuvj420p"
+    },
+    "audio_events": [
+      {
+        "time_ms": 331744,
+        "strength": 1.0187260659535726
+      },
+      {
+        "time_ms": 335520,
+        "strength": 1.0364841246604921
+      },
+      {
+        "time_ms": 336016,
+        "strength": 1.317533744176229
+      },
+      {
+        "time_ms": 338736,
+        "strength": 0.9428120152155559
+      },
+      {
+        "time_ms": 339120,
+        "strength": 0.8752191114425661
+      },
+      {
+        "time_ms": 339536,
+        "strength": 0.9714384327332178
+      },
+      {
+        "time_ms": 339744,
+        "strength": 1.1689140152931214
+      },
+      {
+        "time_ms": 339968,
+        "strength": 1.6153249597549442
+      },
+      {
+        "time_ms": 340192,
+        "strength": 1.241158094406128
+      },
+      {
+        "time_ms": 340368,
+        "strength": 1.1702567243576052
+      },
+      {
+        "time_ms": 340576,
+        "strength": 0.849167465766271
+      },
+      {
+        "time_ms": 340752,
+        "strength": 1.0107310446103415
+      },
+      {
+        "time_ms": 340944,
+        "strength": 0.7305355314413706
+      },
+      {
+        "time_ms": 341120,
+        "strength": 1.0605367453893026
+      },
+      {
+        "time_ms": 341408,
+        "strength": 1.6514950545628866
+      },
+      {
+        "time_ms": 341584,
+        "strength": 0.7145370491345724
+      },
+      {
+        "time_ms": 341744,
+        "strength": 1.0523147694269817
+      },
+      {
+        "time_ms": 341968,
+        "strength": 0.9117079742749533
+      },
+      {
+        "time_ms": 342160,
+        "strength": 0.7303986179828644
+      },
+      {
+        "time_ms": 342496,
+        "strength": 1.092730846007665
+      },
+      {
+        "time_ms": 342720,
+        "strength": 0.6898512595891954
+      },
+      {
+        "time_ms": 344688,
+        "strength": 0.8187832323710125
+      },
+      {
+        "time_ms": 348720,
+        "strength": 1.4383677005767825
+      },
+      {
+        "time_ms": 349616,
+        "strength": 0.8969631965955097
+      },
+      {
+        "time_ms": 349856,
+        "strength": 1.0055366571744284
+      },
+      {
+        "time_ms": 350320,
+        "strength": 1.3763579893112183
+      },
+      {
+        "time_ms": 351536,
+        "strength": 0.8794793359438579
+      },
+      {
+        "time_ms": 352784,
+        "strength": 1.117845532099406
+      }
+    ],
+    "proposals": [
+      {
+        "start_ms": 338736,
+        "end_ms": 342720,
+        "rally": "uncertain",
+        "complete": "uncertain",
+        "highlight": "unrated",
+        "reason": "18 rhythmic impact transients within one point",
+        "id": "9af90cc1ba024c708eeadaeeab5736f2-0",
+        "selected": true,
+        "clip_start_ms": 337236,
+        "clip_end_ms": 344220,
+        "evidence": [
+          "heuristic ranking score=18.525945554241535; not calibrated"
+        ]
+      },
+      {
+        "start_ms": 348720,
+        "end_ms": 352784,
+        "rally": "uncertain",
+        "complete": "uncertain",
+        "highlight": "unrated",
+        "reason": "6 rhythmic impact transients within one point",
+        "id": "9af90cc1ba024c708eeadaeeab5736f2-1",
+        "selected": false,
+        "clip_start_ms": 348720,
+        "clip_end_ms": 352784,
+        "evidence": [
+          "heuristic ranking score=11.509973752908676; not calibrated"
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "start_ms": 330000,
+        "end_ms": 354000
+      }
+    ],
+    "raw": [],
+    "errors": [],
+    "media_runtime": "ffmpeg version 8.1.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+    "elapsed_seconds": 6.1608813000057125
+  }
+]

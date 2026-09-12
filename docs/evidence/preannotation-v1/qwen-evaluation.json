@@ -1,0 +1,221 @@
+{
+  "evidence": "bounded run artifacts; inspect recorded commit and code hash",
+  "group": "development",
+  "current_version_gate": "UNKNOWN; receipt alone does not establish quality",
+  "runs_sha256": "7b8d9f74e228fc7e72396296d1791d8e97b2e7c76809658317a4477090a94997",
+  "label_semantics": "legacy positive highlights only; not all rallies",
+  "unannotated": "UNKNOWN",
+  "precision": "UNKNOWN",
+  "reel_utility": "UNKNOWN",
+  "annotations_sha256": "3c5969605a6a59a75f977af699de6b30a34ca8ce1abf9a64a84fcd71a5a5cd86",
+  "sources": [
+    {
+      "source_id": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+      "run_id": "318ea4210d004081acee3e1d751ef454",
+      "model_id": "Qwen/Qwen3-VL-8B-Instruct",
+      "commit": "100337fd549c3530ce385dba8dc6443d760bfc36",
+      "artifact_sha256": null,
+      "known_positive_count": 3,
+      "scope": [
+        {
+          "start_ms": 10000,
+          "end_ms": 74000
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 3,
+        "prediction_count": 11,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "f0a9291d25db49b2a27501a49849f80f",
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6"
+        ],
+        "unmatched_predictions": [
+          "318ea4210d004081acee3e1d751ef454-1-0",
+          "318ea4210d004081acee3e1d751ef454-2-0",
+          "318ea4210d004081acee3e1d751ef454-2-1",
+          "318ea4210d004081acee3e1d751ef454-2-2",
+          "318ea4210d004081acee3e1d751ef454-2-3",
+          "318ea4210d004081acee3e1d751ef454-2-4",
+          "318ea4210d004081acee3e1d751ef454-3-0",
+          "318ea4210d004081acee3e1d751ef454-2-5",
+          "318ea4210d004081acee3e1d751ef454-3-1",
+          "318ea4210d004081acee3e1d751ef454-3-2",
+          "318ea4210d004081acee3e1d751ef454-3-3"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 3,
+        "prediction_count": 0,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "f0a9291d25db49b2a27501a49849f80f",
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6"
+        ],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 0,
+        "truth_count": 3,
+        "prediction_count": 0,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "f0a9291d25db49b2a27501a49849f80f",
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6"
+        ],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    },
+    {
+      "source_id": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "run_id": "4ef5c591cc5f4d6da2fcde0c9a28723c",
+      "model_id": "Qwen/Qwen3-VL-8B-Instruct",
+      "commit": "100337fd549c3530ce385dba8dc6443d760bfc36",
+      "artifact_sha256": null,
+      "known_positive_count": 1,
+      "scope": [
+        {
+          "start_ms": 132000,
+          "end_ms": 160000
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 6,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "cd934039319e4f218cb3ca8334f290ba"
+        ],
+        "unmatched_predictions": [
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-0",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-1",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-2",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-3",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-4",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-5"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 5,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "cd934039319e4f218cb3ca8334f290ba"
+        ],
+        "unmatched_predictions": [
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-0",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-1",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-2",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-3",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-4"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 5,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "cd934039319e4f218cb3ca8334f290ba"
+        ],
+        "unmatched_predictions": [
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-0",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-1",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-2",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-3",
+          "4ef5c591cc5f4d6da2fcde0c9a28723c-0-4"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    },
+    {
+      "source_id": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+      "run_id": "f6512f55232f41e09a5903b16e89f74d",
+      "model_id": "Qwen/Qwen3-VL-8B-Instruct",
+      "commit": "100337fd549c3530ce385dba8dc6443d760bfc36",
+      "artifact_sha256": null,
+      "known_positive_count": 1,
+      "scope": [
+        {
+          "start_ms": 330000,
+          "end_ms": 354000
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 0,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "28c571b5112d4a748c33e2dec13f1dfa"
+        ],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 0,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "28c571b5112d4a748c33e2dec13f1dfa"
+        ],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 0,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "28c571b5112d4a748c33e2dec13f1dfa"
+        ],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    }
+  ],
+  "totals": {
+    "positive_count": 5,
+    "candidate_core": 0,
+    "selected_core": 0,
+    "selected_padding": 0
+  }
+}

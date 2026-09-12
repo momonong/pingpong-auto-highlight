@@ -1,0 +1,221 @@
+{
+  "evidence": "bounded run artifacts; inspect recorded commit and code hash",
+  "group": "development",
+  "current_version_gate": "UNKNOWN; receipt alone does not establish quality",
+  "runs_sha256": "bad4555009d8e8ffd6a0ea78161d784b56bf2b40ffb63492d7fadc522ffbbfa3",
+  "label_semantics": "legacy positive highlights only; not all rallies",
+  "unannotated": "UNKNOWN",
+  "precision": "UNKNOWN",
+  "reel_utility": "UNKNOWN",
+  "annotations_sha256": "3c5969605a6a59a75f977af699de6b30a34ca8ce1abf9a64a84fcd71a5a5cd86",
+  "sources": [
+    {
+      "source_id": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+      "run_id": "8dd72c58a95b40269ee80500e926b55f",
+      "model_id": "baseline-audio-motion-v5",
+      "commit": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+      "artifact_sha256": null,
+      "known_positive_count": 3,
+      "scope": [
+        {
+          "start_ms": 10000,
+          "end_ms": 74000
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 3,
+        "prediction_count": 2,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "f0a9291d25db49b2a27501a49849f80f",
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6"
+        ],
+        "unmatched_predictions": [
+          "8dd72c58a95b40269ee80500e926b55f-0",
+          "8dd72c58a95b40269ee80500e926b55f-1"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 3,
+        "prediction_count": 1,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "f0a9291d25db49b2a27501a49849f80f",
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6"
+        ],
+        "unmatched_predictions": [
+          "8dd72c58a95b40269ee80500e926b55f-1"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 1,
+        "truth_count": 3,
+        "prediction_count": 1,
+        "recall": 0.3333333333333333,
+        "pairs": [
+          {
+            "prediction": "8dd72c58a95b40269ee80500e926b55f-1",
+            "truth": "f0a9291d25db49b2a27501a49849f80f",
+            "start_error_ms": 3080,
+            "end_error_ms": 72
+          }
+        ],
+        "unmatched_truth": [
+          "9aef6ff35b04421693db002c3df4052c",
+          "0feb3d4fb96143ffaf375024cd5cd0a6"
+        ],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": 3080,
+        "median_end_absolute_ms": 72
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    },
+    {
+      "source_id": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "run_id": "4713eca3fd92405783eb61d14b0b407f",
+      "model_id": "baseline-audio-motion-v5",
+      "commit": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+      "artifact_sha256": null,
+      "known_positive_count": 1,
+      "scope": [
+        {
+          "start_ms": 132000,
+          "end_ms": 160000
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 2,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "cd934039319e4f218cb3ca8334f290ba"
+        ],
+        "unmatched_predictions": [
+          "4713eca3fd92405783eb61d14b0b407f-0",
+          "4713eca3fd92405783eb61d14b0b407f-1"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 1,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "cd934039319e4f218cb3ca8334f290ba"
+        ],
+        "unmatched_predictions": [
+          "4713eca3fd92405783eb61d14b0b407f-1"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 1,
+        "truth_count": 1,
+        "prediction_count": 1,
+        "recall": 1.0,
+        "pairs": [
+          {
+            "prediction": "4713eca3fd92405783eb61d14b0b407f-1",
+            "truth": "cd934039319e4f218cb3ca8334f290ba",
+            "start_error_ms": 1152,
+            "end_error_ms": -2488
+          }
+        ],
+        "unmatched_truth": [],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": 1152,
+        "median_end_absolute_ms": 2488
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    },
+    {
+      "source_id": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+      "run_id": "9af90cc1ba024c708eeadaeeab5736f2",
+      "model_id": "baseline-audio-motion-v5",
+      "commit": "3c2ff26895690c1f9876f6e078d80632858dd63a",
+      "artifact_sha256": null,
+      "known_positive_count": 1,
+      "scope": [
+        {
+          "start_ms": 330000,
+          "end_ms": 354000
+        }
+      ],
+      "candidate_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 2,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "28c571b5112d4a748c33e2dec13f1dfa"
+        ],
+        "unmatched_predictions": [
+          "9af90cc1ba024c708eeadaeeab5736f2-0",
+          "9af90cc1ba024c708eeadaeeab5736f2-1"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_core": {
+        "matched": 0,
+        "truth_count": 1,
+        "prediction_count": 1,
+        "recall": 0.0,
+        "pairs": [],
+        "unmatched_truth": [
+          "28c571b5112d4a748c33e2dec13f1dfa"
+        ],
+        "unmatched_predictions": [
+          "9af90cc1ba024c708eeadaeeab5736f2-0"
+        ],
+        "median_start_absolute_ms": null,
+        "median_end_absolute_ms": null
+      },
+      "selected_padding": {
+        "matched": 1,
+        "truth_count": 1,
+        "prediction_count": 1,
+        "recall": 1.0,
+        "pairs": [
+          {
+            "prediction": "9af90cc1ba024c708eeadaeeab5736f2-0",
+            "truth": "28c571b5112d4a748c33e2dec13f1dfa",
+            "start_error_ms": 936,
+            "end_error_ms": -680
+          }
+        ],
+        "unmatched_truth": [],
+        "unmatched_predictions": [],
+        "median_start_absolute_ms": 936,
+        "median_end_absolute_ms": 680
+      },
+      "precision": "UNKNOWN",
+      "scope_boundary_positives": []
+    }
+  ],
+  "totals": {
+    "positive_count": 5,
+    "candidate_core": 0,
+    "selected_core": 0,
+    "selected_padding": 3
+  }
+}

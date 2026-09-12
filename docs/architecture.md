@@ -20,6 +20,14 @@
 
 ### Mobile upload UI
 
+登入後首頁以影片清單為主；新增來源可展開，管理與人工標記切換獨立檢視，但不切換帳號 scope 或重啟傳輸。播放器保持按需載入；成品下載可直接操作，來源下載與破壞性操作收在次要選單。
+
+前端保留無 build step 的 classic deferred scripts，依 `index.html` 順序共用 `core.js` 的 session/state bindings。`core.js` 管理 DOM references、帳號世代與 API；`uploads.js` 保留續傳協定；`sources.js` 管理來源卡與 Drive；`results.js` 管理影片卡、播放與下載；`annotations.js` 管理標記；`admin.js` 管理帳號／全域資料；`activity.js` 負責輪詢；`workspace.js` 管理檢視與篩選；`app.js` 綁定事件及啟動。這是功能拆分，尚未改成各模組獨立持有 state 的 ES module 架構。語言測試及靜態資源測試涵蓋全部功能檔案。
+
+`connection.js` 使用獨立、禁止 cache 的 `/api/health` 檢查，初始狀態為 checking；每次檢查最多等待 6 秒，完成後 5 秒再查。僅有效的 `status=ok` JSON 回應可顯示 online。離線事件立即取消舊檢查，重新連線／頁面恢復可見時重新驗證；epoch 防止過期回應覆蓋新狀態。這只確認 HTTP 連線，不代表處理器 readiness。影片 API 的讀取有 15 秒期限，失敗時保留舊資料並標示 stale；上傳 PATCH 不套用短期限，以保留慢速網路傳輸行為。
+
+瀏覽器回歸：安裝 Playwright 與 Chromium 後，以 `HIGHLIGHTCRAFT_TEST_PYTHON` 指向專案 dev Python，執行 `node tests/browser/workspace.cjs`。測試自行取得 localhost port、在 `data/browser-test-*` 建立獨立帳號與資料，生成短 MP4，結束時停止所啟動的服務。API、續傳及播放為實際流程；處理器與 Drive downloader 為 CPU-only fixture，不驗證模型或 Google 服務。螢幕截圖留在該測試目錄；不使用既有使用者影片。
+
 `src/pingpong_highlight/static/` 是無 build step 的 mobile-first 頁面。它把影片切成 8 MiB blob，依序 `PATCH` 到 upload resource。每次 request 都帶 server offset；request 或 response 中斷時，client 先用 `HEAD` 查詢電腦實際收到的位置，再決定是否重送。瀏覽器允許 Web Crypto 時，另帶 SHA-256 checksum。
 
 瀏覽器不允許頁面在背景永久執行，因此 iOS 把 Safari 完全關掉時上傳仍會停下；但 partial file 和 offset 會保留。重新開頁、再選同一個原檔即可續傳。
@@ -69,6 +77,24 @@ point candidate 不會再彼此合併。系統先以同片最佳分數為基準�
 `build_point_reel()` 以第一個單分片段的解析度與畫面比例作為成品規格，將正規化後的影音 stream 以 FFmpeg `concat` filter 直接剪接，不重疊或淡化相鄰得分。直式、裁切與字幕屬於發佈衍生版本，不改變核心分析輸出；`build_social_reel()` 保留為後續 renderer，但不在預設流程使用。
 
 完成頁以同一個需要有效登入、且會檢查 owner／管理員權限的檔案端點提供兩種回應：inline response 供 `<video>` range playback，`download=true` 則加入 attachment header。手機可以先預覽，再使用一般下載或 Web Share 儲存；單分片段與分析報告收在次要展開區。
+
+## 模型提案與人工回合審核
+
+`preannotate.py` 是不接觸正式 DB 的有界實驗入口：最多三段 development 素材、總長不超過 600 秒。`Provider.infer(clip,audio_events)` 可替換；第一個 VLM adapter 為 Qwen3-VL-8B-Instruct。baseline 仍呼叫現有 analyze_audio/analyze_motion/detect_points，沒有移植保存分支 v4。兩者共用經 FFmpeg autorotate、30 fps／640 寬的短片代理；這是分段比較，不代表整支原片的 main pipeline 重跑。
+
+VLM 以重疊視窗掃描指定區段全部內容，另抽樣 2 fps／384 寬影格。PyAV 讀取 PTS 並核對抽樣 grid，再傳遞明確 VideoMetadata 給 processor；時間以 `source_ms=segment_start+window_offset+local_ms` 換回原片。模型看不到音軌，只有 baseline 提供的未驗證音訊 transient 時間。prompt 禁止稀疏影格數拍／勝負猜測；JSON 必須包含完整欄位、整數毫秒與列舉值。格式或越界失敗保留原文與錯誤，不修補成看似有效的回合。已規劃但輸出失敗的視窗仍保留在評估 scope，不從 recall 分母移除。跨窗近似重複以 IoU≥0.8 且起點差≤1 秒去重，保存被抑制的提案；部分相鄰回合留給人合併，不自動延長成完整一分。
+
+`rally_review.py` 將 `sources`、不可變 `runs`、人工 `reviews` 及冪等 `commands` 分表保存。人工判斷包含回合有效性、完整性、精彩程度、理由、actor、時間、父標註與 proposal IDs；拆合保留 lineage 並清除原判斷。每次寫入使用 SQLite transaction、revision CAS 與 request ID。新推論只新增 runs，不修改 reviews。人工 coverage 表示人已在該區間檢查所有回合，空白區間維持 UNKNOWN。計時與修改數是觀測記錄，不是省時效果證據。
+
+`review_web.py` 的 loopback 實驗服務與 `job_review.py` 的網站 adapter 共用 `static/review/`。前者只讀 manifest 原片，綁定 127.0.0.1，檢查 Host 與 SameSite session cookie；後者沿用 job owner/admin 權限，並按影片 owner 分開審核 DB，避免同 bytes 的跨使用者資料洩漏。網站審核 DB 位於 `data/rally-review/<owner-hash>.sqlite3`；不修改既有 annotations schema。主網站匯入舊 analysis 時 commit/耗時未知者明列 UNKNOWN，不冒充本次推論。
+
+固定來源時間區間可指定 blind_intervals。首次人工判斷前，API 不傳模型判斷、精彩建議、理由、原始回答或去重原文；人工紀錄保留之後才顯示該提案。它降低建議錨定風險，但候選區間本身仍由模型提出，不能稱為完全盲測。
+
+人工工作區以完整來源影片為單位，優先播放 `review_media.py` 建立的整片 H.264／yuv420p 副本（時間從零開始，與原片一致）。播放 manifest 存於審核 DB 同目錄下的 `review-media/<source-sha>/preview.json`，與不可變模型 run、人工 DB 狀態分離；先重驗來源 SHA-256，再 accurate seek／autorotate／8-bit 轉碼，驗證長度後 atomic 寫入 manifest。相同來源可重用已完成副本。prepare-review CLI 與受權限保護的 full-preview API 均不呼叫模型，不擴大 model scope。
+
+「保存回合，繼續播放」只保存一筆標註並從終點續播；「確認已檢查到此處」才明確保存 coverage。重新載入以第一個未檢查區段起點作為續審位置，草稿可恢復或明確放棄。模型建議、原始檔與實驗短片切換放在選用區；選候選批次不再切換影片。實驗短片仍保留原片時間換算供比較。實際播放驗收需確認 videoWidth/videoHeight 與畫面，只有播放時間前進可能是僅音訊播放。
+
+`review_evaluation.py` 以 source-local 最大一對一匹配（交集≥50% 人工區間）分開評估候選核心、入選核心、padding、切點誤差與未匹配項。候選 precision 需完整 scope coverage 及無未决回合／邊界；入選 precision 另需完整精彩評分。歷史正標註只能評估已知精彩球覆蓋。55 秒 Reel 效用、回合 purity、held-out 準確度與真人省時均需另外取得證據。
 
 ## Failure and recovery model
 

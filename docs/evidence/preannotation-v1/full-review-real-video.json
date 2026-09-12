@@ -1,0 +1,23 @@
+{
+  "result": "PASS",
+  "duration": 223.4,
+  "checks": [
+    {
+      "time": 0.211838,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "time": 110.213733,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "time": 220.208628,
+      "width": 640,
+      "height": 360
+    }
+  ],
+  "review_unchanged": true,
+  "model_panel_collapsed": true
+}

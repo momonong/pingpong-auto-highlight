@@ -444,41 +444,59 @@ def test_public_responses_have_security_and_cache_headers(tmp_path: Path) -> Non
         app_js = client.get("/static/app.js")
         assert app_js.status_code == 200
         assert app_js.headers["cache-control"] == "no-cache"
-        assert "openAnnotationWorkspace" in app_js.text
-        assert "renderAnnotationDevelopment" in app_js.text
-        assert "lastAnnotationDevSignature" in app_js.text
-        assert 't("annotation.openLabel", { filename })' in app_js.text
-        assert "expandedResultJobIds" in app_js.text
-        assert "jobRenderSignatures" in app_js.text
-        assert "hydrateResultPanel" in app_js.text
-        assert "function dehydrateResultPanel(panel)" in app_js.text
-        assert 'source.removeAttribute("src");' in app_js.text
-        assert "renderJobs(jobs)" in app_js.text
-        assert 'data-result-job-id="${escapeHtml(jobId)}"' in app_js.text
-        assert 't("result.srLabel", { source: sourceName })' in app_js.text
-        assert 'aria-label="展開或收合' not in app_js.text
-        assert 'data-src="${escapeHtml(previewUrl)}"' in app_js.text
-        assert '<source src="${escapeHtml(previewUrl)}"' not in app_js.text
-        assert '"toggle",' in app_js.text
-        assert "renderAnnotationPanel" not in app_js.text
-        assert ".annotation-video" not in app_js.text
-        assert 'event.code === "KeyI"' in app_js.text
-        assert 'event.code === "KeyO"' in app_js.text
-        assert "function annotationWorkspaceNoteValue()" in app_js.text
-        assert 'return selectedTags.join("、");' in app_js.text
-        assert 'elements.annotationWorkspaceForm.addEventListener("submit"' in app_js.text
-        assert "elements.annotationWorkspaceForm.requestSubmit();" in app_js.text
-        assert 'input[type="checkbox"][name^="annotation-note-tag"]' in app_js.text
+        feature_sources = []
+        for name in (
+            "core",
+            "uploads",
+            "results",
+            "annotations",
+            "sources",
+            "admin",
+            "activity",
+            "workspace",
+            "connection",
+        ):
+            feature = client.get(f"/static/{name}.js")
+            assert feature.status_code == 200
+            assert feature.headers["cache-control"] == "no-cache"
+            feature_sources.append(feature.text)
+        # Existing UI contracts now span the functional scripts loaded by index.html.
+        app_source = app_js.text + "\n" + "\n".join(feature_sources)
+        assert "openAnnotationWorkspace" in app_source
+        assert "renderAnnotationDevelopment" in app_source
+        assert "lastAnnotationDevSignature" in app_source
+        assert 't("annotation.openLabel", { filename })' in app_source
+        assert "expandedResultJobIds" in app_source
+        assert "jobRenderSignatures" in app_source
+        assert "hydrateResultPanel" in app_source
+        assert "function dehydrateResultPanel(panel)" in app_source
+        assert 'source.removeAttribute("src");' in app_source
+        assert "renderJobs(jobs)" in app_source
+        assert 'data-result-job-id="${escapeHtml(jobId)}"' in app_source
+        assert 't("result.srLabel", { source: sourceName })' in app_source
+        assert 'aria-label="展開或收合' not in app_source
+        assert 'data-src="${escapeHtml(previewUrl)}"' in app_source
+        assert '<source src="${escapeHtml(previewUrl)}"' not in app_source
+        assert '"toggle",' in app_source
+        assert "renderAnnotationPanel" not in app_source
+        assert ".annotation-video" not in app_source
+        assert 'event.code === "KeyI"' in app_source
+        assert 'event.code === "KeyO"' in app_source
+        assert "function annotationWorkspaceNoteValue()" in app_source
+        assert 'return selectedTags.join("、");' in app_source
+        assert 'elements.annotationWorkspaceForm.addEventListener("submit"' in app_source
+        assert "elements.annotationWorkspaceForm.requestSubmit();" in app_source
+        assert 'input[type="checkbox"][name^="annotation-note-tag"]' in app_source
         assert (
             "annotationWorkspaceComposing || event.isComposing || event.keyCode === 229"
-            in app_js.text
+            in app_source
         )
-        assert "note.length > annotationNoteMaxLength" in app_js.text
-        assert 'input, select, textarea, button, a, [contenteditable="true"]' in app_js.text
-        assert 'removeLocalStorage("pingpong-upload-token");' in app_js.text
-        assert 't("admin.selfPasswordTitle")' in app_js.text
-        assert "function finishAdminPassword(value)" in app_js.text
-        assert "elements.adminPasswordForm.reset();" in app_js.text
+        assert "note.length > annotationNoteMaxLength" in app_source
+        assert 'input, select, textarea, button, a, [contenteditable="true"]' in app_source
+        assert 'removeLocalStorage("pingpong-upload-token");' in app_source
+        assert 't("admin.selfPasswordTitle")' in app_source
+        assert "function finishAdminPassword(value)" in app_source
+        assert "elements.adminPasswordForm.reset();" in app_source
 
         i18n_js = client.get("/static/i18n.js")
         assert i18n_js.status_code == 200

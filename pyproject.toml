@@ -17,6 +17,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+vlm = [
+    "transformers==4.57.6",
+    "accelerate>=1.10,<2",
+    "huggingface-hub>=0.34,<1",
+    "hf-xet>=1.2,<2",
+    "av>=16,<18",
+    "torch>=2.8",
+    "torchvision>=0.23",
+    "Pillow>=11",
+]
 dev = [
     "httpx2>=2.9,<3",
     "pytest>=9,<10",
@@ -33,6 +43,7 @@ train = [
 
 [project.scripts]
 pingpong-highlight = "pingpong_highlight.cli:main"
+highlightcraft-preannotate = "pingpong_highlight.preannotate:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pingpong_highlight"]

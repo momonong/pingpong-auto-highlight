@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HighlightCraft 整片回合標註</title><link rel="stylesheet" href="review.css"><script defer src="review.js"></script></head>
+<body>
+<header><div><a href="/">HighlightCraft</a><h1>整片回合標註</h1></div>
+<label>目前影片 <select id="sources"></select></label><button id="reload">重新載入</button><a id="export">匯出標註</a></header>
+<p class="intro">從頭看完一支影片，記下每個回合的開始與結束。等待、撿球不用逐秒標記；精彩程度可以稍後再評。</p>
+<nav aria-label="標註流程" class="steps"><span>1　觀看全片</span><span>2　標記每個回合</span><span>3　確認檢查進度</span></nav>
+<p id="message" role="status" aria-live="polite">載入影片中…</p>
+<main><section class="watch">
+<video id="video" controls preload="metadata"></video>
+<div class="playbar"><strong id="sourceClock">00:00 / 00:00</strong><span id="mediaMode"></span></div>
+<p id="mediaProblem" class="error" hidden></p>
+<div class="toolbar"><button id="resume" class="primary">從頭開始審核</button><button id="back">−2 秒</button><button id="play">播放／暫停</button><button id="forward">+2 秒</button><button id="prepareFull" hidden>準備整片播放</button></div>
+<section class="progress-card"><h2>整片檢查進度</h2><progress id="reviewProgress" max="100" value="0"></progress><p id="progressText"></p>
+<button id="reviewToHere">確認已檢查到此處</button>
+<p>按下代表：本段的回合都已標記；沒有回合的空檔也已檢查。單純播放或保存一個回合，不會自動完成整段檢查。</p></section>
+<h2>已保存的人工標註 <span id="pointCount"></span></h2><div id="points" class="list"></div><p id="emptyPoints">還沒有標註。播放影片，在一個回合開始前按 I，結束後按 O。</p>
+<details id="modelDetails"><summary>模型建議（選用）</summary>
+<p>模型只分析過部分區段，建議可能錯誤。你可以直接標完整影片，不必先處理這份清單。</p>
+<p id="scope"></p><label>查看哪一批建議 <select id="runs"></select></label>
+<div class="toolbar"><button id="import" hidden>載入既有 baseline 建議</button><button id="next">下一個未審核候選</button></div><div id="proposals" class="list"></div></details>
+<details id="advancedCoverage"><summary>檢查範圍與進階調整</summary>
+<p>時間都以原片為準。只有明確確認過的區段才算已檢查。</p>
+<div class="row"><label>檢查起點（秒）<input id="coverStart" type="number" min="0" step="0.001" value="0"></label><label>檢查終點（秒）<input id="coverEnd" type="number" min="0" step="0.001" value="1"></label></div>
+<div class="toolbar"><button id="coverage">保存已審核範圍</button><button id="uncover">撤回此範圍</button></div>
+<h3>尚未檢查</h3><div id="gaps" class="list"></div><h3>模型提案未覆蓋的區段</h3><div id="proposalGaps" class="list"></div>
+<div class="toolbar"><button id="full" hidden>整片播放版本</button><button id="original">原始影片</button><button id="compatible" hidden>實驗短片</button></div></details>
+</section><aside>
+<h2 id="editing">記錄一個回合</h2><p id="editHint">發球前設起點，該分結束後設終點。</p>
+<div class="toolbar marking"><button id="markStart" class="primary">I　回合開始</button><button id="markEnd">O　回合結束</button></div>
+<div class="row bounds"><label>開始（原片秒數）<input id="start" type="number" min="0" step="0.001" placeholder="按 I 設定"></label><label>結束（原片秒數）<input id="end" type="number" min="0" step="0.001" placeholder="按 O 設定"></label></div>
+<button id="preview">播放這個回合與前後脈絡</button>
+<label>回合判斷<select id="rally"><option value="uncertain">尚未確認</option><option value="yes">確認是回合</option><option value="no">不是回合</option><option value="unable">看不清楚／無法判斷</option></select></label>
+<label>是否拍到完整一分<select id="complete"><option value="uncertain">尚未確認</option><option value="yes">從發球到結束都拍到</option><option value="no">只拍到部分回合</option><option value="unable">看不清楚／無法判斷</option></select></label>
+<label>精彩程度（可稍後再評）<select id="highlight"><option value="unrated">先不評分</option><option value="omit">不收錄</option><option value="include">可收錄</option><option value="must">必收錄</option></select></label>
+<div class="toolbar"><button id="saveContinue" class="primary">保存回合，繼續播放</button><button id="save">只保存</button></div>
+<div class="toolbar"><button id="new">新增另一個回合</button><button id="discard">放棄未保存修改</button><button id="reject" hidden>拒絕候選</button></div>
+<p id="suggestion"></p>
+<details id="editDetails"><summary>備註、拆分與合併</summary><label>備註／看不清楚的原因<textarea id="reason" maxlength="2000"></textarea></label>
+<p>選擇已保存的人工紀錄，才能拆分或合併。修改結構後需要重新確認。</p><div class="toolbar"><button id="split">在播放位置拆分</button><select id="mergeTarget" aria-label="合併另一回合"></select><button id="merge">合併</button></div></details>
+<details id="timing"><summary>記錄標註耗時（選用）</summary><button id="timer">開始計時</button><p id="stats"></p></details>
+</aside></main></body></html>

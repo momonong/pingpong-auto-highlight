@@ -1,0 +1,66 @@
+diff --git a/src/pingpong_highlight/preannotate.py b/src/pingpong_highlight/preannotate.py
+index bf1dfdc..8e957f8 100644
+--- a/src/pingpong_highlight/preannotate.py
++++ b/src/pingpong_highlight/preannotate.py
+@@ -5,0 +6 @@ import argparse
++import copy
+@@ -28,3 +29,6 @@ Audio events provided separately are heuristic transients, not verified hits.
+-Return ONLY a JSON object {"rallies":[{"start_ms":0,"end_ms":1000,
+-"rally":"yes|no|uncertain|unable","complete":"yes|no|uncertain|unable",
+-"highlight":"omit|include|must|unrated","reason":"observable visual evidence and limitations"}]}.
++Return ONLY one JSON object with a "rallies" array. Each item must contain exactly these fields:
++start_ms and end_ms: integer timestamps determined from THIS window, not example values;
++rally and complete: each one of "yes", "no", "uncertain", "unable";
++highlight: one of "omit", "include", "must", "unrated";
++reason: your specific visual observations (player actions, table position, start/end transitions)
++and limitations. Do not repeat these instructions as the reason. Do not invent missing evidence.
+@@ -74,0 +79,4 @@ def normalize_response(raw: str, window: dict) -> list[dict]:
++        if fields["end_ms"] - fields["start_ms"] < 500:
++            raise ValueError(
++                "Interval shorter than the 500 ms sampling resolution; check time units"
++            )
+@@ -236 +244,6 @@ class QwenProvider:
+-                + json.dumps(audio_events),
++                + json.dumps(audio_events)
++                + f"\nThis window lasts {len(frames) * 500} MILLISECONDS. "
++                "Embedded video timestamps are in seconds; "
++                "multiply those by 1000 for start_ms/end_ms. "
++                "Minimum observable interval is 500 ms. "
++                "Never return seconds in millisecond fields.",
+@@ -251,0 +265,11 @@ class QwenProvider:
++        self.receipt.setdefault("inferences", []).append(
++            {
++                "clip": str(clip.resolve()),
++                "frames": len(frames),
++                "frame_shape": list(images.shape),
++                "timestamps_seconds": timestamps,
++                "input_tokens": inputs.input_ids.shape[1],
++                "output_tokens": output.shape[1] - inputs.input_ids.shape[1],
++                "video_grid_thw": inputs.video_grid_thw.tolist(),
++            }
++        )
+@@ -463 +487 @@ def run_experiment(
+-            run["runtime"] = provider.receipt
++            run["runtime"] = copy.deepcopy(provider.receipt)
+diff --git a/src/pingpong_highlight/rally_review.py b/src/pingpong_highlight/rally_review.py
+index 51fc7ed..c38bbe1 100644
+--- a/src/pingpong_highlight/rally_review.py
++++ b/src/pingpong_highlight/rally_review.py
+@@ -244,0 +245 @@ class ReviewStore:
++                run["output_error_count"] = len(run.get("errors", []))
+diff --git a/src/pingpong_highlight/static/review/review.js b/src/pingpong_highlight/static/review/review.js
+index 77f8982..be9d812 100644
+--- a/src/pingpong_highlight/static/review/review.js
++++ b/src/pingpong_highlight/static/review/review.js
+@@ -36,0 +37 @@ function render(){const r=state.review;const previous=runId; $('runs').replaceCh
++  const currentRun=state.runs.find(r=>r.id===runId);if(currentRun)$('scope').textContent+=` 此批次 ${currentRun.proposals.length} 個候選、${currentRun.output_error_count||0} 個視窗輸出失敗；空清單不代表沒有回合。`;
+diff --git a/tests/test_rally_review.py b/tests/test_rally_review.py
+index 5593088..317cbf8 100644
+--- a/tests/test_rally_review.py
++++ b/tests/test_rally_review.py
+@@ -179 +179 @@ def test_duplicate_matching_cannot_inflate_recall_and_source_isolation():
+-@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -1, 10001, True])
++@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -1, 6, 10001, True])
+@@ -213 +213 @@ def test_absolute_window_times_and_duplicates():
+-    raw = json.dumps({"rallies": [Judgment(start_ms=100, end_ms=500).model_dump()]})
++    raw = json.dumps({"rallies": [Judgment(start_ms=100, end_ms=700).model_dump()]})

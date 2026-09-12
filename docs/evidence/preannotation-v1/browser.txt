@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "artifact": "D:\\projects\\pingpong-auto-highlight\\data\\worktrees\\model-assisted-review\\data\\review-browser-gxqadk",
+  "checks": [
+    "video playback",
+    "blind first review",
+    "save reload",
+    "split merge",
+    "reject",
+    "add missed rally",
+    "coverage",
+    "pause timer",
+    "failed request retry",
+    "export",
+    "compatible preview absolute source timestamps"
+  ]
+}
