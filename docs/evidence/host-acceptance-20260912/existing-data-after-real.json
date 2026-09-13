@@ -1,0 +1,29 @@
+[
+  {
+    "path": "/home/ubuntu/projects/pingpong-auto-highlight/data/state.sqlite3",
+    "sha256": "8bb7cfba192d9dc29756dc7fd5016dbd00b93bdc3f3c49c76e5edb440df8557d",
+    "quick_check": "ok",
+    "counts": {
+      "uploads": 1,
+      "jobs": 1,
+      "drive_imports": 0,
+      "annotations": 0
+    },
+    "sha256_after_real_validation": "8bb7cfba192d9dc29756dc7fd5016dbd00b93bdc3f3c49c76e5edb440df8557d"
+  },
+  {
+    "path": "/home/ubuntu/projects/pingpong-auto-highlight/data/e2e-v140/state.sqlite3",
+    "sha256": "c14f1d89a20b4dfb2dbab95c8fe681dc0e5f3538c2a3b282ab669994a4ffc39e",
+    "quick_check": "ok",
+    "counts": {
+      "users": 4,
+      "sessions": 35,
+      "uploads": 1,
+      "jobs": 1,
+      "drive_imports": 0,
+      "annotations": 0,
+      "cleanup_queue": 0
+    },
+    "sha256_after_real_validation": "c14f1d89a20b4dfb2dbab95c8fe681dc0e5f3538c2a3b282ab669994a4ffc39e"
+  }
+]

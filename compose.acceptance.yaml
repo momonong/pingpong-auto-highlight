@@ -1,0 +1,20 @@
+# Always select the intended Docker context and a unique project with -p.
+# Requires a NEW data directory, never an active service's bind mount.
+services:
+  pingpong-highlight:
+    image: "${PINGPONG_ACCEPTANCE_IMAGE:?Set a locally built acceptance image}"
+    build:
+      args:
+        VCS_REF: "${PINGPONG_ACCEPTANCE_REVISION:?Set the tested source commit}"
+    ports: !override
+      - "127.0.0.1:${PINGPONG_ACCEPTANCE_PORT:-18082}:8000"
+    environment:
+      PINGPONG_PUBLIC_URL: "http://127.0.0.1:${PINGPONG_ACCEPTANCE_PORT:-18082}"
+      PINGPONG_SESSION_COOKIE_SECURE: "false"
+      PINGPONG_ENABLE_LEGACY_TOKEN_AUTH: "false"
+    volumes: !override
+      - type: bind
+        source: "${PINGPONG_ACCEPTANCE_DATA:?Set a new isolated absolute data directory}"
+        target: /data
+        bind:
+          create_host_path: false

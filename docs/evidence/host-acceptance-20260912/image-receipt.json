@@ -1,0 +1,15 @@
+{
+  "source_commit": "213fc1895a50ce2bae131e52ec2159b6e2e8a885",
+  "version": "1.4.0",
+  "image": "highlightcraft:acceptance-213fc18-reused",
+  "image_id": "sha256:7a22e7fd8bbfcaddc5ceb712a4136199645c7f60008806b00e5597dc775838d0",
+  "dependency_base_image_id": "sha256:df52a22ae1c0a7684aa042103484d35ba7d39d5ac5da0bffd4fb86eda3b5a33f",
+  "dependency_base_revision_label": "unknown",
+  "verification": "31 installed runtime package versions match unchanged requirements.lock; all 43 installed package file hashes match src",
+  "build": "Latest source wheel rebuilt with original builder stage; installed without network or dependency changes onto existing local candidate. Full clean dependency build canceled due approx 90KB/s downloads. Not a published release.",
+  "docker_context": "default",
+  "compose_project": "highlightcraft-annotation-acceptance",
+  "data_path": "/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/host-annotation-acceptance-20260912/data/host-acceptance",
+  "real_media": "Follow-up: three referenced real sources transferred with matching SHA-256; first 223.4s source imported and browser/GPU validated. Human review remains empty.",
+  "models_downloaded": false
+}

@@ -423,7 +423,8 @@ def test_two_users_are_isolated_while_admin_can_manage_all_jobs(live_app) -> Non
         "point": {"start_ms": 100, "end_ms": 900, "rally": "yes", "highlight": "include"},
     })
     assert saved.status_code == 200, saved.body
-    assert admin.request("GET", alice_review).json()["review"]["points"][0]["highlight"] == "include"
+    admin_review = admin.request("GET", alice_review).json()["review"]
+    assert admin_review["points"][0]["highlight"] == "include"
     duplicate_id = _upload_video(bob, "same-bytes.mp4", b"alice-video")
     _wait_for_job(bob, duplicate_id, "completed")
     duplicate_review = bob.request("GET", f"/api/jobs/{duplicate_id}/rally-review").json()

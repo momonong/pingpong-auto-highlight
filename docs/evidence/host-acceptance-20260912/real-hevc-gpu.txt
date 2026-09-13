@@ -1,0 +1,73 @@
+["docker", "--context", "default", "exec", "highlightcraft-annotation-acceptance-pingpong-highlight-1", "ffmpeg", "-hide_banner", "-loglevel", "verbose", "-ss", "110", "-threads", "1", "-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-extra_hw_frames", "8", "-i", "/data/uploads/03abca2799d9419ea5d09a3c22082c33.mp4", "-t", "2", "-vf", "hwdownload,format=p010le,format=yuv420p", "-an", "-c:v", "h264_nvenc", "-f", "null", "-"]
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/data/uploads/03abca2799d9419ea5d09a3c22082c33.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 131072
+    compatible_brands: isomiso2mp41
+    creation_time   : 2026-04-25T08:54:10.000000Z
+    com.android.capture.fps: 30.000000
+    com.android.model: Pixel 10 Pro Fold
+    com.android.manufacturer: Google
+  Duration: 00:03:43.39, start: 0.000000, bitrate: 20103 kb/s
+  Stream #0:0[0x1](eng): Video: hevc (Main 10), 1 reference frame (hvc1 / 0x31637668), yuv420p10le(tv, bt2020nc/bt2020/arib-std-b67, left), 1920x1080, 19839 kb/s, SAR 1:1 DAR 16:9, 29.99 fps, 30 tbr, 90k tbn (default)
+    Metadata:
+      creation_time   : 2026-04-25T08:54:10.000000Z
+      handler_name    : VideoHandle
+      vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 191 kb/s (default)
+    Metadata:
+      creation_time   : 2026-04-25T08:54:10.000000Z
+      handler_name    : SoundHandle
+      vendor_id       : [0][0][0][0]
+  Stream #0:2[0x3](eng): Data: none (mett / 0x7474656D), 59 kb/s (default)
+    Metadata:
+      creation_time   : 2026-04-25T08:54:10.000000Z
+      handler_name    : MetaHandle
+Stream mapping:
+  Stream #0:0 -> #0:0 (hevc (native) -> h264 (h264_nvenc))
+Press [q] to stop, [?] for help
+[hevc @ 0x57e0029edac0] NVDEC capabilities:
+[hevc @ 0x57e0029edac0] format supported: yes, max_mb_count: 262144
+[hevc @ 0x57e0029edac0] min_width: 144, max_width: 8192
+[hevc @ 0x57e0029edac0] min_height: 144, max_height: 8192
+[graph 0 input from stream 0:0 @ 0x57e0040b7200] w:1920 h:1080 pixfmt:cuda tb:1/90000 fr:30/1 sar:1/1
+[auto_scale_0 @ 0x57e0040bcd80] w:iw h:ih flags:'' interl:0
+[Parsed_format_2 @ 0x57e0040b65c0] auto-inserting filter 'auto_scale_0' between the filter 'Parsed_format_1' and the filter 'Parsed_format_2'
+[auto_scale_0 @ 0x57e0040bcd80] w:1920 h:1080 fmt:p010le sar:1/1 -> w:1920 h:1080 fmt:yuv420p sar:1/1 flags:0x0
+    Last message repeated 3 times
+[h264_nvenc @ 0x57e002a1fa40] Using device cuda0 (type cuda) with h264_nvenc encoder.
+[h264_nvenc @ 0x57e002a1fa40] Loaded Nvenc version 13.0
+[h264_nvenc @ 0x57e002a1fa40] Nvenc initialized successfully
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 131072
+    compatible_brands: isomiso2mp41
+    com.android.manufacturer: Google
+    com.android.capture.fps: 30.000000
+    com.android.model: Pixel 10 Pro Fold
+    encoder         : Lavf59.27.100
+  Stream #0:0(eng): Video: h264 (Main), 1 reference frame, yuv420p(tv, bt2020nc/bt2020/arib-std-b67, progressive, left), 1920x1080 (0x0) [SAR 1:1 DAR 16:9], q=2-31, 2000 kb/s, 30 fps, 30 tbn (default)
+    Metadata:
+      creation_time   : 2026-04-25T08:54:10.000000Z
+      handler_name    : VideoHandle
+      vendor_id       : [0][0][0][0]
+      encoder         : Lavc59.37.100 h264_nvenc
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/2000000 buffer size: 4000000 vbv_delay: N/A
+frame=    1 fps=0.0 q=0.0 size=N/A time=00:00:00.00 bitrate=N/A speed=   0x    
+No more output streams to write to, finishing.
+frame=   60 fps=0.0 q=39.0 Lsize=N/A time=00:00:01.90 bitrate=N/A speed=6.47x    
+video:538kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+Input file #0 (/data/uploads/03abca2799d9419ea5d09a3c22082c33.mp4):
+  Input stream #0:0 (video): 91 packets read (7692702 bytes); 91 frames decoded; 
+  Input stream #0:1 (audio): 0 packets read (0 bytes); 
+  Input stream #0:2 (data): 0 packets read (0 bytes); 
+  Total: 91 packets (7692702 bytes) demuxed
+Output file #0 (pipe:):
+  Output stream #0:0 (video): 60 frames encoded; 60 packets muxed (550487 bytes); 
+  Total: 60 packets (550487 bytes) muxed
+[h264_nvenc @ 0x57e002a1fa40] Nvenc unloaded
+[AVIOContext @ 0x57e0029f1600] Statistics: 8346311 bytes read, 3 seeks
+
+EXIT_CODE=0

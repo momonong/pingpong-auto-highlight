@@ -214,3 +214,36 @@ SQLite schema migration 由應用程式啟動時執行，因此升級前備份�
 6. 驗收完成前保持來源資料與備份不動；確認 DNS/tunnel 已切換後才退役舊服務，避免兩台同時寫同一份狀態。
 
 如此一來，日常開發可以完全在其他電腦或 CI 完成；這台剪片主機只承擔 pull、執行、資料保存與 GPU 處理。
+
+## Linux 隔離驗收
+
+Docker Desktop 的 GPU 支援限定 Windows WSL2（[Docker 官方說明](https://docs.docker.com/desktop/features/gpu/)）；Linux NVIDIA 服務使用原生 Docker Engine 與 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)。先唯讀執行 `docker context ls`、`docker --context default info`、`docker --context default ps`、`nvidia-smi`，核對 socket、已登錄的 `nvidia` runtime 與現役服務。不要為了測試執行 `docker context use`、重新設定 daemon 或重啟 Docker。原生 Engine 若已可用，可與 Desktop 分開建立驗收 project；不同 Engine 仍共用主機 port、磁碟及 GPU。
+
+`compose.acceptance.yaml` 限定 loopback，要求明確指定 image、commit 與獨立資料路徑。以下必須在驗收 worktree 執行，且每次新驗收選新目錄與 project；現役 bind mount 不可重用：
+
+```bash
+export PINGPONG_ACCEPTANCE_IMAGE=highlightcraft:acceptance-213fc18
+export PINGPONG_ACCEPTANCE_REVISION=213fc1895a50ce2bae131e52ec2159b6e2e8a885
+export PINGPONG_ACCEPTANCE_PORT=18082
+export PINGPONG_ACCEPTANCE_DATA="$PWD/data/host-acceptance"
+# 確认 port 未占用、目錄尚不存在，才建立；此步不可對現役資料執行。
+sudo install -d -m 0750 -o 10001 -g 10001 "$PINGPONG_ACCEPTANCE_DATA"
+docker --context default compose -p highlightcraft-annotation-acceptance \
+  -f compose.yaml -f compose.acceptance.yaml config -q
+docker --context default compose -p highlightcraft-annotation-acceptance \
+  -f compose.yaml -f compose.acceptance.yaml build
+docker --context default compose -p highlightcraft-annotation-acceptance \
+  -f compose.yaml -f compose.acceptance.yaml up -d --no-build --wait
+docker --context default compose -p highlightcraft-annotation-acceptance \
+  -f compose.yaml -f compose.acceptance.yaml exec -T pingpong-highlight pingpong-highlight doctor
+```
+
+套件版本仍可能顯示 `1.4.0`；必須同時記錄 OCI revision 與本機 image ID。`v1.4.0` tag 的 `321da1e` 不含 PR #5 的整片人工標註，不可用版本字串代替 commit 驗收。只有 FFmpeg 實際 decode/encode 通過才算 GPU 可用，不能僅看 encoder 清單。
+
+本機 dev 環境使用 `uv sync --locked --extra dev --no-default-groups`，不啟用 `vlm` 或 `train`。完整 pytest、`tests/browser/full-review.cjs`、`rally-review.cjs`、`workspace.cjs` 均須在部署主機重跑；Windows 的 pass/skip 為歷史證據。
+
+`tests/browser/deployment-review.cjs` 可對隔離 Docker 入口測試真實 HTTP 上傳／正式 processor、登入、owner 隔離、整片 H.264 Range、I/O、保存續播、coverage、草稿重載與匯出。設定 `HC_ACCEPTANCE_URL`、`HC_ACCEPTANCE_PASSWORD_FILE`（該隔離 instance 的 admin 密碼檔）及全新 `HC_ACCEPTANCE_ARTIFACTS` 目錄，並提供 Playwright/Chromium。測試會新增兩個明示 AUTOMATION FIXTURE 的帳號及生成影片，只可用於獨立驗收資料；它不刪資料，不代表真人真值。測試帳號密碼沿用該隔離測試密碼，這份 data 不可直接升為正式服務。
+
+真實原片需另外核對 SHA-256、時長、首中尾實際影像，再於獨立副本驗證標註操作。自動化寫入一律保留 fixture 標示；正式人工資料不得混入這些紀錄。開發機獨立 `review.sqlite3` 內含 Windows 絕對來源路徑，不能直接當 Linux 已可用的資料：先取得一致性備份，在副本重設路徑並核對 source hash、模型 runs 及 review export；原備份保持不動。`review-media/preview.json` 也可能包含舊絕對路徑，需驗證或重新準備相容播放副本，不能只搬 MP4。
+
+2026-09-12 此主機的實際映像、資料目錄、測試結果與尚缺原片詳見 [部署主機驗收紀錄](evaluation.md#部署主機人工標註驗收2026-09-12linux-rtx-4090)。該輪重用既有依賴層的映像與上面的完整建置命令不同，以 image receipt 為準。

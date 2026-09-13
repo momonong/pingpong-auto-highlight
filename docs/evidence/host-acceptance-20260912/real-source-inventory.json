@@ -1,0 +1,113 @@
+[
+  {
+    "path": "/home/ubuntu/projects/pingpong-auto-highlight/data/uploads/6e7e1019273942d8babb122188d64a30.mp4",
+    "size": 561386356,
+    "sha256": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+    "expected_sha256": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+    "hash_matches": true,
+    "duration": "223.393767",
+    "streams": [
+      {
+        "codec_type": "video",
+        "codec_name": "hevc",
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "30/1",
+        "avg_frame_rate": "201000000/6701813"
+      },
+      {
+        "codec_type": "audio",
+        "codec_name": "aac",
+        "width": null,
+        "height": null,
+        "pix_fmt": null,
+        "r_frame_rate": "0/0",
+        "avg_frame_rate": "0/0"
+      },
+      {
+        "codec_type": "data",
+        "codec_name": null,
+        "width": null,
+        "height": null,
+        "pix_fmt": null,
+        "r_frame_rate": "0/0",
+        "avg_frame_rate": "0/0"
+      }
+    ]
+  },
+  {
+    "path": "/home/ubuntu/projects/pingpong-auto-highlight/data/uploads/a6ef1ae5b64d4f62b19bf2d850b9282b.mp4",
+    "size": 556571523,
+    "sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+    "expected_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+    "hash_matches": true,
+    "duration": "221.687256",
+    "streams": [
+      {
+        "codec_type": "video",
+        "codec_name": "hevc",
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuv420p10le",
+        "r_frame_rate": "120/1",
+        "avg_frame_rate": "598410000/19951853"
+      },
+      {
+        "codec_type": "audio",
+        "codec_name": "aac",
+        "width": null,
+        "height": null,
+        "pix_fmt": null,
+        "r_frame_rate": "0/0",
+        "avg_frame_rate": "0/0"
+      },
+      {
+        "codec_type": "data",
+        "codec_name": null,
+        "width": null,
+        "height": null,
+        "pix_fmt": null,
+        "r_frame_rate": "0/0",
+        "avg_frame_rate": "0/0"
+      }
+    ]
+  },
+  {
+    "path": "/home/ubuntu/projects/pingpong-auto-highlight/data/uploads/f470599a5b5e434c8ab809db749436b2.mp4",
+    "size": 1502078489,
+    "sha256": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+    "expected_sha256": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+    "hash_matches": true,
+    "duration": "602.570378",
+    "streams": [
+      {
+        "codec_type": "video",
+        "codec_name": "hevc",
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuvj420p",
+        "r_frame_rate": "120/1",
+        "avg_frame_rate": "810270000/27115667"
+      },
+      {
+        "codec_type": "audio",
+        "codec_name": "aac",
+        "width": null,
+        "height": null,
+        "pix_fmt": null,
+        "r_frame_rate": "0/0",
+        "avg_frame_rate": "0/0"
+      },
+      {
+        "codec_type": "data",
+        "codec_name": null,
+        "width": null,
+        "height": null,
+        "pix_fmt": null,
+        "r_frame_rate": "0/0",
+        "avg_frame_rate": "0/0"
+      }
+    ]
+  }
+]

@@ -298,7 +298,7 @@ docker compose -f compose.yaml -f compose.deploy.yaml up -d --wait
 
 逐球素材庫、跨影片集錦與 pCloud 封存目前保存在 `codex/preserve-local-20260907` 分支，未包含在 1.4.0。曾使用該開發分支的資料目錄，請先依部署手冊的相容性說明處理；首次試用 1.4.0 建議使用獨立資料目錄。
 
-新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。開發用途可取得完整 repository 後用啟動器；正式執行主機只需上一節所列的 Compose 部署 bundle。完整 repository 的 Git Bash 快速啟動方式是：
+Windows 開發機可用 Docker Desktop 的 WSL2 backend；Linux GPU 部署使用原生 Docker Engine 與 NVIDIA Container Toolkit。Docker Desktop for Linux 不提供這條 NVIDIA GPU 路線，主機的 `nvidia-smi` 正常也不代表 Desktop 容器可使用 GPU。兩種 Engine 可共存，操作時明確指定 Docker context，詳見 [Linux 隔離驗收](docs/deployment.md#linux-隔離驗收)。開發用途可取得完整 repository 後用啟動器；正式執行主機只需上一節所列的 Compose 部署 bundle。完整 repository 的 Git Bash 快速啟動方式是：
 
 ```bash
 cd /d/projects/pingpong-auto-highlight

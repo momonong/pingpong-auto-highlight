@@ -1,0 +1,5 @@
+highlightcraft-annotation-acceptance-pingpong-highlight-1	highlightcraft:acceptance-213fc18-reused	127.0.0.1:18082->8000/tcp	Up 42 seconds (healthy)
+kaching-mcp-1	kaching-mcp:1.1.0-rc.4	127.0.0.1:8001->8001/tcp	Up 4 days (healthy)
+kaching-web-1	kaching-web:1.1.0-rc.4	127.0.0.1:3000->3000/tcp	Up 4 days (healthy)
+kaching-mcp-read-api-1	kaching-mcp-read-api:1.1.0-rc.4	80/tcp, 8080/tcp	Up 4 days (healthy)
+kaching-api-1	kaching-api:1.1.0-rc.4	127.0.0.1:8000->8000/tcp	Up 4 days (healthy)

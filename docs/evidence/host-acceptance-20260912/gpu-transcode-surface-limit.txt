@@ -1,0 +1,38 @@
+[h264 @ 0x5fa845944f80] Reinit context to 640x368, pix_fmt: yuv420p
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/data/uploads/fa32c6587ffc49d5bb514b0f094e5d2a.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf60.16.100
+  Duration: 00:00:10.00, start: 0.000000, bitrate: 872 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(progressive, left), 640x360 (640x368) [SAR 1:1 DAR 16:9], 793 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      vendor_id       : [0][0][0][0]
+      encoder         : Lavc60.31.102 libx264
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, mono, fltp, 69 kb/s (default)
+    Metadata:
+      handler_name    : SoundHandler
+      vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (h264_nvenc))
+Press [q] to stop, [?] for help
+[h264 @ 0x5fa84594a300] NVDEC capabilities:
+[h264 @ 0x5fa84594a300] format supported: yes, max_mb_count: 65536
+[h264 @ 0x5fa84594a300] min_width: 48, max_width: 4096
+[h264 @ 0x5fa84594a300] min_height: 16, max_height: 4096
+[h264 @ 0x5fa84594a300] decoder->cvdl->cuvidCreateDecoder(&decoder->decoder, params) failed -> CUDA_ERROR_INVALID_VALUE: invalid argument
+[h264 @ 0x5fa84594a300] Using more than 32 (43) decode surfaces might cause nvdec to fail.
+[h264 @ 0x5fa84594a300] Try lowering the amount of threads. Using 1 right now.
+[h264 @ 0x5fa84594a300] Failed setup for format cuda: hwaccel initialisation returned error.
+[h264 @ 0x5fa84594a300] Reinit context to 640x368, pix_fmt: yuv420p
+[graph 0 input from stream 0:0 @ 0x5fa846902e40] w:640 h:360 pixfmt:yuv420p tb:1/15360 fr:30/1 sar:1/1
+[auto_scale_0 @ 0x5fa8469078c0] w:iw h:ih flags:'' interl:0
+[Parsed_hwdownload_0 @ 0x5fa84598cdc0] auto-inserting filter 'auto_scale_0' between the filter 'graph 0 input from stream 0:0' and the filter 'Parsed_hwdownload_0'
+Impossible to convert between the formats supported by the filter 'graph 0 input from stream 0:0' and the filter 'auto_scale_0'
+Error reinitializing filters!
+Failed to inject frame into filter network: Function not implemented
+Error while processing the decoded data for stream #0:0
+[AVIOContext @ 0x5fa84594c640] Statistics: 77573 bytes read, 2 seeks
+Conversion failed!
