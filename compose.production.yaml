@@ -1,0 +1,29 @@
+# Standalone deployment file. No build or tunnel side effects.
+services:
+  app:
+    image: "${HC_IMAGE:?Set an inspected local candidate ID or published digest}"
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    gpus: all
+    ports:
+      - "127.0.0.1:${HC_APP_PORT:-18084}:8000"
+    environment:
+      PINGPONG_DATA_DIR: /data
+      PINGPONG_PUBLIC_URL: "${HC_PUBLIC_URL:?Set the reviewed external URL}"
+      PINGPONG_ROOT_PATH: "${HC_ROOT_PATH:-/pingpong-highlight}"
+      PINGPONG_SESSION_COOKIE_NAME: "${HC_COOKIE_NAME:-highlightcraft_session}"
+      PINGPONG_SESSION_COOKIE_SECURE: "${HC_COOKIE_SECURE:-true}"
+      PINGPONG_ALLOWED_HOSTS: "${HC_ALLOWED_HOSTS:?Set hostname plus 127.0.0.1 for healthcheck}"
+      PINGPONG_FORWARDED_ALLOW_IPS: "${HC_PROXY_IPS:?Set the actual immediate proxy source IP; never wildcard}"
+      PINGPONG_TRUSTED_PROXY_PROVIDER: none
+      PINGPONG_ENABLE_LEGACY_TOKEN_AUTH: "false"
+      PINGPONG_MAX_CHUNK_BYTES: "33554432"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,video
+    volumes:
+      - type: bind
+        source: "${HC_DATA:?Set a restored and verified dedicated data directory}"
+        target: /data
+        bind:
+          create_host_path: false
+    stop_grace_period: 2m

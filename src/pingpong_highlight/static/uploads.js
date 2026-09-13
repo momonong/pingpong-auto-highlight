@@ -25,7 +25,7 @@ function resumeKeyHash(value) {
 }
 
 function resumeStoragePrefix(userId = currentUser?.id) {
-  return `pingpong-upload:v2:${resumeKeyHash(userId || "anonymous")}:`;
+  return `pingpong-upload:v2:${HC.root ? `${resumeKeyHash(HC.root)}:` : ""}${resumeKeyHash(userId || "anonymous")}:`;
 }
 
 function fingerprint(file, userId = currentUser?.id) {
@@ -69,6 +69,7 @@ function removeLocalStorage(key) {
 }
 
 function purgeLegacyResumeKeys() {
+  if (HC.root) return;
   const staleKeys = localStorageKeys().filter(
     (key) => key.startsWith("pingpong-upload:") && !key.startsWith("pingpong-upload:v2:"),
   );

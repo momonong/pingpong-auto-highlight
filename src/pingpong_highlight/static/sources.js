@@ -5,13 +5,13 @@ function uploadIsActive(upload) {
 }
 
 function hasLocalResumeSession(upload) {
-  const expectedPath = `/api/uploads/${upload.id}`;
+  const expectedPath = HC.url(`/api/uploads/${upload.id}`);
   const expectedPrefix = resumeStoragePrefix();
   for (const key of localStorageKeys()) {
     if (!key.startsWith(expectedPrefix)) continue;
     const saved = readLocalStorage(key);
     try {
-      if (saved && new URL(saved, window.location.origin).pathname === expectedPath) return true;
+      if (saved && new URL(HC.url(saved), window.location.origin).pathname === expectedPath) return true;
     } catch (_) {
       // Ignore malformed values written by an older build or browser extension.
     }
@@ -20,13 +20,13 @@ function hasLocalResumeSession(upload) {
 }
 
 function forgetLocalResumeSession(uploadId) {
-  const expectedPath = `/api/uploads/${uploadId}`;
+  const expectedPath = HC.url(`/api/uploads/${uploadId}`);
   const matchingKeys = [];
   for (const key of localStorageKeys()) {
     if (!key.startsWith("pingpong-upload:")) continue;
     const saved = readLocalStorage(key);
     try {
-      if (saved && new URL(saved, window.location.origin).pathname === expectedPath) {
+      if (saved && new URL(HC.url(saved), window.location.origin).pathname === expectedPath) {
         matchingKeys.push(key);
       }
     } catch (_) {

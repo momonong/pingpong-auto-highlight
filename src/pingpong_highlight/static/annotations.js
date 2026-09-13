@@ -311,7 +311,7 @@ function renderAnnotationDevJob(job, index) {
     <button class="annotation-dev-open open-annotation-workspace" type="button" data-job-id="${escapeHtml(job.id)}" data-source-name="${escapeHtml(filename)}" aria-label="${escapeHtml(t("annotation.openLabel", { filename }))}">
       <span>${t("annotation.open")}</span><small>I · O · Enter</small>
     </button>
-    <a class="annotation-dev-open" href="/static/review/index.html?job=${encodeURIComponent(job.id)}">${t("annotation.assistedReview")}</a>
+    <a class="annotation-dev-open" href="${HC.url(`/static/review/index.html?job=${encodeURIComponent(job.id)}`)}">${t("annotation.assistedReview")}</a>
   </article>`;
 }
 

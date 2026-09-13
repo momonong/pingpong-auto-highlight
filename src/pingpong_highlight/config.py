@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 import secrets
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 def _env_int(name: str, default: int) -> int:
@@ -45,6 +48,10 @@ class Settings:
     data_dir: Path
     upload_token: str
     public_url: str | None = None
+    root_path: str = ""
+    session_cookie_name: str = ""
+    forwarded_allow_ips: str = ""
+    allowed_hosts: tuple[str, ...] = ("*",)
     host: str = "0.0.0.0"
     port: int = 8000
     max_upload_bytes: int = 100 * 1024**3
@@ -68,6 +75,26 @@ class Settings:
     maintenance_token: str | None = None
 
     def __post_init__(self) -> None:
+        # Canonical unescaped path; never infer routing from untrusted HTTP headers.
+        if self.root_path and not re.fullmatch(r"(?:/[A-Za-z0-9_-]+)+", self.root_path):
+            raise ValueError("root_path must be empty or a canonical path without trailing slash")
+        if self.public_url:
+            public = urlsplit(self.public_url)
+            if (public.scheme not in {"http", "https"} or not public.hostname
+                    or public.username or public.password or public.query or public.fragment
+                    or public.path.rstrip("/") != self.root_path):
+                raise ValueError("public_url must be an HTTP(S) origin plus root_path")
+        name = self.session_cookie_name or (
+            "pingpong_session" if not self.root_path else
+            "pingpong_session_" + hashlib.sha256(self.root_path.encode()).hexdigest()[:12]
+        )
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+            raise ValueError("session_cookie_name must be a cookie token")
+        if name.startswith("__Host-") and (self.root_path or not self.session_cookie_secure):
+            raise ValueError("__Host- cookies require Secure and root Path")
+        if name.startswith("__Secure-") and not self.session_cookie_secure:
+            raise ValueError("__Secure- cookies require Secure")
+        object.__setattr__(self, "session_cookie_name", name)
         if not 0.0 <= self.minimum_point_score_ratio <= 1.0:
             raise ValueError("minimum_point_score_ratio must be between 0 and 1")
         if self.max_points is not None and self.max_points < 0:
@@ -90,6 +117,10 @@ class Settings:
         object.__setattr__(self, "trusted_proxy_provider", provider)
         if self.maintenance_token is None:
             object.__setattr__(self, "maintenance_token", self.upload_token)
+
+    @property
+    def cookie_path(self) -> str:
+        return self.root_path + "/"
 
     @property
     def uploads_dir(self) -> Path:
@@ -141,6 +172,10 @@ class Settings:
             data_dir=root,
             upload_token=token,
             public_url=os.getenv("PINGPONG_PUBLIC_URL") or None,
+            root_path=os.getenv("PINGPONG_ROOT_PATH", ""),
+            session_cookie_name=os.getenv("PINGPONG_SESSION_COOKIE_NAME", ""),
+            forwarded_allow_ips=os.getenv("PINGPONG_FORWARDED_ALLOW_IPS", ""),
+            allowed_hosts=tuple(os.getenv("PINGPONG_ALLOWED_HOSTS", "*").split(",")),
             host=host or os.getenv("PINGPONG_HOST", "0.0.0.0"),
             port=port or _env_int("PINGPONG_PORT", 8000),
             max_upload_bytes=_env_int("PINGPONG_MAX_UPLOAD_BYTES", 100 * 1024**3),

@@ -187,7 +187,10 @@ def test_language_toggle_and_script_order() -> None:
     assert ("中", "zh-Hant") in toggle_options
     assert ("EN", "en") in toggle_options
 
-    script_sources = [attrs.get("src") for _, attrs, _ in parser.scripts]
+    script_sources = [
+        str(attrs.get("src", "")).replace("__HC_ROOT_PATH__", "")
+        for _, attrs, _ in parser.scripts
+    ]
     i18n_index = script_sources.index("/static/i18n.js?v=1.4.0")
     app_index = script_sources.index("/static/app.js?v=1.4.0")
     assert i18n_index < app_index, "i18n.js must initialize the global before app.js runs"

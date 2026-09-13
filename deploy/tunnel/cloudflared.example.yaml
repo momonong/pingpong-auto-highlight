@@ -1,0 +1,13 @@
+# Conditional proposal, NOT installed. Requires hostname ownership, reviewed routing,
+# an eligible video-delivery agreement, and verified outbound connectivity.
+# Persist this UUID/credential across restarts; do not use a Quick Tunnel.
+tunnel: REPLACE_WITH_EXISTING_OR_APPROVED_TUNNEL_UUID
+credentials-file: /run/secrets/cloudflared.json
+ingress:
+  - hostname: REPLACE_WITH_REVIEWED_HOSTNAME
+    service: http://127.0.0.1:18087
+    originRequest:
+      httpHostHeader: REPLACE_WITH_REVIEWED_HOSTNAME
+  - service: http_status:404
+# If hostname already serves other sites, this Nginx must preserve ALL their routes.
+# DNS routes the whole hostname, never just /pingpong-highlight/.

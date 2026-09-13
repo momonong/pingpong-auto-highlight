@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 
+from pingpong_highlight.deployment import html_page
 from pingpong_highlight.rally_review import Conflict, ReviewCommand, ReviewStore
 from pingpong_highlight.review_media import full_preview, prepare_review
 
@@ -36,9 +37,13 @@ def create_review_app(store: ReviewStore) -> FastAPI:
 
     @app.get("/")
     def index():
-        response = FileResponse(ASSETS / "index.html")
+        response = html_page(ASSETS / "index.html")
         response.set_cookie("hc_review", key, httponly=True, samesite="strict")
         return response
+
+    @app.get("/static/paths.js")
+    def paths():
+        return FileResponse(ASSETS.parent / "paths.js")
 
     @app.get("/review.js")
     def script():

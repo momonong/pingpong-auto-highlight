@@ -10,17 +10,17 @@ const video = $('video');
 function sourceTime(){return Math.min(mediaEnd,video.currentTime+mediaOffset);}
 function timeLabel(seconds){const n=Math.max(0,Math.floor(seconds||0));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
 function seekSource(seconds){if(seconds<mediaOffset||seconds>mediaEnd){message('目前正在查看實驗短片，請按「整片播放版本」或「原始影片」查看這個位置。',true);return false;}if(video.readyState<1)pendingSeek=seconds;else video.currentTime=seconds-mediaOffset;return true;}
-function setMedia(url,start,end,mode,label){video.pause();delete video.dataset.stopAt;mediaOffset=start;mediaEnd=end;mediaMode=mode;pendingSeek=start;video.src=url;$('mediaMode').textContent=label;$('mediaProblem').hidden=true;updateClock();}
+function setMedia(url,start,end,mode,label){video.pause();delete video.dataset.stopAt;mediaOffset=start;mediaEnd=end;mediaMode=mode;pendingSeek=start;video.src=HC.url(url);$('mediaMode').textContent=label;$('mediaProblem').hidden=true;updateClock();}
 function useOriginal(){setMedia(job?`/api/jobs/${encodeURIComponent(job)}/source`:base()+'/source',0,state.source.duration_ms/1000,'original','整支原片');}
 function useFull(){setMedia(base()+'/full-preview',0,state.source.duration_ms/1000,'full','整片播放 · 時間與原片一致');}
 function useCompatible(){const run=state.runs.find(r=>r.id===runId);if(!run?.preview_available)return;setMedia(base()+'/preview/'+encodeURIComponent(runId),run.preview_range.start_ms/1000,run.preview_range.end_ms/1000,'segment','實驗短片 · 下方大字顯示原片時間');}
 function updateClock(){if(!state)return;$('sourceClock').textContent=`${timeLabel(sourceTime())} / ${timeLabel(state.source.duration_ms/1000)}`;$('reviewToHere').textContent=`確認 ${timeLabel(reviewAnchor)}–${timeLabel(sourceTime())} 已檢查`;$('reviewToHere').disabled=busy||dirty||!!pendingCommand||sourceTime()<=reviewAnchor;}
 function validBounds(){const p=fields();return $('start').value!==''&&$('end').value!==''&&p.start_ms>=0&&p.end_ms>p.start_ms&&p.end_ms<=state.source.duration_ms;}
 const labels = {yes:'是',no:'否',uncertain:'不確定',unable:'無法判斷',omit:'不收錄',include:'可收錄',must:'必收錄',unrated:'未判斷'};
-const base = () => job ? `/api/jobs/${encodeURIComponent(job)}/rally-review` : `/api/review/${sourceId}`;
+const base = () => HC.url(job ? `/api/jobs/${encodeURIComponent(job)}/rally-review` : `/api/review/${sourceId}`);
 const draftKey = () => `hc-review-draft:${base()}`;
 function message(text, error=false){$('message').textContent=text;$('message').classList.toggle('error',error);}
-async function request(url, options={}){const r=await fetch(url,options);if(!r.ok){let p=await r.json();throw new Error(`${r.status}: ${p.detail || 'Request failed'}`);}return r.json();}
+async function request(url, options={}){const r=await fetch(HC.url(url),options);if(!r.ok){let p=await r.json();throw new Error(`${r.status}: ${p.detail || 'Request failed'}`);}return r.json();}
 function fields(){return {start_ms:Math.round(Number($('start').value)*1000),end_ms:Math.round(Number($('end').value)*1000),rally:$('rally').value,complete:$('complete').value,highlight:$('rally').value==='yes'?$('highlight').value:'unrated',reason:$('reason').value};}
 function persistDraft(){dirty=true;localStorage.setItem(draftKey(),JSON.stringify({pointId,proposalId,point:fields(),emptyStart:$('start').value==='',emptyEnd:$('end').value===''}));controls();}
 function edit(p=null, human=false){pointId=human?p.id:null;proposalId=p&&!human?p.id:null;

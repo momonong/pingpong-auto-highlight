@@ -19,7 +19,7 @@ async function checkConnection() {
   const deadline = setTimeout(() => controller.abort(), 6000);
   try {
     if (!navigator.onLine) throw new Error("offline");
-    const response = await fetch("/api/health", {
+    const response = await fetch(HC.url("/api/health"), {
       cache: "no-store", credentials: "same-origin", signal: controller.signal,
     });
     if (!response.ok || (await response.json()).status !== "ok") throw new Error("health");

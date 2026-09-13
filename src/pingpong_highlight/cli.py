@@ -40,7 +40,7 @@ def _service_url(settings: Settings, address: str) -> str:
     return (
         settings.public_url.rstrip("/")
         if settings.public_url
-        else f"http://{address}:{settings.port}"
+        else f"http://{address}:{settings.port}{settings.root_path}"
     )
 
 
@@ -70,6 +70,9 @@ def _serve(args: argparse.Namespace) -> int:
         host=settings.host,
         port=settings.port,
         log_level=args.log_level,
+        root_path=settings.root_path,
+        proxy_headers=bool(settings.forwarded_allow_ips),
+        forwarded_allow_ips=settings.forwarded_allow_ips,
     )
     return 0
 
