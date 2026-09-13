@@ -1,0 +1,14 @@
+{
+  "target_data": "/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/deployment-integration-20260913/data/subpath-app",
+  "docker_contexts_checked": [
+    "default",
+    "desktop-linux"
+  ],
+  "conflicting_writers": [
+    {
+      "context": "default",
+      "container": "/hc-integration-subpath-app-1",
+      "source": "/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/deployment-integration-20260913/data/subpath-app"
+    }
+  ]
+}

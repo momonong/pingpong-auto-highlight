@@ -1,0 +1,14 @@
+{
+  "kind": "LOCAL CANDIDATE ONLY",
+  "runtime_commit": "b3676856f5f03a4569aad0c1f28624aa62a0d2ec",
+  "image": "highlightcraft:deployment-20260913",
+  "image_id": "sha256:160214f083a28828d089402b1e7f534009c8f845261cdbc98bd8c57179574e3f",
+  "base_image_id": "sha256:7a22e7fd8bbfcaddc5ceb712a4136199645c7f60008806b00e5597dc775838d0",
+  "network": "none during candidate build",
+  "dependencies_checked": 31,
+  "package_files_checked": 45,
+  "registry_digest": null,
+  "clean_build": false,
+  "note": "Reused audited local dependency layers. Runtime source commit and final deployment bundle commit may differ; bundle.json records both.",
+  "builder_image_id": "sha256:091ef39e3101997f022a000584f286c27b2c4fdefd8651b3b6450c3ab9266874"
+}

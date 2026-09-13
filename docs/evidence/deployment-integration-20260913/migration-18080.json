@@ -1,0 +1,13 @@
+{
+  "integrity": "ok",
+  "tables": {
+    "uploads": 1,
+    "jobs": 1,
+    "drive_imports": 0,
+    "annotations": 0,
+    "users": 1,
+    "sessions": 0,
+    "cleanup_queue": 0
+  },
+  "unowned_uploads": 0
+}

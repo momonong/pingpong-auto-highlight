@@ -1,0 +1,104 @@
+{
+  "databases": {
+    "rally-review/21bcd0e400bb5a223aa434248b2ecd82b4b98d636f76d5f63f53a687bf854403.sqlite3": {
+      "integrity": "ok",
+      "foreign_keys": 0,
+      "tables": {
+        "sources": 1,
+        "runs": 0,
+        "reviews": 1,
+        "commands": 2
+      },
+      "reviews": [
+        {
+          "source_id": "eb755473731569c15ed65698ca2159ab8f3a71bb975779a17313c7ce063cf8e5",
+          "points": 1,
+          "coverage": [
+            {
+              "start_ms": 0,
+              "end_ms": 4000
+            }
+          ],
+          "payload_sha256": "d3d85410bc0643f16b838bdf4699de7df67074b049ea7e2be87c7382a27dd7cf"
+        }
+      ]
+    },
+    "rally-review/816091b72a3332d5b1149c0a7fce5bb806df8e78a0ca433cfd3cf314ca53a0e0.sqlite3": {
+      "integrity": "ok",
+      "foreign_keys": 0,
+      "tables": {
+        "sources": 1,
+        "runs": 0,
+        "reviews": 0,
+        "commands": 0
+      },
+      "reviews": []
+    },
+    "rally-review/85eb9f6ad526bd98ba62dce5979a9f20d2d7003f55088a1ae80029dd2fc64334.sqlite3": {
+      "integrity": "ok",
+      "foreign_keys": 0,
+      "tables": {
+        "sources": 1,
+        "runs": 0,
+        "reviews": 1,
+        "commands": 2
+      },
+      "reviews": [
+        {
+          "source_id": "eb755473731569c15ed65698ca2159ab8f3a71bb975779a17313c7ce063cf8e5",
+          "points": 1,
+          "coverage": [
+            {
+              "start_ms": 0,
+              "end_ms": 4000
+            }
+          ],
+          "payload_sha256": "9b7ae9f9f10836a518fd937a42843e45635415da0ff29bac56e635f7b0de3e58"
+        }
+      ]
+    },
+    "rally-review/a5df7c197435e1369307fc38e50ac23323b6930766581969fa5113293fb82b36.sqlite3": {
+      "integrity": "ok",
+      "foreign_keys": 0,
+      "tables": {
+        "sources": 1,
+        "runs": 0,
+        "reviews": 0,
+        "commands": 0
+      },
+      "reviews": []
+    },
+    "rally-review/fbe0ab87151c7fb4d29b2177f89f9982697542ecde5bac09e13c7d3a3e895104.sqlite3": {
+      "integrity": "ok",
+      "foreign_keys": 0,
+      "tables": {
+        "sources": 1,
+        "runs": 0,
+        "reviews": 0,
+        "commands": 0
+      },
+      "reviews": []
+    },
+    "state.sqlite3": {
+      "integrity": "ok",
+      "foreign_keys": 0,
+      "tables": {
+        "users": 9,
+        "sessions": 20,
+        "uploads": 5,
+        "jobs": 5,
+        "drive_imports": 0,
+        "annotations": 0,
+        "cleanup_queue": 0
+      },
+      "active_jobs": 0,
+      "active_uploads": 0,
+      "orphan_jobs": 0
+    }
+  },
+  "missing_references": [],
+  "incompatible_paths_or_schema": [],
+  "archive_sha256": "58a565a39d7bd8146f803a94559208f20875129ae97a1cd99116f326107af5ef",
+  "files_verified": 37,
+  "consistency": "stopped-writers"
+}

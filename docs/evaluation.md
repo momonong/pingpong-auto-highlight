@@ -259,3 +259,45 @@ Windows 路徑由目前 manifest／實驗 receipt 取得，尚未在 Windows 主
 新增 `tests/browser/real-review.cjs` 支援首中尾唯讀播放及明確副本操作；寫入模式只允許專用 18083 port。實際證據為 `real-source-inventory.json`、`real-playback-browser.txt`、`real-copy-browser.txt`、`real-hevc-gpu.txt`、`real-copy-restart.json`、`real-human-state-final.json`。影片截圖保留在本 worktree 的 `data/real-playback-1/`，不隨 Git 證據提交。
 
 本輪只新增驗收腳本與文件，產品 src／映像未變，因此沿用同主機已完成的 118 passed；另執行新腳本 syntax、禁止對真人入口寫入的 guard 檢查、Ruff、git diff check。正式 DB 遷移、舊審核資料延續、完整備份還原、正式切換與發布仍待後續資料及授權。
+
+## 部署整合驗收（2026-09-13）
+
+**本機子路徑與根路徑驗證通過；正式資料選擇及外網入口仍待確認。**
+來源為 `213fc18` 上的人工標註驗收 worktree，未提交 44 檔已逐位元保存於本機快照，
+並在獨立 `codex/deployment-integration-20260913` 分支以 `0315009` 留下提交。
+不改來源 branch、不清理來源 data、不合併 preserve-local，也未推送、發布或更動正式入口。
+
+| 驗證 | 結果與限制 |
+| --- | --- |
+| 完整 Python 回歸 | 128 passed，19.08 秒；之後補增停寫 WAL 還原模式，備份專項 3 passed（包含既有 2 項重驗） |
+| Ruff／鎖檔／JS syntax | 通過；來源原始 FFmpeg logs 的尾端空白逐位元保留，不為了 diff-check 更改歷史證據 |
+| Nginx + TLS 子路徑 | 18443 `/pingpong-highlight/`：登入、靜態資源、API、job artifact URL、同 origin 私人下載、query、308／307、可信 scheme 通過 |
+| 根路徑 | 18086：登入、上傳、播放、標註、下載回歸通過 |
+| TUS 真斷線 | POST → PATCH 半份 → socket 中途斷線 → 新 client HEAD → stale offset 409 → 正確 offset 續傳，成品處理完成 |
+| 分塊上限 | 前端 config 8 MiB；8 MiB 與 32 MiB PATCH 通過；32 MiB+1 被 Nginx 413 拒絕、offset 不变；只刪除該測試未完成上傳 |
+| 權限與 cache | 匿名 401、其他 owner 404；媒體與審核 no-store；子路徑 cookie Path/Secure/HttpOnly/SameSite、登出清除與 sibling cookie 保留通過 |
+| 代理 header | Nginx 覆寫 client 傳入的偽造 scheme/host；不可信容器直接送 XFP 不被 Uvicorn 信任；allowed host 400 通過 |
+| 影片 | 真實 223.4 秒片的還原副本在 0/110/220 秒有 640×360 decoded frames；已查看中段截圖；Range 206 與首中尾拖曳通過 |
+| 標註工作流 | fixture I/O、保存續播、保存不代表 coverage、顯式 coverage、草稿恢復／放棄、匯出通過；不當人工真值 |
+| 三組既有瀏覽器測試 | full-review、rally-review、workspace 通過，含獨立 review CLI 與 390px 工作區 |
+| 副本重啟 | cookie session 保留，完整 review export、1 筆 fixture 與 coverage 0–4 秒不變 |
+| 映像 | 本機 ID `160214f083a2…`，runtime commit `b367685`；45 個 src 檔案 hash、31 個鎖定依賴一致；NVDEC/NVENC doctor 可用 |
+| 主 DB 還原與 migration | 18080 snapshot 11 檔 hash、SQLite、原片及輸出關聯通過；副本升級後仍 1 job，新增 owner 管理表且無未歸屬 upload |
+| 18082 還原 | 31 檔、5 DB integrity ok、foreign key check 空、來源／成品／preview 關聯通過；含 7 users、4 completed jobs；不直接升為正式資料 |
+| 停寫演練 | 只停止本輪子路徑副本；唯讀 mount、SQLite/WAL scratch recovery、37 檔備份至新目錄還原通過，再啟動副本 |
+| 正式資料保護 | 18080/18082 邏輯 DB hash 與本輪備份一致；18080/18081 DB bytes hash 與上一輪證據相同；來源 44 檔 hash 不變 |
+| 外網 | 出站 TCP 7844、443 可連；hostname、DNS、NAT/CGNAT、帳號方案、公開 TLS、實際 tunnel、大檔/慢速外網及外站回歸均未驗證 |
+
+第一輪瀏覽器執行曾因選錯本機 Node module 路徑而未啟動；改用已存在的 Playwright 後完成，
+沒有因此下載新套件。上限測試首次清理缺 Tus-Resumable 回 412，已修正並只清除具名 fixture。
+最初 pytest 在 sandbox 的 socket 限制下卡住，停止該測試程序後於主機隔離 fixtures 重跑；
+子路徑第一轮亦發現 middleware 在 static mount 修改 scope 後才取 route path，已修正在呼叫前取得，
+故 static cache headers 現已通過。這些除錯未對真人入口發送写入請求。
+
+證據在 [deployment-integration-20260913](evidence/deployment-integration-20260913/)。
+影片、SQLite、secret、自簽憑證與瀏覽器截圖只留本機 ignored data。
+切換／rollback 的完整操作見 [部署手冊](deployment.md#可執行切換流程須先取得正式停寫與入口變更授權)。
+
+剩餘 gate：實際 hostname 與現有網站歸屬、Windows 正式 DB／舊審核來源、18082 fixture 與真人資料
+的選擇、瀏覽器未保存草稿、離機備份位置，以及影片流量適用方案。正式停機、切換、DNS、推送及發布
+均需對具體差異另行授權。沒有任何新模型下載、Qwen 擴大實驗或候選演算法修改。

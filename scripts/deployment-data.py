@@ -12,6 +12,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import sqlite3
 import sys
 import tarfile
@@ -56,7 +57,18 @@ def snapshot(args):
             for i, p in enumerate(paths):
                 if p.suffix != '.sqlite3':
                     continue
-                c = sqlite3.connect(p.as_uri() + '?mode=ro', uri=True, timeout=30)
+                database_source = p
+                if args.consistency == 'stopped-writers':
+                    # Read-only mount may have no SHM after clean shutdown. Recover copied
+                    # WAL/journal in scratch space, never create sidecars on the source.
+                    raw = Path(tmp) / ('raw-' + str(i))
+                    shutil.copyfile(p, raw)
+                    for suffix in ('-wal', '-journal'):
+                        sidecar = Path(str(p) + suffix)
+                        if sidecar.exists():
+                            shutil.copyfile(sidecar, Path(str(raw) + suffix))
+                    database_source = raw
+                c = sqlite3.connect(database_source.as_uri() + '?mode=ro', uri=True, timeout=30)
                 version = c.execute('pragma data_version').fetchone()[0]
                 connections.append((c, version))
                 copy = Path(tmp) / str(i)
@@ -127,6 +139,11 @@ def inventory(root, source_root):
                   'foreign_keys': len(c.execute('pragma foreign_key_check').fetchall()),
                   'tables': {t: c.execute('select count(*) from "' + t + '"').fetchone()[0]
                              for t in tables}}
+        if p.name == 'state.sqlite3':
+            known = {'users', 'sessions', 'uploads', 'jobs', 'drive_imports',
+                     'annotations', 'cleanup_queue'}
+            if set(tables) - known:
+                incompatible.append('unknown state tables:' + ','.join(sorted(set(tables) - known)))
         if 'uploads' in tables:
             report['active_jobs'] = c.execute(
                 "select count(*) from jobs where status in ('queued','processing')").fetchone()[0]
@@ -164,13 +181,22 @@ def inventory(root, source_root):
                                           'coverage': review.get('coverage', []),
                                           'payload_sha256': hashlib.sha256(
                                               row['payload'].encode()).hexdigest()})
-        if any(t in tables for t in ('library_clips', 'compilations', 'pcloud_archives')):
+        preserve_tables = {
+            'highlight_clips', 'compilations', 'compilation_items', 'storage_objects',
+        }
+        if preserve_tables.intersection(tables):
             incompatible.append('preserve-local schema:' + str(p.relative_to(root)))
         databases[str(p.relative_to(root))] = report
         c.close()
     for p in root.rglob('preview.json'):
         spec = json.loads(p.read_text())
         # Keep unknown manifest shapes visible rather than silently rewriting paths.
+        if 'path' in spec:
+            target = mapped(spec['path'])
+            if target and target.is_file() and target.stat().st_size != spec.get('size'):
+                missing.append('preview size mismatch:' + str(p.relative_to(root)))
+            if spec.get('source_id') != p.parent.name:
+                missing.append('preview identity mismatch:' + str(p.relative_to(root)))
         for key, value in spec.items():
             if key.endswith('path') and isinstance(value, str):
                 target = mapped(value)

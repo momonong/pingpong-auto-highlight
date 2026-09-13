@@ -1,0 +1,22 @@
+{
+  "databases": {
+    "state.sqlite3": {
+      "integrity": "ok",
+      "foreign_keys": 0,
+      "tables": {
+        "uploads": 1,
+        "jobs": 1,
+        "drive_imports": 0,
+        "annotations": 0
+      },
+      "active_jobs": 0,
+      "active_uploads": 0,
+      "orphan_jobs": 0
+    }
+  },
+  "missing_references": [],
+  "incompatible_paths_or_schema": [],
+  "archive_sha256": "1f0cc16caea74c53632742e732251d3bf3348cab8ef088148f033d5822769292",
+  "files_verified": 11,
+  "consistency": "online-rehearsal"
+}

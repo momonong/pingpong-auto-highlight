@@ -1,0 +1,1 @@
+{"result":"PASS","checks":["configured browser chunk 8 MiB","8 MiB PATCH","32 MiB PATCH","32 MiB + 1 returns Nginx 413 and does not advance offset","only this unfinished fixture deleted"]}

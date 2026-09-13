@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "artifact": "/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/deployment-integration-20260913/data/full-review-browser-q2Vw7Z",
+  "checks": [
+    "whole film default",
+    "one source timeline",
+    "model panel optional",
+    "keyboard after button focus",
+    "save continues playback",
+    "save is not coverage",
+    "explicit review progress",
+    "reload resumes unreviewed",
+    "incomplete draft survives reload",
+    "explicit discard preserves saved labels",
+    "whole-film coverage"
+  ]
+}

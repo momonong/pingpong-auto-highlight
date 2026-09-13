@@ -117,3 +117,29 @@ VLM 以重疊視窗掃描指定區段全部內容，另抽樣 2 fps／384 寬影
 - 不追蹤 3 px 寬且常 motion-blur 的球；沒有專用訓練資料時，generic object detector 對此不可靠。
 - 不把 generic pose ID 當 rally state；人站在畫面裡不代表正在打球。
 - 不建立雲端物件儲存、付款流程或跨節點租戶平台。帳號只用來隔離這個單機 instance 上的試用者；Quick Tunnel 只負責傳輸，影片分析與持久儲存仍是單機 local-first。
+
+## 子路徑與反向代理契約
+
+正式部署可設定 `PINGPONG_ROOT_PATH=/pingpong-highlight`；空字串保留根路徑。
+`PINGPONG_PUBLIC_URL` 的 path 必須一致，不從 Host 或 forwarded prefix 猜測路由。
+Nginx 的 `location /pingpong-highlight/` 配 `proxy_pass http://backend/` 去掉前綴；
+CLI 同時給 Uvicorn 與 FastAPI 相同 root_path，讓 ASGI 路徑、靜態掛載 redirect 與 query 保持一致。
+
+只有兩個 HTML entry template 的 `__HC_ROOT_PATH__` slot 在伺服器端填入；
+`paths.js` 讀取 meta，再由共用 URL helper 處理 API、媒體與下載。
+後端的 TUS Location 與 job artifact URL 自帶前綴，helper 不會重複加前綴。
+沒有代理 response body 替換，也沒有把網域的全域 `/api` 或 `/static` 接到本 app。
+獨立 preannotate review CLI 仍只服務 loopback 根路徑，不能用作正式公開入口。
+
+cookie 預設名稱依 root_path 分隔，根模式沿用 `pingpong_session`；可指定部署專用名稱。
+Path 為 `<root_path>/`，Secure 由部署明確設定，HttpOnly／SameSite=Strict 保持。
+登入、換密碼、登出使用同一名稱與 Path；子路徑登出不發會影響整個 origin 的 Clear-Site-Data。
+Path 用來避免名稱與送出範圍衝突，不是同 origin 不可信網站間的安全邊界。
+續傳 storage key 亦依前綴隔離；舊 origin 草稿不會被刪除，但搬往新 origin 不會自動搬移。
+
+`PINGPONG_FORWARDED_ALLOW_IPS` 空白時不信任 forwarded headers；正式配置必須列出
+實際直接代理來源 IP，禁止 `*`。Nginx 覆寫 Host／scheme／client IP，清除另一套
+Forwarded／X-Forwarded-Host／Prefix／CF header；`PINGPONG_ALLOWED_HOSTS` 限定正式 hostname。
+部署模式設定 `PINGPONG_TRUSTED_PROXY_PROVIDER=none`，由 Uvicorn 的明確來源信任處理 IP，
+避免 legacy provider 再次解讀 header。所有 API（包含拒絕回應）、私人媒體及審核 export
+均為 private/no-store；入口與任何 CDN cache rule 必須 bypass 此子路徑。
