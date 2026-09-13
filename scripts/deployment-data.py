@@ -68,7 +68,9 @@ def snapshot(args):
                         if sidecar.exists():
                             shutil.copyfile(sidecar, Path(str(raw) + suffix))
                     database_source = raw
-                c = sqlite3.connect(database_source.as_uri() + '?mode=ro', uri=True, timeout=30)
+                mode = 'rw' if database_source != p else 'ro'
+                c = sqlite3.connect(database_source.as_uri() + '?mode=' + mode,
+                                    uri=True, timeout=30)
                 version = c.execute('pragma data_version').fetchone()[0]
                 connections.append((c, version))
                 copy = Path(tmp) / str(i)

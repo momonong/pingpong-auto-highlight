@@ -28,7 +28,7 @@ def main():
              'docs/architecture.md', 'scripts/deployment-data.py',
              'scripts/deployment-preflight.py', 'scripts/package-deployment.py',
              'tests/browser/proxy-deployment.cjs', 'tests/browser/proxy-real-playback.cjs',
-             'tests/browser/proxy-upload-limits.cjs']
+             'tests/browser/proxy-upload-limits.cjs', 'tests/browser/proxy-ui-upload.cjs']
     names += run('git', '-C', str(root), 'ls-files', 'deploy',
                  'docs/evidence/deployment-integration-20260913').decode().splitlines()
     hashes = {}

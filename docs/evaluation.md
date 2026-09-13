@@ -273,6 +273,7 @@ Windows 路徑由目前 manifest／實驗 receipt 取得，尚未在 Windows 主
 | Ruff／鎖檔／JS syntax | 通過；來源原始 FFmpeg logs 的尾端空白逐位元保留，不為了 diff-check 更改歷史證據 |
 | Nginx + TLS 子路徑 | 18443 `/pingpong-highlight/`：登入、靜態資源、API、job artifact URL、同 origin 私人下載、query、308／307、可信 scheme 通過 |
 | 根路徑 | 18086：登入、上傳、播放、標註、下載回歸通過 |
+| 子路徑前端續傳 | HTTPS 登入後 reload、重新選取原檔，UI 找到相同 upload ID 並續傳成功，下載 bytes 一致 |
 | TUS 真斷線 | POST → PATCH 半份 → socket 中途斷線 → 新 client HEAD → stale offset 409 → 正確 offset 續傳，成品處理完成 |
 | 分塊上限 | 前端 config 8 MiB；8 MiB 與 32 MiB PATCH 通過；32 MiB+1 被 Nginx 413 拒絕、offset 不变；只刪除該測試未完成上傳 |
 | 權限與 cache | 匿名 401、其他 owner 404；媒體與審核 no-store；子路徑 cookie Path/Secure/HttpOnly/SameSite、登出清除與 sibling cookie 保留通過 |
