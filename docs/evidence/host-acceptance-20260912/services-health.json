@@ -1,0 +1,23 @@
+[
+  {
+    "port": 18080,
+    "status": 200,
+    "payload": {
+      "status": "ok"
+    }
+  },
+  {
+    "port": 18081,
+    "status": 200,
+    "payload": {
+      "status": "ok"
+    }
+  },
+  {
+    "port": 18082,
+    "status": 200,
+    "payload": {
+      "status": "ok"
+    }
+  }
+]

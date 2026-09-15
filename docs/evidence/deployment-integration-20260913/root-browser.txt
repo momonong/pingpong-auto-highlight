@@ -1,0 +1,24 @@
+{
+  "result": "PASS",
+  "url": "http://127.0.0.1:18086",
+  "job_id": "9c45f33b82174f61b9568cb53e6ba881",
+  "video": {
+    "width": 640,
+    "height": 360,
+    "duration": 10
+  },
+  "checks": [
+    "browser login and anonymous API denial",
+    "root cookie Path/name and HTTP compatibility",
+    "TUS POST/PATCH/HEAD; interrupted socket, new client resumes, stale offset rejected",
+    "real upload and production processor completed; owner isolation",
+    "H264 full-preview with image and Range",
+    "I/O and save/resume",
+    "explicit coverage only",
+    "reload and draft recovery",
+    "export",
+    "source bytes download; result URLs; no shared caching; scoped logout preserves sibling cookie"
+  ],
+  "kind": "AUTOMATION FIXTURE ONLY",
+  "review_url": "http://127.0.0.1:18086/static/review/index.html?job=9c45f33b82174f61b9568cb53e6ba881"
+}

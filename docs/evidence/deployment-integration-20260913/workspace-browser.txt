@@ -1,0 +1,1 @@
+{"result":"PASS","artifacts":"/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/deployment-integration-20260913/data/browser-test-L8LThG","checks":["desktop/mobile","resume after reload","playback/download","Drive fixture","admin/annotations","offline/503/malformed health","stale progress/recovery","language","account isolation"]}

@@ -1,0 +1,20 @@
+{
+  "18080": {
+    "logical_databases_unchanged": true,
+    "database_count": 1,
+    "hashes": {
+      "state.sqlite3": "a6761b1b048e7ad2dab9d140d1e0eaca441f327ec434aac626f3e0be935797be"
+    }
+  },
+  "18082": {
+    "logical_databases_unchanged": true,
+    "database_count": 5,
+    "hashes": {
+      "state.sqlite3": "f73de0363320334b6282d3b87626c925ff7aa6a82c303b7947797d33a0a6dc71",
+      "rally-review/fbe0ab87151c7fb4d29b2177f89f9982697542ecde5bac09e13c7d3a3e895104.sqlite3": "f45cdfd92388947502cce0ece8763864f87fbf44bdf6b5908a6212ecdeb67b05",
+      "rally-review/21bcd0e400bb5a223aa434248b2ecd82b4b98d636f76d5f63f53a687bf854403.sqlite3": "f4d29419b2987448271434a2310a10529566bc5dec02c558445a44f59b0d1571",
+      "rally-review/816091b72a3332d5b1149c0a7fce5bb806df8e78a0ca433cfd3cf314ca53a0e0.sqlite3": "93651367e6be7f84e61a2bec5a190e59c45eced5576ca20216caf52c8dfe2645",
+      "rally-review/a5df7c197435e1369307fc38e50ac23323b6930766581969fa5113293fb82b36.sqlite3": "31726489b700ef5dd1f7e39810273fc54a1bdb62ab41926cde6315f71f22bda6"
+    }
+  }
+}

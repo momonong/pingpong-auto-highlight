@@ -1,0 +1,16 @@
+# Local offline candidate; audited cached dependency layers, not clean release provenance.
+ARG BUILDER_IMAGE
+ARG RUNTIME_IMAGE
+FROM ${BUILDER_IMAGE} AS builder
+WORKDIR /build
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN rm -f /wheels/*.whl && python -m pip wheel --no-index --no-deps --no-build-isolation --wheel-dir /wheels .
+FROM ${RUNTIME_IMAGE}
+USER root
+COPY --from=builder /wheels/*.whl /tmp/candidate-wheels/
+RUN python -m pip install --no-index --no-deps --force-reinstall /tmp/candidate-wheels/*.whl && rm -rf /tmp/candidate-wheels
+ARG VCS_REF
+LABEL org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.description="Local deployment candidate; audited reused dependencies"
+USER pingpong

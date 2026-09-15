@@ -1,0 +1,1 @@
+{"result":"PASS","job_id":"dea8252a6ef644a18ee75e1891a74594","checks":["HTTPS subpath browser login","reload and reselect original file","browser discovers existing server upload and resumes same ID","same-origin scoped API fetch","download bytes match"],"kind":"AUTOMATION FIXTURE ONLY"}

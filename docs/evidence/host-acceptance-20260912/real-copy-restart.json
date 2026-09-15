@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "job_id": "0c2f73a1b8154034b89b084569ee4b51",
+  "review_export_unchanged_after_container_restart": true,
+  "session_survived": true,
+  "saved_points": 1,
+  "coverage": [
+    {
+      "start_ms": 0,
+      "end_ms": 223394
+    }
+  ]
+}

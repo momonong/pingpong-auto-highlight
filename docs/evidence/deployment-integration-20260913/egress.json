@@ -1,0 +1,20 @@
+{
+  "kind": "outbound TCP only - no public tunnel established",
+  "checks": [
+    {
+      "host": "region1.v2.argotunnel.com",
+      "port": 7844,
+      "tcp": "connected"
+    },
+    {
+      "host": "region2.v2.argotunnel.com",
+      "port": 7844,
+      "tcp": "connected"
+    },
+    {
+      "host": "connect.ngrok-agent.com",
+      "port": 443,
+      "tcp": "connected"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "result": "PASS",
+  "url": "http://127.0.0.1:18082",
+  "job_id": "e6fbecc0afb74e99ba87c2b237ca34f5",
+  "video": {
+    "width": 640,
+    "height": 360,
+    "duration": 10
+  },
+  "checks": [
+    "browser login and anonymous API denial",
+    "real upload and production processor completed; owner isolation",
+    "H264 full-preview with image and Range",
+    "I/O and save/resume",
+    "explicit coverage only",
+    "reload and draft recovery",
+    "export"
+  ],
+  "kind": "AUTOMATION FIXTURE ONLY",
+  "review_url": "http://127.0.0.1:18082/static/review/index.html?job=e6fbecc0afb74e99ba87c2b237ca34f5"
+}

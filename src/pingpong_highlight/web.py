@@ -23,8 +23,9 @@ from urllib.parse import quote
 import anyio
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette._utils import get_route_path
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from pingpong_highlight.auth import (
     generate_session_token,
@@ -44,6 +45,7 @@ from pingpong_highlight.db import (
     UploadRecord,
     UserRecord,
 )
+from pingpong_highlight.deployment import AppStaticFiles, html_page
 from pingpong_highlight.drive import (
     DriveDownloader,
     DriveImportError,
@@ -323,6 +325,7 @@ def _job_payload(
     upload: UploadRecord | None = None,
     owner: UserRecord | None = None,
     source_type: str | None = None,
+    root_path: str = "",
 ) -> dict[str, Any]:
     result = record.result
     if result:
@@ -330,7 +333,7 @@ def _job_payload(
         result["files"] = [
             item
             | {
-                "url": f"/api/jobs/{record.id}/files/{quote(item['name'])}",
+                "url": f"{root_path}/api/jobs/{record.id}/files/{quote(item['name'])}",
             }
             for item in result.get("files", [])
         ]
@@ -488,7 +491,7 @@ def _tree_usage(root: Path) -> tuple[int, int]:
 async def _authorize_request(request: Request) -> UserRecord:
     database: Database = request.app.state.database
     settings: Settings = request.app.state.settings
-    session_token = request.cookies.get(SESSION_COOKIE, "")
+    session_token = request.cookies.get(settings.session_cookie_name, "")
     if session_token:
         resolved = database.resolve_session(hash_session_token(session_token))
         if resolved is not None:
@@ -583,10 +586,12 @@ def create_app(
         title="Ping-Pong Auto Highlight",
         version="1.4.0",
         lifespan=lifespan,
+        root_path=settings.root_path,
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
     )
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
     app.state.settings = settings
     app.state.database = database
     app.state.cleanup = cleanup
@@ -597,6 +602,7 @@ def create_app(
 
     @app.middleware("http")
     async def secure_responses(request: Request, call_next):
+        route_path = get_route_path(request.scope)
         response = await call_next(request)
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -611,9 +617,9 @@ def create_app(
             "img-src 'self' data:; media-src 'self' blob:; object-src 'none'; "
             "script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
         )
-        if request.url.path.startswith("/api/"):
+        if route_path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "private, no-store")
-        elif request.url.path == "/" or request.url.path.startswith("/static/"):
+        elif route_path == "/" or route_path.startswith("/static/"):
             response.headers.setdefault("Cache-Control", "no-cache")
         return response
 
@@ -729,11 +735,11 @@ def create_app(
             raise HTTPException(status_code=401, detail="Invalid username or password") from exc
         response = JSONResponse(_user_payload(user))
         response.set_cookie(
-            SESSION_COOKIE,
+            settings.session_cookie_name,
             token,
             max_age=settings.session_ttl_seconds,
             expires=expires_at,
-            path="/",
+            path=settings.cookie_path,
             secure=settings.session_cookie_secure,
             httponly=True,
             samesite="strict",
@@ -746,14 +752,15 @@ def create_app(
 
     @app.post("/api/auth/logout")
     async def logout(request: Request) -> Response:
-        token = request.cookies.get(SESSION_COOKIE, "")
+        token = request.cookies.get(settings.session_cookie_name, "")
         if token:
             database.revoke_session_by_token_hash(hash_session_token(token))
         response = Response(status_code=204)
-        response.headers["Clear-Site-Data"] = '"cache"'
+        if not settings.root_path:
+            response.headers["Clear-Site-Data"] = '"cache"'
         response.delete_cookie(
-            SESSION_COOKIE,
-            path="/",
+            settings.session_cookie_name,
+            path=settings.cookie_path,
             secure=settings.session_cookie_secure,
             httponly=True,
             samesite="strict",
@@ -805,11 +812,11 @@ def create_app(
         updated, _session = changed
         response = JSONResponse(_user_payload(updated))
         response.set_cookie(
-            SESSION_COOKIE,
+            settings.session_cookie_name,
             token,
             max_age=settings.session_ttl_seconds,
             expires=expires_at,
-            path="/",
+            path=settings.cookie_path,
             secure=settings.session_cookie_secure,
             httponly=True,
             samesite="strict",
@@ -1037,7 +1044,7 @@ def create_app(
             status_code=201,
             headers=_tus_headers(settings)
             | {
-                "Location": f"/api/uploads/{record.id}",
+                "Location": f"{settings.root_path}/api/uploads/{record.id}",
                 "Upload-Offset": "0",
                 "Upload-Length": str(record.size),
             },
@@ -1142,6 +1149,7 @@ def create_app(
             upload=upload,
             owner=owner,
             source_type=source_type,
+            root_path=settings.root_path,
         )
 
     @app.get("/api/jobs")
@@ -1384,10 +1392,14 @@ def create_app(
         )
 
     @app.get("/")
-    async def index() -> FileResponse:
-        return FileResponse(static_dir / "index.html")
+    async def index() -> Response:
+        return html_page(static_dir / "index.html", settings.root_path)
 
     from pingpong_highlight.job_review import install
     install(app, settings, job_and_upload)
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    app.mount(
+        "/static",
+        AppStaticFiles(directory=static_dir, root_path=settings.root_path),
+        name="static",
+    )
     return app

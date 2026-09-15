@@ -1,0 +1,8 @@
+{
+  "target_data": "/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/deployment-integration-20260913/data/restore-18082-20260913/data",
+  "docker_contexts_checked": [
+    "default",
+    "desktop-linux"
+  ],
+  "conflicting_writers": []
+}

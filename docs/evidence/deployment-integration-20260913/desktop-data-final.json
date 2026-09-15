@@ -1,0 +1,12 @@
+[
+  {
+    "path": "/home/ubuntu/projects/pingpong-auto-highlight/data/state.sqlite3",
+    "sha256": "8bb7cfba192d9dc29756dc7fd5016dbd00b93bdc3f3c49c76e5edb440df8557d",
+    "matches_prior_acceptance": true
+  },
+  {
+    "path": "/home/ubuntu/projects/pingpong-auto-highlight/data/e2e-v140/state.sqlite3",
+    "sha256": "c14f1d89a20b4dfb2dbab95c8fe681dc0e5f3538c2a3b282ab669994a4ffc39e",
+    "matches_prior_acceptance": true
+  }
+]

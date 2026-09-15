@@ -1,0 +1,10 @@
+# Local acceptance only. Base image ID must match image-receipt.json.
+# The production lockfiles and Dockerfile are unchanged between 321da1e and 213fc18.
+FROM pingpong-auto-highlight:v1.4.0-candidate
+USER root
+COPY --from=highlightcraft:acceptance-builder-213fc18 /wheels/*.whl /tmp/acceptance-wheels/
+RUN python -m pip install --no-index --no-deps --force-reinstall /tmp/acceptance-wheels/*.whl \
+    && rm -rf /tmp/acceptance-wheels
+LABEL org.opencontainers.image.revision="213fc1895a50ce2bae131e52ec2159b6e2e8a885" \
+      org.opencontainers.image.description="Local annotation acceptance; existing locked dependencies and rebuilt source wheel"
+USER pingpong

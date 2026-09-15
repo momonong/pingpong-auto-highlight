@@ -1,0 +1,3 @@
+FFmpeg / ffprobe：可用
+NVIDIA NVDEC：可用
+NVIDIA NVENC：可用

@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "copy_purpose": "disposable real-source browser automation",
+  "sqlite_backup_api": [
+    "state.sqlite3",
+    "rally-review/fbe0ab87151c7fb4d29b2177f89f9982697542ecde5bac09e13c7d3a3e895104.sqlite3",
+    "rally-review/21bcd0e400bb5a223aa434248b2ecd82b4b98d636f76d5f63f53a687bf854403.sqlite3",
+    "rally-review/816091b72a3332d5b1149c0a7fce5bb806df8e78a0ca433cfd3cf314ca53a0e0.sqlite3",
+    "rally-review/a5df7c197435e1369307fc38e50ac23323b6930766581969fa5113293fb82b36.sqlite3"
+  ],
+  "files": 31,
+  "source_mount": "read-only"
+}

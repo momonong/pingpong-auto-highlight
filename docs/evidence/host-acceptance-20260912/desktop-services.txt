@@ -1,0 +1,2 @@
+pingpong-v140-pingpong-highlight-1	pingpong-auto-highlight:v1.4.0-candidate	127.0.0.1:18081->8000/tcp	Up 5 days (healthy)
+pingpong-auto-highlight-pingpong-highlight-1	53d696c47f39	127.0.0.1:18080->8000/tcp	Up 6 days (healthy)

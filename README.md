@@ -123,7 +123,7 @@ docker compose -f compose.yaml -f compose.localhost.yaml stop pingpong-highlight
 
 ## 從手機外網使用（ngrok）
 
-只有需要從手機外網操作時才走這條流程。預設使用 ngrok，因為它的主要 tunnel 連線走 TLS 443，不像 Cloudflare Tunnel 需要目前被學校網路封鎖的 7844 連接埠。第一次使用需要免費 ngrok 帳號與 authtoken。
+只有需要從手機外網操作時才走這條開發流程。ngrok 主要走 TLS 443，Cloudflare Tunnel 需要出站 7844；舊環境曾封鎖 7844，但 2026-09-13 的 Linux 主機 TCP 檢查已可連。正式長期影片入口須另外確認固定 hostname、流量額度及供應商影片政策，見[正式部署整合](docs/deployment.md#正式部署整合候選2026-09-13)。第一次使用此 ngrok 啟動器需要帳號與 authtoken。
 
 1. 開啟 Docker Desktop，等到左下角顯示 Docker Engine 正在執行。
 2. 開啟 Git Bash，進入專案目錄：
@@ -225,6 +225,8 @@ docker compose -f compose.yaml -f compose.ngrok.yaml logs --tail 100 pingpong-hi
 
 若 ngrok 顯示 authtoken 無效，重新執行 `./scripts/start-ngrok-tunnel.sh -ReplaceAuthtoken`；若本機 4040 已被其他程式使用，改用 `./scripts/start-ngrok-tunnel.sh -InspectPort 4041`。
 
+固定網域子路徑部署可使用 `/pingpong-highlight/`；反向代理配置、完整備份還原與切換／rollback 步驟見[部署整合手冊](docs/deployment.md#正式部署整合候選2026-09-13)。本機候選不代表正式已發布或外網已驗收。
+
 ## Docker 常駐服務與區域網路
 
 若只從手機外網使用，照上一節操作即可。以下設定用於同一個 Wi-Fi 的區域網路連線；需要先安裝並啟動 Docker Desktop。第一次設定：
@@ -298,7 +300,7 @@ docker compose -f compose.yaml -f compose.deploy.yaml up -d --wait
 
 逐球素材庫、跨影片集錦與 pCloud 封存目前保存在 `codex/preserve-local-20260907` 分支，未包含在 1.4.0。曾使用該開發分支的資料目錄，請先依部署手冊的相容性說明處理；首次試用 1.4.0 建議使用獨立資料目錄。
 
-新電腦需要先安裝並啟動 Docker Desktop、使用 Linux containers，並讓 Docker 能存取 NVIDIA GPU。開發用途可取得完整 repository 後用啟動器；正式執行主機只需上一節所列的 Compose 部署 bundle。完整 repository 的 Git Bash 快速啟動方式是：
+Windows 開發機可用 Docker Desktop 的 WSL2 backend；Linux GPU 部署使用原生 Docker Engine 與 NVIDIA Container Toolkit。Docker Desktop for Linux 不提供這條 NVIDIA GPU 路線，主機的 `nvidia-smi` 正常也不代表 Desktop 容器可使用 GPU。兩種 Engine 可共存，操作時明確指定 Docker context，詳見 [Linux 隔離驗收](docs/deployment.md#linux-隔離驗收)。開發用途可取得完整 repository 後用啟動器；正式執行主機只需上一節所列的 Compose 部署 bundle。完整 repository 的 Git Bash 快速啟動方式是：
 
 ```bash
 cd /d/projects/pingpong-auto-highlight

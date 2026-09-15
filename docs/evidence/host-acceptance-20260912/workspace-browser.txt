@@ -1,0 +1,1 @@
+{"result":"PASS","artifacts":"/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/host-annotation-acceptance-20260912/data/browser-test-bOAwcv","checks":["desktop/mobile","resume after reload","playback/download","Drive fixture","admin/annotations","offline/503/malformed health","stale progress/recovery","language","account isolation"]}

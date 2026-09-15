@@ -1,0 +1,14 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ '我的影片'
+- 'My videos'
+
+    at /home/ubuntu/projects/pingpong-auto-highlight/.worktrees/host-annotation-acceptance-20260912/tests/browser/workspace.cjs:177:12 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '我的影片',
+  expected: 'My videos',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

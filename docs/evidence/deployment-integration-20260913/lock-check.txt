@@ -1,0 +1,2 @@
+Using CPython 3.11.15 interpreter at: /usr/local/bin/python
+Resolved 89 packages in 0.61ms

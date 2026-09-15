@@ -1,0 +1,24 @@
+{
+  "result": "PASS",
+  "url": "https://127.0.0.1:18443/pingpong-highlight",
+  "job_id": "af762e4ffa35405dbf365f8cbb2f3b2e",
+  "video": {
+    "width": 640,
+    "height": 360,
+    "duration": 10
+  },
+  "checks": [
+    "browser login and anonymous API denial",
+    "cookie Path/Secure/name isolation and forwarded header sanitization; slash/query preservation",
+    "TUS POST/PATCH/HEAD; interrupted socket, new client resumes, stale offset rejected",
+    "real upload and production processor completed; owner isolation",
+    "H264 full-preview with image and Range",
+    "I/O and save/resume",
+    "explicit coverage only",
+    "reload and draft recovery",
+    "export",
+    "source bytes download; result URLs; no shared caching; scoped logout preserves sibling cookie"
+  ],
+  "kind": "AUTOMATION FIXTURE ONLY",
+  "review_url": "https://127.0.0.1:18443/pingpong-highlight/static/review/index.html?job=af762e4ffa35405dbf365f8cbb2f3b2e"
+}

@@ -55,7 +55,7 @@ const net = require('node:net');
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     assert.equal((await fetch(`${url}/api/health`)).status, 200);
-    const context = await browser.newContext({viewport: {width: 1440, height: 1000}});
+    const context = await browser.newContext({locale: 'zh-TW', viewport: {width: 1440, height: 1000}});
     let page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(url);
@@ -158,7 +158,7 @@ const net = require('node:net');
     await page.waitForFunction(() => document.querySelector('#activityNotice').hidden);
 
     const mobileContext = await browser.newContext({
-      viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true,
+      locale: 'zh-TW', viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true,
       storageState: await context.storageState(),
     });
     await page.close();

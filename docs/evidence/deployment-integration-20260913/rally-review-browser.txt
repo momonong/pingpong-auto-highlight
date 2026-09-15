@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "artifact": "/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/deployment-integration-20260913/data/review-browser-0E2wJW",
+  "checks": [
+    "video playback",
+    "blind first review",
+    "save reload",
+    "split merge",
+    "reject",
+    "add missed rally",
+    "coverage",
+    "pause timer",
+    "failed request retry",
+    "export",
+    "compatible preview absolute source timestamps"
+  ]
+}

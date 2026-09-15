@@ -207,7 +207,7 @@ function formatTimestamp(seconds) {
 }
 
 function fileAccessUrl(path, { download = false } = {}) {
-  const url = new URL(path, window.location.origin);
+  const url = new URL(HC.url(path), window.location.origin);
   if (download) url.searchParams.set("download", "true");
   return `${url.pathname}${url.search}`;
 }
@@ -234,7 +234,7 @@ async function apiFetch(path, options = {}) {
     signal = requestController.signal,
     ...requestOptions
   } = options;
-  const response = await fetch(path, {
+  const response = await fetch(HC.url(path), {
     credentials: "same-origin",
     ...requestOptions,
     headers,

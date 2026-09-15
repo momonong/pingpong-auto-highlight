@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "artifact": "/home/ubuntu/projects/pingpong-auto-highlight/.worktrees/host-annotation-acceptance-20260912/data/review-browser-uwudUl",
+  "checks": [
+    "video playback",
+    "blind first review",
+    "save reload",
+    "split merge",
+    "reject",
+    "add missed rally",
+    "coverage",
+    "pause timer",
+    "failed request retry",
+    "export",
+    "compatible preview absolute source timestamps"
+  ]
+}

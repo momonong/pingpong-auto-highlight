@@ -1,0 +1,26 @@
+{
+  "18080": {
+    "health": {
+      "status": "ok"
+    },
+    "container_id": "200ac3318bcd34024fbc39ac449710e84ee78b3e39f4431be825a4387c7adf11",
+    "started_at": "2026-09-06T14:22:34.160457553Z",
+    "docker_health": "healthy"
+  },
+  "18081": {
+    "health": {
+      "status": "ok"
+    },
+    "container_id": "db9af24cf69e9c5df6af3e15375221b8430a8a6fb9f0f2b1709f6ed196c85654",
+    "started_at": "2026-09-07T00:43:18.022264194Z",
+    "docker_health": "healthy"
+  },
+  "18082": {
+    "health": {
+      "status": "ok"
+    },
+    "container_id": "b679ff8e9776c3759f494a5a14484a4a77a53c476a10de3ad6415c37803e0d61",
+    "started_at": "2026-09-12T14:55:14.62734216Z",
+    "docker_health": "healthy"
+  }
+}

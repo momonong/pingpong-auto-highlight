@@ -187,3 +187,133 @@ Qwen 一共回傳 20 個通過格式校驗的提案，其中 3 個判定 rally=n
 驗證：完整 pytest **116 passed、2 skipped**（原 Windows 平台限制）；新增整片媒體測試驗證 model scope 不限制播放長度、8-bit 格式、Range、可重用副本及人工 DB bytes 不變。`tests/browser/full-review.cjs` 驗證整片預設、單一時間軸、I/O、保存續播、顯式 coverage、重載接續、未填完草稿恢復、明確放棄及保存資料保留。既有 `rally-review.cjs` 的盲審／拆合／補漏／失敗重試／短片映射亦通過。
 
 真實瀏覽器在 0、110、220 秒播放均有 640×360 影像，總長度 223.4 秒，前後 review export 相同。這是播放與自動化操作證據；尚未由真人完成整片標註，也沒有新增模型效果或省時結論。紀錄位於 `docs/evidence/preannotation-v1/full-review-*`，截圖與影片衍生物留在 `data/experiments/preannotation-v1/`。模型擴大實驗的 STOP 結論維持。
+
+## 部署主機人工標註驗收（2026-09-12，Linux RTX 4090）
+
+**初次階段：隔離環境與 fixture 功能驗收通過，當時真實影片尚未搬入。後續真實影片驗收結果見本節末的「真實原片搬入後續驗」。** 初次驗收時使用者確認 Windows 原片、正式 DB、獨立審核 DB 尚未搬入。不能將下列 fixture 標註當作人工真值，模型擴大實驗 STOP 維持，沒有模型下載、推論或演算法修改。
+
+- 起始核對：原 checkout `main=321da1e`、乾淨，`origin/main=213fc18`（PR #5，落後五個提交）；`v1.4.0^{}` 仍為 `321da1e`。另建 `.worktrees/host-annotation-acceptance-20260912`、分支 `codex/host-annotation-acceptance-20260912`，以 `213fc18` 驗收，原 checkout 保留。
+- 可用入口：`http://127.0.0.1:18082`，原生 Docker `default` context，Compose project `highlightcraft-annotation-acceptance`；套件版本仍為 1.4.0，映像 revision 為 `213fc1895a50ce2bae131e52ec2159b6e2e8a885`。
+- 映像 `highlightcraft:acceptance-213fc18-reused`，image ID `sha256:7a22e7fd8bbfcaddc5ceb712a4136199645c7f60008806b00e5597dc775838d0`。原 Dockerfile 的完整依賴下載約 90 KB/s，該建置由本任務取消；改以原 builder 階段重建最新 source wheel，再安裝至既有 candidate 依賴層。31 個 runtime 套件版本均符合未變更的 requirements.lock，43 個 package 檔案 hash 全部吻合本次 src。既有 base 的 revision label 是 unknown，因此此證據不等於完成冷建置或 release provenance；完整 image receipt 與重用建置檔已保存。
+- 新資料僅在本 worktree 的 `data/host-acceptance/`；正式 state 在其 `state.sqlite3`，owner 審核 DB 在 `rally-review/<owner-hash>.sqlite3`，整片播放副本在 `rally-review/review-media/`。這是驗收 instance，包含明示的 AUTOMATION FIXTURE 帳號與測試片，不可整份直接升為正式資料。
+- 管理員為 `admin`，隔離密碼保存在本 worktree 的 `data/acceptance-admin-password`（mode 0600）；Compose 設定與相同 bootstrap secret 在 `data/acceptance.env`（mode 0600）。兩檔皆不追蹤，不可隨證據分享。
+
+| 本機驗證 | 結果與界線 |
+| --- | --- |
+| 鎖檔 dev 環境 | `uv sync --locked --extra dev --no-default-groups` 完成；Python 3.11.15，未安裝 vlm/train |
+| 完整 pytest | **118 passed、0 skipped，19.17 秒**；先前既有 dev Python 另有 118 passed，最終結果以獨立環境為準 |
+| 靜態檢查 | Ruff、uv lock offline check、Python compileall、變更的 JavaScript syntax、git diff check 通過 |
+| 三組既有瀏覽器回歸 | full-review、rally-review、workspace 皆 PASS；測試資料為生成影片、獨立 SQLite |
+| 直接容器瀏覽器驗收 | 登入、匿名拒絕、owner 隔離、實際 HTTP 上傳及正式 processor 完成、640×360 H.264 整片影像、Range 206、I/O、保存續播、明確 coverage、草稿恢復／放棄與匯出 PASS |
+| 隔離容器重啟 | 有效 session 保留；完整 review export 前後相同，保存一筆 fixture、coverage 0–4 秒 |
+| NVENC | doctor 實際試編通過 |
+| NVDEC + NVENC | 容器 FFmpeg 強制 CUDA frames、hwdownload/format=nv12、h264_nvenc，兩秒輸出 60 影格，exit 0；沒有軟體解碼 fallback。測試片為 H.264，不代表真實 HEVC/VFR 來源已驗收 |
+| 現役服務與資料 | Desktop 18080/18081 仍 healthy；既有兩份 state.sqlite3 SHA-256 未變，沒有重新啟動現役服務 |
+| 真實原片首／中／尾播放及整片人工操作 | **BLOCKED：原片尚未搬入** |
+| 正式 DB 相容性、完整備份與還原 | **未驗收：開發機資料與備份尚未提供** |
+| 真人整片標註／模型品質／省時 | **UNKNOWN** |
+
+本次修正僅在測試及部署文件：workspace 測試明確指定 zh-TW locale（避免主機預設英文導致切換方向相反）；修正原有三項 Ruff 問題；新增 direct-container 瀏覽器驗收與 loopback Compose overlay。沒有修改產品演算法或 runtime 程式。
+
+初次 direct-container 腳本因備註區收合而無法填寫，並在第二次遇到同 bytes 已有整片 proxy，現已先展開備註並接受既有 proxy；仍驗證新 owner 人工紀錄為空。GPU 自訂零拷貝探測初次發生 `No decoder surfaces left`，額外 32 surfaces 又超出解碼器限制；最後以單 thread、extra_hw_frames=8 及系統記憶體 filter 路線成功。這些是探測設定的除錯證據，未據此更改產品 GPU 參數，初次失敗紀錄亦保留。
+
+精簡證據位於 [host-acceptance-20260912](evidence/host-acceptance-20260912/)，包含 pytest、三組瀏覽器、直接容器、restart、GPU、映像 hashes、原 DB 前後與服務 health。截圖與 fixture export 保存在本 worktree 的 `data/deployment-browser-3/`；這些為操作 fixture，不得匯入正式真值集。
+
+### 補齊真實資料與正式切換
+
+Windows 路徑由目前 manifest／實驗 receipt 取得，尚未在 Windows 主機即時核對：
+
+1. 第一支 223.4 秒原片：`D:\projects\pingpong-auto-highlight\data\uploads\6e7e1019273942d8babb122188d64a30.mp4`，SHA-256 應為 `636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8`。先提供這支即可補做真實播放；Linux 暫存位置為本 worktree 的 `data/incoming/`，不可覆蓋原 checkout 的 data。
+2. 審核資料：`D:\projects\pingpong-auto-highlight\data\worktrees\model-assisted-review\data\experiments\preannotation-v1\dev-current\review.sqlite3`；建議保留完整 dev-current 目錄，包含 review-media、runs 與相容短片。運行中的 SQLite 需先取得一致性備份，不能只複製單一主 DB 而忽略 WAL。
+3. 開發機正式 state：`D:\projects\pingpong-auto-highlight\data\state.sqlite3`。需原片、outputs、審核與隱藏設定齊全的完整 data 備份；本次未確認備份實際路徑。素材庫保存分支的資料不得直接接入此版本。
+4. 補驗原片 SHA、時長與首中尾影像，在副本完成整片 I/O／保存／coverage／恢復／匯出；由真人在獨立於 fixture 的紀錄完成整片標註。任何 Windows 路徑重設及 proxy manifest 重建只作用於副本，既有 runs 與人工內容需前後比較。
+5. 正式切換仍需另行授權。先完成真實資料相容性與備份還原演練，建立可追溯的正式映像，確認無 active jobs/uploads/imports，安排備份與維護時間，再切換明確的 context、image、資料路徑及入口。保留舊 image 與完整備份供 rollback；不必停止整個 Docker Desktop 或改全域 context，也不可讓兩個容器同寫一份 data。
+
+
+### 真實原片搬入後續驗
+
+使用者後續將原片放入主 checkout 的 `data/uploads/`。三支 development 原片 SHA-256 均與既有 manifest 完全一致：`636c4bb3…`（223.393767 秒）、`414c278b…`（221.687256 秒）、`ace52809…`（602.570378 秒）。其餘新原片本輪未分析；僅把第一支透過 18082 的正常 TUS API 匯入，執行既有 processor 一次並準備完整 H.264 播放副本。直接放置 MP4 不會自動建立網站 DB 紀錄；原 checkout 的 DB 關聯仍是原有一筆工作。
+
+**結論：第一支真實影片已具備整片人工標註條件；真人真值仍待使用者操作。** 主來源為 HEVC 10-bit、1920×1080，瀏覽器相容副本為 640×360、H.264 8-bit、223.4 秒。不是只播放模型實驗的 116 秒片段，也沒有新增模型推論。
+
+- 登入入口：`http://127.0.0.1:18082`，使用該隔離 instance 的 admin 帳號。
+- 已匯入影片：`2026-04-25-real-film-223s.mp4`，job `0c2f73a1b8154034b89b084569ee4b51`。
+- 登入後直接進入：`http://127.0.0.1:18082/static/review/index.html?job=0c2f73a1b8154034b89b084569ee4b51`。
+- 本 worktree 的 `data/real-import-receipt.json` 保存匯入資訊；主網站 owner review DB 已註冊真實 SHA-256。操作前後完整 export 相同，目前 **0 筆標註、coverage 空白**，可從頭建立真人紀錄。
+
+實測結果：
+
+| 驗證 | 證據 |
+| --- | --- |
+| 真實影像 | Chromium 在 0、110、220 秒播放，三處均有 640×360 影像及 decoded frames；已人工查看三張截圖，確認桌球影片畫面 |
+| 相容播放 | 全片 duration=223.4；HTTP Range 回應 206／1024 bytes；模型面板預設收合 |
+| 真實原片 GPU | 在 110 秒附近強制 CUDA frames 解碼、p010le 下載及轉 yuv420p、h264_nvenc 編碼兩秒；exit 0，未以軟體解碼 fallback 通過 |
+| 副本標註 | 在 18083 的獨立資料副本完成 110–113 秒 I/O、保存續播、保存不自動增加 coverage、明確全片 coverage、重載從 120 秒接續、150 秒未完成草稿恢復／放棄及匯出 |
+| 權限 | 匿名 API 401；非 owner 讀取原片、審核及匯出，以及準備 proxy／寫 coverage 均回 404 |
+| 重啟 | 只重啟測試副本，session 與完整 review export 保持一致 |
+| 真人資料隔離 | 18082 的真實來源 export 全程不變；副本標記為 uncertain，備註為 AUTOMATION COPY ONLY，不是人工真值 |
+| 現役資料 | 18080／18081 對應的兩份 DB SHA-256 與原驗收前一致；下載原片 bytes 不變 |
+
+副本取得方式：先確認沒有 queued/processing jobs 或未完成 uploads，從 18082 容器以唯讀 SQLite connection 呼叫 backup API，核對每份備份 `integrity_check=ok`；媒體則從唯讀 bind mount 複製。最初直接在只讀 bind mount 開 WAL-mode DB 失敗，未把那次空目錄當成快照。最終副本為本 worktree 的 `data/real-review-copy-v2/`，Compose project `highlightcraft-real-review-copy`；完成後已停止其 18083 容器，保留資料與證據。這是本機驗收副本，不等於開發機完整資料備份或離機備份已驗收。
+
+新增 `tests/browser/real-review.cjs` 支援首中尾唯讀播放及明確副本操作；寫入模式只允許專用 18083 port。實際證據為 `real-source-inventory.json`、`real-playback-browser.txt`、`real-copy-browser.txt`、`real-hevc-gpu.txt`、`real-copy-restart.json`、`real-human-state-final.json`。影片截圖保留在本 worktree 的 `data/real-playback-1/`，不隨 Git 證據提交。
+
+本輪只新增驗收腳本與文件，產品 src／映像未變，因此沿用同主機已完成的 118 passed；另執行新腳本 syntax、禁止對真人入口寫入的 guard 檢查、Ruff、git diff check。正式 DB 遷移、舊審核資料延續、完整備份還原、正式切換與發布仍待後續資料及授權。
+
+## 部署整合驗收（2026-09-13）
+
+**本機子路徑與根路徑驗證通過；正式資料選擇及外網入口仍待確認。**
+
+2026-09-15 合併前再驗證：遠端 main 仍為 `213fc18`，來源 44 個未提交檔案的
+SHA-256 全數與 `0315009` 保存版本一致；其他舊功能分支已在 main 歷史中。
+`codex/preserve-local-20260907` 的素材庫／pCloud 等分岔成果不在本次整合範圍。
+主機以既有開發環境執行 `PYTHONPATH=src .venv/bin/python -m pytest -q`
+（`.venv` 指主 checkout 的絕對路徑），129 項測試通過，Ruff、離線 lock check、
+22 個 JS／CJS 語法檢查，以及開發／正式 Compose config 檢查通過。
+本次開發環境為 Python 3.12.3、pytest 9.1.1、FastAPI 0.141.1、Starlette 1.6.0；
+沿用既有環境，未重新安裝依賴，候選映像的鎖定依賴驗證仍以 2026-09-13 證據為準。
+首次 sandbox 測試停滯後已結束，以上結果來自主機重跑；測試使用暫存資料。
+敏感檔案檢查未納入 data、DB、影片、模型或真實 secret；憑證字串命中僅為 fixture
+與環境變數佔位。驗收原始 FFmpeg log 的尾端空白保留以維持快照 hash，後續 diff check 通過。
+本次沒有重跑 2026-09-13 的瀏覽器／GPU 驗收，也沒有啟動部署或修改真人服務。
+入口文件已更新為自有 Nginx 加 Cloudflare DNS-only；合併不等於正式切換或映像發布。
+
+來源為 `213fc18` 上的人工標註驗收 worktree，未提交 44 檔已逐位元保存於本機快照，
+並在獨立 `codex/deployment-integration-20260913` 分支以 `0315009` 留下提交。
+不改來源 branch、不清理來源 data、不合併 preserve-local，也未推送、發布或更動正式入口。
+
+| 驗證 | 結果與限制 |
+| --- | --- |
+| 完整 Python 回歸 | 128 passed，19.08 秒；之後補增停寫 WAL 還原模式，備份專項 3 passed（包含既有 2 項重驗） |
+| Ruff／鎖檔／JS syntax | 通過；來源原始 FFmpeg logs 的尾端空白逐位元保留，不為了 diff-check 更改歷史證據 |
+| Nginx + TLS 子路徑 | 18443 `/pingpong-highlight/`：登入、靜態資源、API、job artifact URL、同 origin 私人下載、query、308／307、可信 scheme 通過 |
+| 根路徑 | 18086：登入、上傳、播放、標註、下載回歸通過 |
+| 子路徑前端續傳 | HTTPS 登入後 reload、重新選取原檔，UI 找到相同 upload ID 並續傳成功，下載 bytes 一致 |
+| TUS 真斷線 | POST → PATCH 半份 → socket 中途斷線 → 新 client HEAD → stale offset 409 → 正確 offset 續傳，成品處理完成 |
+| 分塊上限 | 前端 config 8 MiB；8 MiB 與 32 MiB PATCH 通過；32 MiB+1 被 Nginx 413 拒絕、offset 不变；只刪除該測試未完成上傳 |
+| 權限與 cache | 匿名 401、其他 owner 404；媒體與審核 no-store；子路徑 cookie Path/Secure/HttpOnly/SameSite、登出清除與 sibling cookie 保留通過 |
+| 代理 header | Nginx 覆寫 client 傳入的偽造 scheme/host；不可信容器直接送 XFP 不被 Uvicorn 信任；allowed host 400 通過 |
+| 影片 | 真實 223.4 秒片的還原副本在 0/110/220 秒有 640×360 decoded frames；已查看中段截圖；Range 206 與首中尾拖曳通過 |
+| 標註工作流 | fixture I/O、保存續播、保存不代表 coverage、顯式 coverage、草稿恢復／放棄、匯出通過；不當人工真值 |
+| 三組既有瀏覽器測試 | full-review、rally-review、workspace 通過，含獨立 review CLI 與 390px 工作區 |
+| 副本重啟 | cookie session 保留，完整 review export、1 筆 fixture 與 coverage 0–4 秒不變 |
+| 映像 | 本機 ID `160214f083a2…`，runtime commit `b367685`；45 個 src 檔案 hash、31 個鎖定依賴一致；NVDEC/NVENC doctor 可用 |
+| 主 DB 還原與 migration | 18080 snapshot 11 檔 hash、SQLite、原片及輸出關聯通過；副本升級後仍 1 job，新增 owner 管理表且無未歸屬 upload |
+| 18082 還原 | 31 檔、5 DB integrity ok、foreign key check 空、來源／成品／preview 關聯通過；含 7 users、4 completed jobs；不直接升為正式資料 |
+| 停寫演練 | 只停止本輪子路徑副本；唯讀 mount、SQLite/WAL scratch recovery、37 檔備份至新目錄還原通過，再啟動副本 |
+| 正式資料保護 | 18080/18082 邏輯 DB hash 與本輪備份一致；18080/18081 DB bytes hash 與上一輪證據相同；來源 44 檔 hash 不變 |
+| 外網 | 出站 TCP 7844、443 可連；hostname、DNS、NAT/CGNAT、帳號方案、公開 TLS、實際 tunnel、大檔/慢速外網及外站回歸均未驗證 |
+
+第一輪瀏覽器執行曾因選錯本機 Node module 路徑而未啟動；改用已存在的 Playwright 後完成，
+沒有因此下載新套件。上限測試首次清理缺 Tus-Resumable 回 412，已修正並只清除具名 fixture。
+最初 pytest 在 sandbox 的 socket 限制下卡住，停止該測試程序後於主機隔離 fixtures 重跑；
+子路徑第一轮亦發現 middleware 在 static mount 修改 scope 後才取 route path，已修正在呼叫前取得，
+故 static cache headers 現已通過。這些除錯未對真人入口發送写入請求。
+
+證據在 [deployment-integration-20260913](evidence/deployment-integration-20260913/)。
+影片、SQLite、secret、自簽憑證與瀏覽器截圖只留本機 ignored data。
+切換／rollback 的完整操作見 [部署手冊](deployment.md#可執行切換流程須先取得正式停寫與入口變更授權)。
+
+剩餘 gate：實際 hostname 與現有網站歸屬、Windows 正式 DB／舊審核來源、18082 fixture 與真人資料
+的選擇、瀏覽器未保存草稿、離機備份位置，以及影片流量適用方案。正式停機、切換、DNS、推送及發布
+均需對具體差異另行授權。沒有任何新模型下載、Qwen 擴大實驗或候選演算法修改。

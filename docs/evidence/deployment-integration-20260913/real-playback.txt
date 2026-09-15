@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "url": "https://127.0.0.1:18443/pingpong-highlight",
+  "job_id": "0c2f73a1b8154034b89b084569ee4b51",
+  "source_id": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+  "kind": "REAL PLAYBACK ONLY - HUMAN REVIEW UNCHANGED",
+  "samples": [
+    {
+      "time": 0.166787,
+      "width": 640,
+      "height": 360,
+      "duration": 223.4,
+      "decodedFrames": 10
+    },
+    {
+      "time": 110.15961,
+      "width": 640,
+      "height": 360,
+      "duration": 223.4,
+      "decodedFrames": 70
+    },
+    {
+      "time": 220.169545,
+      "width": 640,
+      "height": 360,
+      "duration": 223.4,
+      "decodedFrames": 180
+    }
+  ],
+  "checks": [
+    "login",
+    "source identity",
+    "real frames at 0/110/220 seconds",
+    "full-film H264 preview",
+    "Range 206",
+    "model panel collapsed"
+  ]
+}

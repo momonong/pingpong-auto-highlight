@@ -1,0 +1,39 @@
+{
+  "status": "PROPOSAL ONLY - no rows copied or deleted",
+  "authoritative_windows_database": "UNKNOWN",
+  "18082_snapshot_rows": [
+    {
+      "upload_id": "fa32c6587ffc49d5bb514b0f094e5d2a",
+      "filename": "AUTOMATION-FIXTURE.mp4",
+      "user_id": "b17eb6a4f34845b78099a387ec00027c",
+      "username": "acceptance-owner-1789224697213",
+      "job_id": "a8fe7a07f09a42acb4e6a4663287f613",
+      "classification": "acceptance-fixture-needs-explicit-selection"
+    },
+    {
+      "upload_id": "89ea0cadf5d24d69a4678a9a6e33308f",
+      "filename": "AUTOMATION-FIXTURE.mp4",
+      "user_id": "2a9f784c05684e61a7825e5dd5a72cd3",
+      "username": "acceptance-owner-1789224768152",
+      "job_id": "97e8dfbfe41a474ba986f067a43d8633",
+      "classification": "acceptance-fixture-needs-explicit-selection"
+    },
+    {
+      "upload_id": "07b8cd5525ee44049a9b5a6ceb9e0839",
+      "filename": "AUTOMATION-FIXTURE.mp4",
+      "user_id": "9ef68851777b47f0be692cfc3e259def",
+      "username": "acceptance-owner-1789224844034",
+      "job_id": "e6fbecc0afb74e99ba87c2b237ca34f5",
+      "classification": "acceptance-fixture-needs-explicit-selection"
+    },
+    {
+      "upload_id": "03abca2799d9419ea5d09a3c22082c33",
+      "filename": "2026-04-25-real-film-223s.mp4",
+      "user_id": "579d4cb9d9a347b2b71d7db5e3d9c4a0",
+      "username": "admin",
+      "job_id": "0c2f73a1b8154034b89b084569ee4b51",
+      "classification": "known-real-import"
+    }
+  ],
+  "future_human_changes": "Final backup must be reacquired after authorized writer shutdown; do not use this snapshot as latest."
+}
