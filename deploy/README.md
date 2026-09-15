@@ -17,5 +17,7 @@ registry digest 為 null，不能把 image ID 當 registry manifest digest。
 不得直接使用含 fixture 的驗收 data，不得重建空 DB，更不可讓兩個 app 寫同一份 data。
 
 尚待 hostname／現有網站設定、正式資料來源、離機備份位置與公開影片流量方案確認。
+入口已選擇自有 Nginx 承接整個 HighlightCraft（含 API 與影片），Cloudflare 僅做
+DNS-only 解析；保留 `/pingpong-highlight/`，不拆分媒體 origin。Tunnel 範例僅供備案。
 正式停寫、切換、Nginx reload、DNS／tunnel 修改、推送及發布必須另有明確授權。
 本 bundle 不含任何影片、正式 DB、secret、個人草稿或 TLS 私鑰。

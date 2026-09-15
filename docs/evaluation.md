@@ -263,6 +263,21 @@ Windows 路徑由目前 manifest／實驗 receipt 取得，尚未在 Windows 主
 ## 部署整合驗收（2026-09-13）
 
 **本機子路徑與根路徑驗證通過；正式資料選擇及外網入口仍待確認。**
+
+2026-09-15 合併前再驗證：遠端 main 仍為 `213fc18`，來源 44 個未提交檔案的
+SHA-256 全數與 `0315009` 保存版本一致；其他舊功能分支已在 main 歷史中。
+`codex/preserve-local-20260907` 的素材庫／pCloud 等分岔成果不在本次整合範圍。
+主機以既有開發環境執行 `PYTHONPATH=src .venv/bin/python -m pytest -q`
+（`.venv` 指主 checkout 的絕對路徑），129 項測試通過，Ruff、離線 lock check、
+22 個 JS／CJS 語法檢查，以及開發／正式 Compose config 檢查通過。
+本次開發環境為 Python 3.12.3、pytest 9.1.1、FastAPI 0.141.1、Starlette 1.6.0；
+沿用既有環境，未重新安裝依賴，候選映像的鎖定依賴驗證仍以 2026-09-13 證據為準。
+首次 sandbox 測試停滯後已結束，以上結果來自主機重跑；測試使用暫存資料。
+敏感檔案檢查未納入 data、DB、影片、模型或真實 secret；憑證字串命中僅為 fixture
+與環境變數佔位。驗收原始 FFmpeg log 的尾端空白保留以維持快照 hash，後續 diff check 通過。
+本次沒有重跑 2026-09-13 的瀏覽器／GPU 驗收，也沒有啟動部署或修改真人服務。
+入口文件已更新為自有 Nginx 加 Cloudflare DNS-only；合併不等於正式切換或映像發布。
+
 來源為 `213fc18` 上的人工標註驗收 worktree，未提交 44 檔已逐位元保存於本機快照，
 並在獨立 `codex/deployment-integration-20260913` 分支以 `0315009` 留下提交。
 不改來源 branch、不清理來源 data、不合併 preserve-local，也未推送、發布或更動正式入口。

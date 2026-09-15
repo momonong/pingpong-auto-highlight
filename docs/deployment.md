@@ -281,12 +281,20 @@ acceptance builder／runtime 層。45 個 package 檔案與 31 個鎖定依賴�
 LAN 為 192.168.68.62，default gateway 為 192.168.68.1；單憑私有 LAN IP 不能判定 CGNAT。
 沒有 reload 系統 Nginx，也沒有改 DNS、port forwarding 或建立公開 tunnel。
 
-建議順序：先沿用已有可靠公開入口，只加入子路徑；若無公開入口，評估固定 hostname
-的 managed tunnel 到 Nginx。對大量影片的本服務，Cloudflare Free／Pro／Business
-經 CDN 傳送影片及大檔的付費服務／合約要求未解決前，不能選作正式影片入口。
-有既有公開 Nginx 或可用的自管私人連線時，保留影片在自有主機；若需要 VPS 中繼，
-先確認供應商流量額度、影片使用規範及維運責任。子網域只是備案，不改原本
-`https://你的網域/pingpong-highlight/` 需求。
+已確認的入口決策（2026-09-15）：整個 HighlightCraft 由自有 Nginx 提供 HTTPS 與
+子路徑分流，保留 `https://你的網域/pingpong-highlight/`；網頁、登入、標註 API、
+上傳、播放與下載使用同一 origin。Cloudflare 僅管理該 hostname 的 DNS，設為
+DNS-only／灰雲，瀏覽器直接連公開 Nginx，不經 Cloudflare HTTP 代理或 public Tunnel。
+不新增跨 origin 媒體授權／CORS 分流。其他獨立 hostname 的服務仍可另用 Cloudflare 代理。
+
+先沿用已有可靠公開 Nginx；若主機可取得公網 IP，核對 NAT／port forwarding 後再配置。
+若有 CGNAT 或無法提供直接入口，評估公開 VPS 的 Nginx 經私人通道連回本機，先核對
+供應商流量額度、影片使用規範與維運責任。Nginx 本身不會解決 NAT，外網延遲與頻寬
+仍須實測。以下 tunnel 比較保留為備案調查，不代表已選用或已驗證正式入口。
+
+DNS-only／代理設定作用於整個 hostname，不能按 URL path 分流。修改 DNS 或關閉代理前，
+必須確認同 hostname 的所有既有網站、TLS 及防護需求均已妥善承接；不能僅為新增子路徑
+覆蓋整個 hostname。參見 [DNS 代理模式](https://developers.cloudflare.com/dns/proxy-status/)。
 
 Cloudflare 並非只能有一條免費 tunnel：官方目前預設每帳號 1,000 條；
 named／managed tunnel 可綁自有 hostname，保留 tunnel UUID／credential 後重啟沿用。
