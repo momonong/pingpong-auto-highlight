@@ -52,6 +52,76 @@
 
 每次實驗記錄 Git commit、algorithm version、設定、test video IDs、metrics 與輸出報告。不得用 test set 調 threshold；確認 validation 改善後才跑一次 test。這會讓 side project 從 demo 變成能持續進步的系統。
 
+## 2026-09-09 核心流程與剪輯品質驗收
+
+> 歷史快照：以下結論與環境狀態僅適用於 2026-09-09 的驗收，並於 2026-09-17 補入版本控制。後續已完成預標註／人工審核實作及部署驗證，請一併閱讀下方 2026-09-11 至 2026-09-15 的紀錄；本節不是目前功能缺口清單。
+
+結論：**STOP — 尚不能驗收為可交給少量使用者自行試用的完整自動剪輯產品。** 核心功能已有實作，隔離軟體測試通過；剪輯品質有負面歷史證據，目前版本的真實媒體、手機與外部入口驗收則為 UNKNOWN。可進行管理者陪同的隔離功能驗證，但不等同產品試用 GO。
+
+### 範圍與可重現證據
+
+- 本機 `main=3c2ff26`；起始工作目錄乾淨，相對本機 `origin/main` 領先 1 個提交。未 fetch 或連線核對遠端。根目錄與已查父目錄未找到 AGENTS.md，依本任務提供的合作指示執行。
+- 已核對 README、本文件、architecture、deployment，以及 web/auth/db/uploads/drive/jobs/pipeline 與對應測試。沒有切分支、修改產品程式碼、啟停既有服務、寫入正式資料庫、解碼使用者影片、使用 GPU 運算或呼叫 Google。
+- 執行 `.venv/Scripts/python.exe -m pytest -p no:cacheprovider --basetemp=data/acceptance-20260909/pytest-run2 -ra`：**88 passed, 9 skipped，8.87 秒**。紀錄：`data/acceptance-20260909/pytest.txt`。7 項因 PATH 無 FFmpeg 略過；另 2 項為 Windows symlink／POSIX 權限限制。第一次執行因測試父目錄尚未建立產生 fixture setup errors，建立獨立目錄後重跑通過，非產品失敗。
+- Node 可用但本機 `require.resolve('playwright')` 失敗；未安裝套件或重跑 browser suite。過往 browser 成功摘要不計入本次通過數。
+- Docker 初次查詢受 sandbox 權限限制，取得唯讀查詢權限後 `docker ps` 成功且無運行容器；8000/8787 未列出 listener。這不代表所有其他埠或非 Docker 服務均不存在，也未驗證外網入口。
+- 唯讀資源快照：D 槽約 568.8 GB 可用；RTX 5090 Laptop GPU，3422/24463 MiB 使用、4% utilization。未占用 GPU；此瞬間快照不能保證稍後可用容量。
+
+### 功能驗收矩陣
+
+下表的「本次測試」是程式／隔離 API 證據；所有「真實環境」均未對目前 HEAD 完成端到端驗收。
+
+| 流程 | 有實作與來源 | 本次測試已驗證 | 真實環境／尚未知 |
+| --- | --- | --- | --- |
+| 登入與權限 | auth.py、db.py、web.py：session、帳號停用、owner scope、admin | test_auth、test_db_identity、test_user_management_api：雙使用者隔離、跨 owner 原片／成品／標註拒絕、session 撤銷、管理權限 | HTTPS cookie、實際 tunnel 與手機 session UNKNOWN；正式 DB 尚無 users/sessions 表 |
+| 上傳續傳 | uploads.py、static/uploads.js：8 MiB PATCH、HEAD offset、checksum、atomic rename、reconcile | test_upload_api、test_upload_store：checksum/offset、續傳 API、rename crash window、空間預留 | iOS 背景／關頁重選、多 GB、真實斷線及 tunnel 限制 UNKNOWN |
+| Drive 匯入 | drive.py：HTTPS Google 單檔 URL、gdown resume、持久狀態、完成後入列 | test_drive_import：URL 拒絕、失敗重試、部分下載重啟續傳與大小限制；使用 fake downloader | Google 實際權限／配額／Range 續傳 UNKNOWN；舊 DB completed 狀態不是本次 Google 成功證據 |
+| 排隊與中斷恢復 | jobs.py：預設單 worker、啟動重排 processing、previous/staging 恢復 | test_cleanup、test_db_identity：重排與輸出置換 crash window、原子狀態、cleanup 重試 | 真正殺程序／斷電、多使用者壓力、長工作恢復 UNKNOWN；分析會從頭重跑 |
+| 影片處理 | pipeline：audio/motion、候選、0.87 相對門檻、55 秒預算、單分與 Reel、CPU fallback | test_detect、test_motion、test_pipeline 的非媒體分支通過 | 7 項 FFmpeg 測試略過；目前 HEAD 的 HEVC/VFR/rotation、GPU 編解碼、音畫同步與切點品質 UNKNOWN |
+| 播放下載 | web.py、static/results.js：授權 Range、attachment、no-store、斷線停止讀取 | test_upload_api：206/416、suffix/open-ended Range、If-Range、斷線；帳號測試驗證 owner | API fixture bytes 不代表手機可解碼；本次 browser／iOS／Web Share 未驗證 |
+| 失敗重試／重製／刪除 | jobs.py、db.py、cleanup.py | API 狀態衝突、owner scope、重試／重製、清理 tombstone 與輸出回復通過；processor 為 fixture | 真實 codec/磁碟滿/長處理失敗未重現；現役素材庫資料相容性未通過 |
+| 人工標記 | annotations.js、web.py、db.py：highlight/exclude、起訖時間與刪除；UI 為管理員桌面入口 | API 新增、讀取、刪除、越界拒絕與跨 owner 讀取拒絕 | 沒有完整 review coverage／逐分真值／split 模型；標記不會自動回饋選片或重建 Reel，非使用者修剪編輯器 |
+
+零候選可完成且只有 analysis；Reel 建置失敗亦可能保留單分、以 warning 完成。因此 `completed` 與 `/api/health status=ok` 都不能單獨當成「成功產出可用集錦」。
+
+### 素材與品質證據
+
+正式 `data/state.sqlite3` 以 SQLite `mode=ro` 查詢：5 uploads、5 jobs、5 Drive imports 均 completed；56 annotations 全部 highlight；135 highlight_clips、11 storage_objects、0 compilations，沒有 users/sessions。五個 manifest 原片路徑均存在；僅盤點存在性，未重讀約 16.3 GB 原片驗證 hash。這份資料來自具素材庫／封存能力的開發脈絡，不能假設可由目前 main 安全接管；詳見 deployment 的資料相容性說明。
+
+`data/datasets/personal-baseline-20260822/manifest.json` 與 annotations.jsonl：5 片、4 個拍攝日期、108.66 分鐘、56 正標註、0 explicit exclude；標註 JSONL SHA-256 本次與 manifest 一致。manifest 有 reviewed_at，但沒有足以證明所有 ordinary points／選出片段已完整判讀的 coverage 宣告；它也明定 unannotated=unlabeled。
+
+本次以 `data/acceptance-20260909/recheck_reports.py` 只讀既有 JSON，對每個來源做一對一最大匹配，條件為交集覆蓋至少 50% 人工區間；結果與分析檔 SHA-256 保存於 `saved-report-recheck.json`：
+
+| 既有 v5 artifact 指標 | 本次重算 |
+| --- | --- |
+| 全候選 | 250；核心匹配 4/56（7.14%） |
+| 入選片段 | 22；核心匹配 4/56（7.14%） |
+| 入選片段含前後 padding | 匹配 7/56（12.50%） |
+
+來源是 `data/evaluations/threshold-v5-gpu-verified-20260823/*/analysis.json`。這是**本次重算舊產物**，不是目前 HEAD 重跑；相同 `point-reel-v5` 字串不足以證明程式、設定、FFmpeg 與來源 bytes 完全相同。舊 SUMMARY 記載五片可完整解碼、無 warning，但本次沒有重新解碼驗證。
+
+另一份 `candidate-recall/formal-v4-20260824/metrics.json` 報告 candidate-generation-v4 候選召回 51/56（91.07%），來源 commit `7e0881d7ca8e5163b716982b33d84b36dfa9fa84` 僅由保存分支 `codex/preserve-local-20260907` 包含，並非目前 main 的 pipeline。報告明定 development regression，非 held-out；同份報告 recall@6 僅 8/56，匹配候選起點誤差中位數 1.956 秒，故其 GO_RANKING 不是產品 GO，也不能移植成目前 Reel 品質宣稱。
+
+| 品質問題 | 能回答的部分 | 仍缺少的證據 |
+| --- | --- | --- |
+| 漏掉精彩球 | 已知 56 正標註的舊產物覆蓋可重算，結果偏低 | 目前 HEAD 的 source/config/commit receipt；獨立 held-out 與完整精彩球覆蓋 |
+| 誤選／precision | 0.87 是同片相對分數，未校準；最佳候選若符合長度預算可入選，不能保證全差影片會被拒絕 | explicit exclude 或完整審核所有輸出；不能把未匹配候選直接判錯 |
+| 單分完整性／purity | 候選時序與 padding 有單元測試 | 每分發球、最後一拍、結束與相鄰分真值；50% overlap 不等於完整一分 |
+| 切點誤差 | 起訖標註可作探索性比較；舊候選報告只對匹配子集計算 | 統一標註語意、漏匹配另列、實際輸出影格／音畫驗證，不能只報成功匹配子集 |
+| 處理時間 | 總影片秒數已知 | processor 的 analysis 沒有耗時／peak RAM/VRAM／完整 runtime receipt；DB created/updated 差含排隊與後續操作，不能代替 runtime factor |
+
+55 秒 Reel 是摘要預算，長片所有精彩分數的 recall 與這個預算可能衝突。候選召回 gate 與最終 Reel 效用必須分開定義；不可直接用 90% 全片精彩 recall 當 55 秒產品輸出的通用門檻。本文件上方的 baseline 數字為目標，均未因此次驗收而宣告達成。
+
+### 阻擋、改善與最小下一步
+
+阻擋：目前 HEAD 的端到端媒體／手機／真 Google 驗收缺失；既有 baseline 漏選證據且沒有 held-out 品質 gate；正式資料含 main 不維護的素材庫／封存索引，未通過相容性驗證。試用必須使用空白獨立資料，或先另案完成完整副本相容性驗收。
+
+非阻擋改善（限受邀、陪同的小量驗證）：候選手動保留／刪除與改切點再製 Reel、逐使用者配額、容量與排隊可觀測性、固定外網入口、配送優化。這些不代替前述品質與基本真實流程 gate；無需先做多節點／付款／CDN 平台。
+
+**最小下一步實作任務：在目前 main 建立可重現的離線品質驗收入口。** 固定當前 commit 起點，實作只讀 analysis 與標註的 evaluator，加一份含 review coverage、標註語意與 development/held-out 分組的 manifest；分開回報候選、入選核心、padding 覆蓋及 UNKNOWN precision，缺來源／設定／版本 receipt 時拒絕宣稱 current-version gate。驗收條件：能重現上述 4/56、4/56、7/56；未標區間不當負樣本；source-local 一對一匹配與重複片段測試；只寫獨立輸出目錄。先完成此證據入口，再決定候選 v4 移植／ranking 修正，不能只以擴大候選召回宣告完成品質改善。本輪未實作此產品工具；本次 JSON 重算腳本僅為驗收證據。
+
+後續真實驗證方案（尚未執行，需素材／資源授權）：先指定一支非敏感、至多 5 分鐘的獨立 hold-out 影片，提供所有精彩分與逐分邊界；在空資料與未占用 loopback port 用兩個測試帳號驗證上傳、斷線 HEAD 恢復、真實處理、owner 隔離、Range 播放下載及重試。先 CPU、單 worker、上限 15 分鐘，記錄資源與階段耗時；GPU 另於確認無競爭的時段做 NVDEC/NVENC 驗收。Google 使用明確授權的短片公開 URL 驗證成功與撤權失敗；手機測試另需實際 iOS/Safari 與 HTTPS 入口。任何一項缺素材、存取或時間預算，保留 UNKNOWN，不操作現役服務來補證據。
+
 ## 模型輔助預標註 v1（2026-09-11）
 
 任務分支 `codex/model-assisted-review`，起點 `3c2ff26895690c1f9876f6e078d80632858dd63a`，隔離 worktree `D:\projects\pingpong-auto-highlight\data\worktrees\model-assisted-review`。原 checkout 的未提交 2026-09-09 驗收紀錄只讀參考，沒有複製、覆寫或提交；本輪不接管正式 `data/state.sqlite3`、素材庫或封存結構，不合 main、不推送、不部署。
