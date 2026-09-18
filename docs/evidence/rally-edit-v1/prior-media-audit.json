@@ -1,0 +1,66 @@
+[
+  {
+    "manifest": "data/experiments/highlight-quality-v1/blind-packet/packet.json",
+    "manifest_sha256": "614288f0878afd3df633343735809264745b6af7b0ec18cd98dfa9d464a5d37e",
+    "media": [
+      {
+        "name": "X.mp4",
+        "sha256": "670d9b1202af5f4e493e61ea1e86d2b12c134c8d424f8137eb2e4911d27db384",
+        "matches": true
+      },
+      {
+        "name": "Y.mp4",
+        "sha256": "b5878c6e674c97c1a0f8f03c6b522c09e2618574b81ff1a32a304e07acc261b2",
+        "matches": true
+      }
+    ]
+  },
+  {
+    "manifest": "data/experiments/candidate-family-v3/human-review-20260917/packet.json",
+    "manifest_sha256": "77b3e923a533d664dbbc350705fb9acd7e6f193eb4127ae9719a2a016d0e7a35",
+    "media": [
+      {
+        "name": "source-1-X.mp4",
+        "sha256": "45e416b17deb45c883985849401ceec2c546f1fadab62ecc91c8d44ef89e284a",
+        "matches": true
+      },
+      {
+        "name": "source-1-Y.mp4",
+        "sha256": "b03c2cfef446e665f91cbc3d67a7221cc78d22cb5bda1b6a201d417770a73fb7",
+        "matches": true
+      },
+      {
+        "name": "source-2-X.mp4",
+        "sha256": "8edfc7f8c587130753ac72249e55986394b54c064e3922dbf8833e357c893967",
+        "matches": true
+      },
+      {
+        "name": "source-2-Y.mp4",
+        "sha256": "500e5f88e36294e7ce58d43529288da631fbd8ee36439e4a82e566c0b415153d",
+        "matches": true
+      }
+    ]
+  },
+  {
+    "manifest": "docs/evidence/agentic-rewatch-v2/human-check-packet.json",
+    "manifest_sha256": "fda1df6f8ac36378f4ecf90db8d3557c096f52ca643a8de6ef5d8102b2092c56",
+    "media": [
+      {
+        "name": "P.mp4",
+        "sha256": "eb08e69eaa9e73546cce1ad9dba4e9118794b0c4290733ca2d5add8c206e6bd1",
+        "matches": true
+      }
+    ]
+  },
+  {
+    "manifest": "docs/evidence/agentic-rewatch-v2/tail-adjustment.json",
+    "manifest_sha256": "fd14b8a7ae9a33fc89c63926f29d2be6e9d75397a9df6020ea15564f4fc7f394",
+    "media": [
+      {
+        "name": "P-plus.mp4",
+        "sha256": "65f3c1abb32aadcfd88f91dd21eedd520e9e3a65262aafd225cce4b0fcf0f1c0",
+        "matches": true
+      }
+    ]
+  }
+]

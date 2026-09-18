@@ -1,0 +1,109 @@
+{
+  "version": 2,
+  "candidate_id": "b2",
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "parent_plan_sha256": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca",
+  "parent_media_sha256": "caa16637a3708f58c20f09da76e299f2862bb956b00531a6652646347798b548",
+  "human_feedback_reference": "human-chat-feedback-02.json",
+  "event": {
+    "start_uncertainty": [
+      27.625,
+      28.125
+    ],
+    "end_uncertainty": [
+      31.125,
+      31.5
+    ],
+    "exact_serve_contact": null,
+    "exact_last_contact": null,
+    "winner": null,
+    "next_start_lower_bound": null,
+    "provenance": "assistant_visual_inspection_not_human_truth",
+    "sample_fps": 8,
+    "human_complete": null
+  },
+  "proposed_acceptable_render": {
+    "in": [
+      26.5,
+      27.25
+    ],
+    "out": [
+      32.1,
+      33.0
+    ],
+    "status": "hypothesis_pending_human"
+  },
+  "human_acceptable_render": {
+    "entry_sample": {
+      "requested": 26.75,
+      "actual": 26.733333333333334,
+      "feedback_reference": "human-chat-feedback-01.json"
+    },
+    "entry_range": null,
+    "exit_range": null
+  },
+  "actual_render": {
+    "file": "582.mp4",
+    "requested_source_range": [
+      26.75,
+      32.7
+    ],
+    "render_source_range": [
+      26.733333333333334,
+      32.7
+    ],
+    "wall_seconds": 1.596917165996274,
+    "sha256": "168ce86c09060c7c9fb103a3d2cb5d26c9d35987c50ae89b980fd527ba0b392b",
+    "duration": 5.966667,
+    "audio_duration": "5.966000",
+    "video_start": "0.000000",
+    "audio_start": "0.000000",
+    "width": 640,
+    "height": 360,
+    "decoded_frames": 179,
+    "full_av_decode": "passed",
+    "token": "582"
+  },
+  "reason": "User said 740 broadly acceptable but requested very slightly slower ending; assistant proposes +0.2 s at unchanged speed. Exact endpoint pending user judgment.",
+  "full_rally_human_complete": null,
+  "human_acceptance": "pending",
+  "original_candidate_unchanged": true,
+  "frozen_membership_order_unchanged": true,
+  "renderer_code_sha256": "6e01b9eb9ca7fd804d0598fa02927226d30bf2b47017b3a6bdaffbeb237810f3",
+  "signal_validation": {
+    "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+    "clips": [
+      {
+        "file": "582.mp4",
+        "sha256_matches": true,
+        "endpoints": [
+          {
+            "output_time": 0,
+            "planned_source_time": 26.733333333333334,
+            "best_shift_seconds": 0,
+            "gray_rmse": 1.2297526851634302,
+            "threshold": 12
+          },
+          {
+            "output_time": 5.933333666666667,
+            "planned_source_time": 32.66666666666667,
+            "best_shift_seconds": -0.03333333333333333,
+            "gray_rmse": 2.157898926682568,
+            "threshold": 12
+          }
+        ],
+        "audio_source_correlation": 0.997193452918793,
+        "audio_rms": 0.07113592326641083,
+        "audio_peak": 0.7728209495544434,
+        "audio_decoded_samples": 47733,
+        "passed": true
+      }
+    ],
+    "reels": [],
+    "human_listening": null,
+    "human_visual_acceptance": null,
+    "semantics": "Decoded signal/clock fidelity, not perceptual acceptance",
+    "passed": true
+  },
+  "endpoint_montage_inspected": true
+}

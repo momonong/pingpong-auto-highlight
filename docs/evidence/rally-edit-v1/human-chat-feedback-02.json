@@ -1,0 +1,41 @@
+{
+  "schema": "rally-edit-human-chat-feedback-v1",
+  "feedback_id": "rally-edit-b2-tail-02",
+  "recorded_at": "2026-09-18T07:03:48.286741+00:00",
+  "actor": "human-user",
+  "channel": "user-chat",
+  "recorded_by": "assistant-transcription",
+  "source_thread_id": "01a0b31c-3844-7f00-9300-668f386598e6",
+  "verbatim": "可以 都差不多 結尾可以稍稍慢一點點點",
+  "parent_feedback": "human-chat-feedback-01.json",
+  "candidate_id": "b2",
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "plan_sha256": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca",
+  "media": {
+    "token": "740",
+    "sha256": "caa16637a3708f58c20f09da76e299f2862bb956b00531a6652646347798b548",
+    "requested_source_range": [
+      26.75,
+      32.5
+    ],
+    "render_source_range": [
+      26.733333333333334,
+      32.5
+    ],
+    "duration": 5.766667
+  },
+  "human_feedback": {
+    "general_assessment": "可以，都差不多",
+    "ending_request": "結尾可以稍稍慢一點點點",
+    "exact_preferred_out_point": null,
+    "full_rally_completeness": null,
+    "result_clarity": "positive contextual reply; not a separate formal score"
+  },
+  "assistant_interpretation": {
+    "change": "slightly more ending time at original playback speed",
+    "proposed_extension_seconds": 0.2,
+    "scope": "one sample for this candidate; not a human-specified duration or global rule"
+  },
+  "next_review_token": "582",
+  "next_review_status": "pending-human"
+}

@@ -1,0 +1,89 @@
+{
+  "schema": "rally-edit-human-chat-feedback-v1",
+  "feedback_id": "rally-edit-compilation-04",
+  "recorded_at": "2026-09-18T07:20:59.300801+00:00",
+  "actor": "human-user",
+  "channel": "user-chat",
+  "recorded_by": "assistant-transcription",
+  "verbatim": "這個感覺不錯 可以先合併和提交",
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "plan_sha256": "20eb4fb341da05b35d76bc5b76f4f22226b051fb1ee98a76b0a53c4353cc630d",
+  "media": {
+    "file": "preview.mp4",
+    "sha256": "cfb969ec632792700719eaf7789b2718f9a09464f2376d1d47fa3a517be02a0a",
+    "duration": 44.6,
+    "timeline": [
+      {
+        "candidate_id": "b2",
+        "source_range": [
+          26.733333333333334,
+          32.7
+        ],
+        "reel_range": [
+          0,
+          5.966666666666667
+        ]
+      },
+      {
+        "candidate_id": "v4-3",
+        "source_range": [
+          44.36666666666667,
+          50.7
+        ],
+        "reel_range": [
+          5.966666666666667,
+          12.3
+        ]
+      },
+      {
+        "candidate_id": "v4-6",
+        "source_range": [
+          76.23333333333333,
+          83.5
+        ],
+        "reel_range": [
+          12.3,
+          19.566666666666666
+        ]
+      },
+      {
+        "candidate_id": "b15",
+        "source_range": [
+          89.86666666666666,
+          95.0
+        ],
+        "reel_range": [
+          19.566666666666666,
+          24.7
+        ]
+      },
+      {
+        "candidate_id": "v4-9",
+        "source_range": [
+          118.5,
+          126.0
+        ],
+        "reel_range": [
+          24.7,
+          32.2
+        ]
+      },
+      {
+        "candidate_id": "v4-11",
+        "source_range": [
+          140.5,
+          152.9
+        ],
+        "reel_range": [
+          32.2,
+          44.6
+        ]
+      }
+    ]
+  },
+  "compilation_impression": "positive",
+  "per_clip_completeness": null,
+  "transition_style_comparison": null,
+  "authorization": "commit and merge locally; no push/deploy",
+  "scope": "Positive response to the 44.6 s direct-cut preview; not six individual completeness judgments."
+}

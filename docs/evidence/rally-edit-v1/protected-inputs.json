@@ -1,0 +1,50 @@
+{
+  "files": [
+    {
+      "name": "f470599a5b5e434c8ab809db749436b2.mp4",
+      "before_sha256": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+      "after_sha256": "ace5280927c0c473ae61140335420b509fe2885ef3b1605733b2d7cd6cfcc555",
+      "unchanged": true
+    },
+    {
+      "name": "a6ef1ae5b64d4f62b19bf2d850b9282b.mp4",
+      "before_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "after_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "unchanged": true
+    },
+    {
+      "name": "6e7e1019273942d8babb122188d64a30.mp4",
+      "before_sha256": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+      "after_sha256": "636c4bb3605b97f3a00e4a7787cc518864bd4a2a9c7b57727d5bdb906bd7adc8",
+      "unchanged": true
+    },
+    {
+      "name": "4354716dd8a14053823a77cdd3827c00.mp4",
+      "before_sha256": "38af3c4e3b09436015fe96177cd0689ff2f26f477c31d4ddb0221e15df9f62f3",
+      "after_sha256": "38af3c4e3b09436015fe96177cd0689ff2f26f477c31d4ddb0221e15df9f62f3",
+      "unchanged": true
+    },
+    {
+      "name": "b979c6ddd4e9452faf6de8105e3d59a7.mp4",
+      "before_sha256": "ef8ffaa143e9665f1e762263b9b2b5aaff6dd81400b166117463ec15b97952e0",
+      "after_sha256": "ef8ffaa143e9665f1e762263b9b2b5aaff6dd81400b166117463ec15b97952e0",
+      "unchanged": true
+    },
+    {
+      "name": "state.sqlite3",
+      "before_sha256": "086e5421f7609ca1845cb7b96130bbd4e81656179cc637e6dac2e32556415abe",
+      "after_sha256": "086e5421f7609ca1845cb7b96130bbd4e81656179cc637e6dac2e32556415abe",
+      "unchanged": true
+    },
+    {
+      "name": "state.snapshot.sqlite3",
+      "before_sha256": "c5fb2211a12a1ac593c4a4ffd101613a9a045e1aa5fd5300b886d3edd3c610d4",
+      "after_sha256": "c5fb2211a12a1ac593c4a4ffd101613a9a045e1aa5fd5300b886d3edd3c610d4",
+      "unchanged": true
+    }
+  ],
+  "annotation_count": 56,
+  "new_changed_deleted_annotations": 0,
+  "fixture_used_as_truth": false,
+  "annotation_time_semantics": "unknown"
+}
