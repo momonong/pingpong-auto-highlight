@@ -1,0 +1,149 @@
+{
+  "schema": "highlightcraft-direction-existing-evidence-v1",
+  "checked_at": "2026-10-25T18:57:19.577773+00:00",
+  "check_scope": "Read saved JSON and hashes only; reuse historical complete-decode, GPU and source verification; no new inference/training/rendering or media hash scan.",
+  "local_source_commit": "e24c688f1ef1f38661d931dbe62ee5710df6d8f6",
+  "published_main_before_this_phase": "cdbb826950bb24359ec78c93724b3cbea8adf591",
+  "development_sources": 5,
+  "development_sessions": 4,
+  "human_positive_targets": 56,
+  "candidate_rows": 2145,
+  "eligible_assistant_nonplaying_targets": 40,
+  "candidate_pool_hits": 53,
+  "method_seed_configurations": [
+    {
+      "variant": "signal-seed0",
+      "method": "signal",
+      "seed": 0,
+      "selected_hits": 5,
+      "known_positives": 56,
+      "gains_vs_signal": 0,
+      "regressions_vs_signal": 0
+    },
+    {
+      "variant": "vp-cosine-seed0",
+      "method": "vp-cosine",
+      "seed": 0,
+      "selected_hits": 3,
+      "known_positives": 56,
+      "gains_vs_signal": 3,
+      "regressions_vs_signal": 5
+    },
+    {
+      "variant": "vp-contrastive-prototype-seed0",
+      "method": "vp-contrastive-prototype",
+      "seed": 0,
+      "selected_hits": 3,
+      "known_positives": 56,
+      "gains_vs_signal": 2,
+      "regressions_vs_signal": 4
+    },
+    {
+      "variant": "vj16-cosine-seed0",
+      "method": "vj16-cosine",
+      "seed": 0,
+      "selected_hits": 2,
+      "known_positives": 56,
+      "gains_vs_signal": 2,
+      "regressions_vs_signal": 5
+    },
+    {
+      "variant": "vp-weak-linear-seed0",
+      "method": "vp-weak-linear",
+      "seed": 0,
+      "selected_hits": 4,
+      "known_positives": 56,
+      "gains_vs_signal": 3,
+      "regressions_vs_signal": 4
+    },
+    {
+      "variant": "vp-weak-mlp32-seed0",
+      "method": "vp-weak-mlp32",
+      "seed": 0,
+      "selected_hits": 6,
+      "known_positives": 56,
+      "gains_vs_signal": 5,
+      "regressions_vs_signal": 4
+    },
+    {
+      "variant": "vp-weak-mlp32-seed1",
+      "method": "vp-weak-mlp32",
+      "seed": 1,
+      "selected_hits": 6,
+      "known_positives": 56,
+      "gains_vs_signal": 5,
+      "regressions_vs_signal": 4
+    },
+    {
+      "variant": "vp-weak-mlp32-seed2",
+      "method": "vp-weak-mlp32",
+      "seed": 2,
+      "selected_hits": 6,
+      "known_positives": 56,
+      "gains_vs_signal": 5,
+      "regressions_vs_signal": 4
+    },
+    {
+      "variant": "vp-weak-frame-attention-seed0",
+      "method": "vp-weak-frame-attention",
+      "seed": 0,
+      "selected_hits": 4,
+      "known_positives": 56,
+      "gains_vs_signal": 3,
+      "regressions_vs_signal": 4
+    },
+    {
+      "variant": "vj16-weak-linear-seed0",
+      "method": "vj16-weak-linear",
+      "seed": 0,
+      "selected_hits": 3,
+      "known_positives": 56,
+      "gains_vs_signal": 2,
+      "regressions_vs_signal": 4
+    }
+  ],
+  "prior_complete_recompute": {
+    "score_values": 22010,
+    "cases": 560,
+    "checkpoints": 24
+  },
+  "historical_delivery": {
+    "logical": 50,
+    "physical": 33,
+    "max_seconds": 55,
+    "human_preference_accepted": false
+  },
+  "budget_diagnostic": {
+    "known_label_only_optimum": 23,
+    "scope": "post-hoc fixed-candidate known-positive objective with one-to-one matching, core nonoverlap, padding, source-time cost and 55s/source; not a model score or full-quality upper bound"
+  },
+  "inputs": {
+    "data/experiments/weak-supervision-v1/analysis-01/analysis.json": {
+      "bytes": 201261,
+      "sha256": "83328500caaca36eea7c42eb28183f23b105fc692155c98287a5f643189a9587"
+    },
+    "data/experiments/weak-supervision-v1/analysis-01/validation.json": {
+      "bytes": 1343,
+      "sha256": "aa19f85e685d45a37ee6934fcfa1e6052b9a2fee04d5cc1e0531bc3914016c52"
+    },
+    "data/experiments/weak-supervision-v1/comparison-02/final-verification.json": {
+      "bytes": 10355,
+      "sha256": "5a77185eccc322142cecafda98161ef07047f833473338d259a4ac8bf6738d19"
+    },
+    "data/experiments/weak-supervision-v1/diagnosis-01/DIAGNOSIS.json": {
+      "bytes": 51296,
+      "sha256": "4f0df42a25797eb91ffd3fe76d7f7e1d0e8551b0eb28ab8b82f6993c4679dd02"
+    },
+    "data/experiments/weak-supervision-v1/diagnosis-01/validation.json": {
+      "bytes": 2869,
+      "sha256": "0f8bb1521f594e08c3316450c77eb903f516d21de0bf3b613945d8617c45fa80"
+    }
+  },
+  "limitations": [
+    "All four sessions are development data.",
+    "Unlabeled candidates are unknown, not negatives.",
+    "Assistant nonplaying labels are not human ordinary-rally preference negatives.",
+    "56 highlights are editorial intervals, not complete rally-boundary truth.",
+    "The local historical source commit and WIP remain separate from this documentation delivery."
+  ]
+}
