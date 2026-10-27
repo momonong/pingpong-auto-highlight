@@ -1,0 +1,25 @@
+{
+  "schema": "rally-edit-decisions-v1",
+  "version": "rally-edit-v2",
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "parent_plan_sha256": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca",
+  "decisions": [
+    {
+      "kind": "presentation_acceptance",
+      "actor": "human-user",
+      "accepted": true,
+      "candidate_id": "b2",
+      "media_sha256": "168ce86c09060c7c9fb103a3d2cb5d26c9d35987c50ae89b980fd527ba0b392b",
+      "requested_source_range": [
+        26.75,
+        32.7
+      ],
+      "render_source_range": [
+        26.733333333333334,
+        32.7
+      ],
+      "feedback_record": "../docs/evidence/rally-edit-v1/human-chat-feedback-03.json",
+      "render_manifest": "../data/experiments/rally-edit-v1/tail-refinement-01/manifest.json"
+    }
+  ]
+}

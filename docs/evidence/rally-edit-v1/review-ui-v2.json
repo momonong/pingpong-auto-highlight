@@ -1,0 +1,58 @@
+{
+  "created_at": "2026-09-18T06:50:56.189957+00:00",
+  "branch": "codex/rally-edit-comparison",
+  "head": "58ae3a3f77ec9aba53119f8ec3d06db777d27b67",
+  "uncommitted": true,
+  "plan_sha256": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca",
+  "unchanged_media_verified": 27,
+  "code_sha256": {
+    "src/pingpong_highlight/edit_review.py": "06f714c0ef258dffafe78f2c2014a9fa363e91b7bbd5ab58981f1541948594f7",
+    "src/pingpong_highlight/static/edit-review/index.html": "f1e4acabfe2100849482e9a5b46e5a77426f0b7cd280f0d002e5d94ae25be53f",
+    "src/pingpong_highlight/static/edit-review/review.js": "e57ab6cbadf8f4dc83375b6439c4d9f85c52c200021e9827f94d5c934b73e626",
+    "tests/test_edit_review.py": "444da99449a280a7361f728ef02bdde562b6db97ea4af9811ae8473b5423d8ac"
+  },
+  "browser_checks": {
+    "306": "ended 6.766667 s, decoded width 640",
+    "778": "played; replayed; paused at 2.7 s, sought forward to 3.7 s, visible rally frame",
+    "M": "ended 43.4 s",
+    "ratings": "complete/rhythm/note separate; reverse order restored after reload",
+    "gate": "all six complete enabled reels; point-6 uncertain disabled again",
+    "persistence": "14 fixture records; server outage visibly failed; retry after restart succeeded without duplication",
+    "export": "GET 200; browser download event observed"
+  },
+  "tests": {
+    "affected_passed": 18,
+    "seconds": 2.07,
+    "ruff": "passed",
+    "diff_check": "passed",
+    "full_suite_rerun": false
+  },
+  "fixture": {
+    "records": 14,
+    "sha256": "312431afddd1fbeeeb21d81d86a2bb4da438f5ede9d79f1405fef1a0dc6595de",
+    "excluded_from_human_acceptance": true
+  },
+  "human_records_at_check": 0,
+  "human_acceptance": "pending",
+  "preservation": {
+    "main_overlay_files_unchanged": 88,
+    "source_and_original_annotation_writes": 0,
+    "ranking_changes": 0,
+    "gpu_jobs": 0,
+    "model_calls": 0,
+    "third_party_media_uploads": 0
+  },
+  "limitations": [
+    "Old multi-player crash root cause not isolated",
+    "Browser playback sampled three media; prior 27-file FFmpeg verification retained",
+    "No human auditory or completeness/pacing/transition acceptance yet",
+    "One server process per feedback file; no multi-reviewer merge or old localStorage import"
+  ],
+  "handoff": {
+    "review_port": 8876,
+    "fixture_port_stopped": 8877,
+    "review_service_left_running": true,
+    "worktree_retained": true,
+    "commit_push_merge_deploy": false
+  }
+}
