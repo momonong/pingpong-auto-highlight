@@ -1,0 +1,30 @@
+{
+  "schema": "rally-edit-human-chat-feedback-v1",
+  "feedback_id": "rally-edit-b2-accepted-03",
+  "recorded_at": "2026-09-18T07:07:59.007629+00:00",
+  "actor": "human-user",
+  "channel": "user-chat",
+  "recorded_by": "assistant-transcription",
+  "source_thread_id": "01a0b31c-3844-7f00-9300-668f386598e6",
+  "verbatim": "有 我覺得這樣很完美 我們應該可以直接繼續開發了嗎",
+  "candidate_id": "b2",
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "plan_sha256": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca",
+  "media": {
+    "token": "582",
+    "sha256": "168ce86c09060c7c9fb103a3d2cb5d26c9d35987c50ae89b980fd527ba0b392b",
+    "requested_source_range": [
+      26.75,
+      32.7
+    ],
+    "render_source_range": [
+      26.733333333333334,
+      32.7
+    ],
+    "duration": 5.966667
+  },
+  "presentation_accepted": true,
+  "full_rally_completeness": null,
+  "highlight_selection": null,
+  "scope": "Exact displayed 582 presentation accepted; no global tail rule, event truth, selection decision or batch acceptance inferred."
+}

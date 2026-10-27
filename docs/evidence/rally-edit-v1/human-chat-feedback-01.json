@@ -1,0 +1,101 @@
+{
+  "schema": "rally-edit-human-chat-feedback-v1",
+  "feedback_id": "rally-edit-b2-entry-tail-01",
+  "recorded_at": "2026-09-18T07:01:28.236132+00:00",
+  "actor": "human-user",
+  "channel": "user-chat",
+  "recorded_by": "assistant-transcription",
+  "source_thread_id": "01a0b31c-3844-7f00-9300-668f386598e6",
+  "verbatim": "306 開頭有點太急 開頭的時候就已經在拋球了\n778 我覺得開頭的節奏剛剛好 不過結尾有點太拖 可以早點結束",
+  "candidate_id": "b2",
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "plan_sha256": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca",
+  "presentation": {
+    "shown_order": [
+      "306",
+      "778"
+    ],
+    "method_names_hidden": true,
+    "true_blinding_claimed": false
+  },
+  "media": {
+    "306": {
+      "file": "306.mp4",
+      "sha256": "36e3952c2114649b4f73d3aac4a818b3fc1333665a98c4b3f5d3bd8a2a0e8ff2",
+      "requested_source_range": [
+        28.25,
+        35
+      ],
+      "render_source_range": [
+        28.233333333333334,
+        35.0
+      ],
+      "duration": 6.766667
+    },
+    "778": {
+      "file": "778.mp4",
+      "sha256": "ec145aa36bc49199869011b22d5ecdce0e4baf51eec64d4322c8dfc895d140e8",
+      "requested_source_range": [
+        26.75,
+        35
+      ],
+      "render_source_range": [
+        26.733333333333334,
+        35.0
+      ],
+      "duration": 8.266667
+    }
+  },
+  "human_feedback": {
+    "306": {
+      "entry_pacing": "too_rushed",
+      "entry_observation": "開頭的時候就已經在拋球了",
+      "exit_pacing": null,
+      "overall_pacing": null,
+      "completeness": null
+    },
+    "778": {
+      "entry_pacing": "appropriate",
+      "exit_pacing": "too_long",
+      "requested_change": "可以早點結束",
+      "overall_pacing": null,
+      "completeness": null
+    }
+  },
+  "scope_limits": [
+    "Only the displayed b2 clips were judged",
+    "No exact preferred endpoint supplied",
+    "No acceptable interval inferred from one accepted start",
+    "No event boundary or original human annotation overwritten",
+    "No completeness or whole-batch acceptance inferred"
+  ],
+  "next_review": {
+    "token": "740",
+    "status": "pending-human",
+    "provenance": "pre-existing hypothesis reused after user requested earlier ending",
+    "media_sha256": "caa16637a3708f58c20f09da76e299f2862bb956b00531a6652646347798b548",
+    "requested_source_range": [
+      26.75,
+      32.5
+    ],
+    "render_source_range": [
+      26.733333333333334,
+      32.5
+    ],
+    "same_start_as": "778",
+    "only_changed_factor": "out_point",
+    "duration": 5.766667,
+    "checks": {
+      "full_av_decode": "passed-current-turn",
+      "media_sha256": "matches-original-packet",
+      "identical_to_point_1": true,
+      "previous_source_audio_correlation": 0.9972698804774764,
+      "endpoint_montage_reinspected": true
+    },
+    "questions": [
+      "終拍與結果是否清楚，或無法判定？",
+      "收尾太急、合適或太拖？"
+    ]
+  },
+  "storage": "Chat evidence is separate from the running browser-input journal; no browser actor or overall rating fabricated."
+}

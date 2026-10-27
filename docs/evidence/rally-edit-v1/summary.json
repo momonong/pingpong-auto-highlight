@@ -1,0 +1,686 @@
+{
+  "status": "prototype_and_media_verified_human_pending",
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "fixed_candidates": [
+    "b2",
+    "v4-3",
+    "v4-6",
+    "b15",
+    "v4-9",
+    "v4-11"
+  ],
+  "plan_sha256": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca",
+  "prior_reel_sha256": "45e416b17deb45c883985849401ceec2c546f1fadab62ecc91c8d44ef89e284a",
+  "human_complete": null,
+  "human_rhythm": null,
+  "human_transition": null,
+  "human_order": null,
+  "media_files": 27,
+  "exported_seconds": 393.000001,
+  "reels": [
+    {
+      "file": "K.mp4",
+      "sha256": "00685d5b8193d7eec0a40b5658a679bca4ce8d32e9d4f234363e3faf64b1a6b0",
+      "duration": 44.4,
+      "audio_duration": "44.400000",
+      "timeline": [
+        {
+          "candidate_id": "b2",
+          "source_range": [
+            26.733333333333334,
+            32.5
+          ],
+          "reel_range": [
+            0,
+            5.766667
+          ]
+        },
+        {
+          "candidate_id": "v4-3",
+          "source_range": [
+            44.36666666666667,
+            50.7
+          ],
+          "reel_range": [
+            5.766667,
+            12.1
+          ]
+        },
+        {
+          "candidate_id": "v4-6",
+          "source_range": [
+            76.23333333333333,
+            83.5
+          ],
+          "reel_range": [
+            12.1,
+            19.366667
+          ]
+        },
+        {
+          "candidate_id": "b15",
+          "source_range": [
+            89.86666666666666,
+            95.0
+          ],
+          "reel_range": [
+            19.366667,
+            24.5
+          ]
+        },
+        {
+          "candidate_id": "v4-9",
+          "source_range": [
+            118.5,
+            126.0
+          ],
+          "reel_range": [
+            24.5,
+            32.0
+          ]
+        },
+        {
+          "candidate_id": "v4-11",
+          "source_range": [
+            140.5,
+            152.9
+          ],
+          "reel_range": [
+            32.0,
+            44.4
+          ]
+        }
+      ],
+      "transition_guards": [
+        {
+          "left": "b2",
+          "right": "v4-3",
+          "outgoing_source_overlap": [
+            32.5,
+            32.5
+          ],
+          "incoming_source_overlap": [
+            44.36666666666667,
+            44.36666666666667
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "v4-3",
+          "right": "v4-6",
+          "outgoing_source_overlap": [
+            50.7,
+            50.7
+          ],
+          "incoming_source_overlap": [
+            76.23333333333333,
+            76.23333333333333
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "v4-6",
+          "right": "b15",
+          "outgoing_source_overlap": [
+            83.5,
+            83.5
+          ],
+          "incoming_source_overlap": [
+            89.86666666666666,
+            89.86666666666666
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "b15",
+          "right": "v4-9",
+          "outgoing_source_overlap": [
+            95.0,
+            95.0
+          ],
+          "incoming_source_overlap": [
+            118.5,
+            118.5
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "v4-9",
+          "right": "v4-11",
+          "outgoing_source_overlap": [
+            126.0,
+            126.0
+          ],
+          "incoming_source_overlap": [
+            140.5,
+            140.5
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        }
+      ],
+      "budget_overrun_seconds": 0
+    },
+    {
+      "file": "M.mp4",
+      "sha256": "a29497d4f5891b01f804281685694bf86b1d75557664fae098d8803d9926e1ed",
+      "duration": 43.4,
+      "audio_duration": "43.400000",
+      "timeline": [
+        {
+          "candidate_id": "b2",
+          "source_range": [
+            26.733333333333334,
+            32.5
+          ],
+          "reel_range": [
+            0,
+            5.766667
+          ]
+        },
+        {
+          "candidate_id": "v4-3",
+          "source_range": [
+            44.36666666666667,
+            50.7
+          ],
+          "reel_range": [
+            5.566667,
+            11.899999999999999
+          ]
+        },
+        {
+          "candidate_id": "v4-6",
+          "source_range": [
+            76.23333333333333,
+            83.5
+          ],
+          "reel_range": [
+            11.7,
+            18.966667
+          ]
+        },
+        {
+          "candidate_id": "b15",
+          "source_range": [
+            89.86666666666666,
+            95.0
+          ],
+          "reel_range": [
+            18.766666999999998,
+            23.9
+          ]
+        },
+        {
+          "candidate_id": "v4-9",
+          "source_range": [
+            118.5,
+            126.0
+          ],
+          "reel_range": [
+            23.7,
+            31.2
+          ]
+        },
+        {
+          "candidate_id": "v4-11",
+          "source_range": [
+            140.5,
+            152.9
+          ],
+          "reel_range": [
+            31.0,
+            43.4
+          ]
+        }
+      ],
+      "transition_guards": [
+        {
+          "left": "b2",
+          "right": "v4-3",
+          "outgoing_source_overlap": [
+            32.3,
+            32.5
+          ],
+          "incoming_source_overlap": [
+            44.36666666666667,
+            44.56666666666667
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "v4-3",
+          "right": "v4-6",
+          "outgoing_source_overlap": [
+            50.5,
+            50.7
+          ],
+          "incoming_source_overlap": [
+            76.23333333333333,
+            76.43333333333334
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "v4-6",
+          "right": "b15",
+          "outgoing_source_overlap": [
+            83.3,
+            83.5
+          ],
+          "incoming_source_overlap": [
+            89.86666666666666,
+            90.06666666666666
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "b15",
+          "right": "v4-9",
+          "outgoing_source_overlap": [
+            94.8,
+            95.0
+          ],
+          "incoming_source_overlap": [
+            118.5,
+            118.7
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "v4-9",
+          "right": "v4-11",
+          "outgoing_source_overlap": [
+            125.8,
+            126.0
+          ],
+          "incoming_source_overlap": [
+            140.5,
+            140.7
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        }
+      ],
+      "budget_overrun_seconds": 0
+    },
+    {
+      "file": "N.mp4",
+      "sha256": "0e722aca3b0bf675cab9fe74cb6fc0b58f8dfe2882eb08814b03c7988f0b7496",
+      "duration": 44.4,
+      "audio_duration": "44.400000",
+      "timeline": [
+        {
+          "candidate_id": "v4-11",
+          "source_range": [
+            140.5,
+            152.9
+          ],
+          "reel_range": [
+            0,
+            12.4
+          ]
+        },
+        {
+          "candidate_id": "b2",
+          "source_range": [
+            26.733333333333334,
+            32.5
+          ],
+          "reel_range": [
+            12.4,
+            18.166667
+          ]
+        },
+        {
+          "candidate_id": "v4-3",
+          "source_range": [
+            44.36666666666667,
+            50.7
+          ],
+          "reel_range": [
+            18.166667,
+            24.5
+          ]
+        },
+        {
+          "candidate_id": "v4-6",
+          "source_range": [
+            76.23333333333333,
+            83.5
+          ],
+          "reel_range": [
+            24.5,
+            31.766666999999998
+          ]
+        },
+        {
+          "candidate_id": "b15",
+          "source_range": [
+            89.86666666666666,
+            95.0
+          ],
+          "reel_range": [
+            31.766666999999998,
+            36.9
+          ]
+        },
+        {
+          "candidate_id": "v4-9",
+          "source_range": [
+            118.5,
+            126.0
+          ],
+          "reel_range": [
+            36.9,
+            44.4
+          ]
+        }
+      ],
+      "transition_guards": [
+        {
+          "left": "v4-11",
+          "right": "b2",
+          "outgoing_source_overlap": [
+            152.9,
+            152.9
+          ],
+          "incoming_source_overlap": [
+            26.733333333333334,
+            26.733333333333334
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "b2",
+          "right": "v4-3",
+          "outgoing_source_overlap": [
+            32.5,
+            32.5
+          ],
+          "incoming_source_overlap": [
+            44.36666666666667,
+            44.36666666666667
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "v4-3",
+          "right": "v4-6",
+          "outgoing_source_overlap": [
+            50.7,
+            50.7
+          ],
+          "incoming_source_overlap": [
+            76.23333333333333,
+            76.23333333333333
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "v4-6",
+          "right": "b15",
+          "outgoing_source_overlap": [
+            83.5,
+            83.5
+          ],
+          "incoming_source_overlap": [
+            89.86666666666666,
+            89.86666666666666
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        },
+        {
+          "left": "b15",
+          "right": "v4-9",
+          "outgoing_source_overlap": [
+            95.0,
+            95.0
+          ],
+          "incoming_source_overlap": [
+            118.5,
+            118.5
+          ],
+          "observed_event_overlap": false,
+          "human_transition_accepted": null
+        }
+      ],
+      "budget_overrun_seconds": 0
+    }
+  ],
+  "comparisons": [
+    {
+      "stage_label": "事件與邊界",
+      "difference": "只改入點：補入發球準備；出點相同。",
+      "media": [
+        {
+          "token": "306",
+          "file": "306.mp4",
+          "sha256": "36e3952c2114649b4f73d3aac4a818b3fc1333665a98c4b3f5d3bd8a2a0e8ff2",
+          "duration": 6.766667,
+          "requested_source_range": [
+            28.25,
+            35
+          ],
+          "render_source_range": [
+            28.233333333333334,
+            35.0
+          ]
+        },
+        {
+          "token": "778",
+          "file": "778.mp4",
+          "sha256": "ec145aa36bc49199869011b22d5ecdce0e4baf51eec64d4322c8dfc895d140e8",
+          "duration": 8.266667,
+          "requested_source_range": [
+            26.75,
+            35
+          ],
+          "render_source_range": [
+            26.733333333333334,
+            35.0
+          ]
+        }
+      ]
+    },
+    {
+      "stage_label": "事件與邊界",
+      "difference": "只改出點：觀察是否缺少最後攻防與結果。",
+      "media": [
+        {
+          "token": "447",
+          "file": "447.mp4",
+          "sha256": "48b087f5ff47dd48957f518ce2b322c70b517e22352ddf7cb7aeeb31745fa6fa",
+          "duration": 5.133333,
+          "requested_source_range": [
+            89.892,
+            95
+          ],
+          "render_source_range": [
+            89.86666666666666,
+            95.0
+          ]
+        },
+        {
+          "token": "815",
+          "file": "815.mp4",
+          "sha256": "8cc735706dc224eb6e4f8d2201338fc610e89bf65988ee5be092c10b95b733cf",
+          "duration": 3.8,
+          "requested_source_range": [
+            89.892,
+            93.644
+          ],
+          "render_source_range": [
+            89.86666666666666,
+            93.66666666666667
+          ]
+        }
+      ]
+    },
+    {
+      "stage_label": "事件與邊界",
+      "difference": "只改入點；兩片尾部都故意保留原本疑似下一分，供核對。",
+      "media": [
+        {
+          "token": "167",
+          "file": "167.mp4",
+          "sha256": "168cd45479b4305b6a4e450fe19daad5fee803792e7ffd520b64acb46608d440",
+          "duration": 13.1,
+          "requested_source_range": [
+            120.828,
+            133.875
+          ],
+          "render_source_range": [
+            120.8,
+            133.9
+          ]
+        },
+        {
+          "token": "223",
+          "file": "223.mp4",
+          "sha256": "0cf4861e1e497f5e11e8dbe682507358b91626277f05a8a0d580fdd637d2c51b",
+          "duration": 15.4,
+          "requested_source_range": [
+            118.5,
+            133.875
+          ],
+          "render_source_range": [
+            118.5,
+            133.9
+          ]
+        }
+      ]
+    },
+    {
+      "stage_label": "事件與邊界",
+      "difference": "入點固定，只改出點：排除下一分。原始候選不變。",
+      "media": [
+        {
+          "token": "201",
+          "file": "201.mp4",
+          "sha256": "18390068e2dfde85e1879f4e6dc8ab9b15cbed0525d332632146f8c5fc95f608",
+          "duration": 7.5,
+          "requested_source_range": [
+            118.5,
+            126
+          ],
+          "render_source_range": [
+            118.5,
+            126.0
+          ]
+        },
+        {
+          "token": "265",
+          "file": "265.mp4",
+          "sha256": "0cf4861e1e497f5e11e8dbe682507358b91626277f05a8a0d580fdd637d2c51b",
+          "duration": 15.4,
+          "requested_source_range": [
+            118.5,
+            133.875
+          ],
+          "render_source_range": [
+            118.5,
+            133.9
+          ]
+        }
+      ]
+    },
+    {
+      "stage_label": "觀看節奏",
+      "difference": "完整事件包絡相同，只減去已走離球桌的尾段；不因短就視為較好。",
+      "media": [
+        {
+          "token": "972",
+          "file": "972.mp4",
+          "sha256": "ec145aa36bc49199869011b22d5ecdce0e4baf51eec64d4322c8dfc895d140e8",
+          "duration": 8.266667,
+          "requested_source_range": [
+            26.75,
+            35
+          ],
+          "render_source_range": [
+            26.733333333333334,
+            35.0
+          ]
+        },
+        {
+          "token": "740",
+          "file": "740.mp4",
+          "sha256": "caa16637a3708f58c20f09da76e299f2862bb956b00531a6652646347798b548",
+          "duration": 5.766667,
+          "requested_source_range": [
+            26.75,
+            32.5
+          ],
+          "render_source_range": [
+            26.733333333333334,
+            32.5
+          ]
+        }
+      ]
+    },
+    {
+      "stage_label": "觀看節奏",
+      "difference": "相同發球與相持，只差0.8秒收尾；與P、P+的不同入點分開。",
+      "media": [
+        {
+          "token": "945",
+          "file": "945.mp4",
+          "sha256": "12bdbd715533c5773341916ce76f2d84dd1f473636c890adbcfb6db72258cfc5",
+          "duration": 12.4,
+          "requested_source_range": [
+            140.5,
+            152.9
+          ],
+          "render_source_range": [
+            140.5,
+            152.9
+          ]
+        },
+        {
+          "token": "313",
+          "file": "313.mp4",
+          "sha256": "4e8686e4bfed00eba0151371df8436fe3abe32b6bd475e2a67ca1dd74de62d1f",
+          "duration": 11.6,
+          "requested_source_range": [
+            140.5,
+            152.1
+          ],
+          "render_source_range": [
+            140.5,
+            152.1
+          ]
+        }
+      ]
+    }
+  ],
+  "cpu_clip_render_seconds_excludes_reels_qa_inspection": 62.18192370989709,
+  "gpu_calls": 0,
+  "third_party_uploads": 0,
+  "source_observation": "assistant visual 2fps context and 8fps boundaries; not human truth",
+  "browser_validation": "HTML visible; in-app browser crashed on MP4 playback twice; playback and feedback export end-to-end not accepted",
+  "software_tests": {
+    "passed": 187,
+    "seconds": 19.3
+  },
+  "limits": [
+    "one known development source",
+    "only one of six clips overlaps original human highlight",
+    "new human ratings absent",
+    "no full-dataset acceptance rate",
+    "audio signal verified but human listening pending",
+    "dissolve has visible ghosting; preference unconfirmed"
+  ]
+}

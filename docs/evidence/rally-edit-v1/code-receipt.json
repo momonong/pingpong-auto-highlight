@@ -1,0 +1,16 @@
+{
+  "base": "58ae3a3f77ec9aba53119f8ec3d06db777d27b67",
+  "branch": "codex/rally-edit-comparison",
+  "render_executed_sha256": "e5ae84ea232cbf31a71d581a2d3a49daf3a59ef96992f7b7a19a8a336a076663",
+  "delivered_files": {
+    "src/pingpong_highlight/edit_comparison.py": "6e01b9eb9ca7fd804d0598fa02927226d30bf2b47017b3a6bdaffbeb237810f3",
+    "scripts/verify-edit-media.py": "90ba99242fa63a8e88ad8761620ba7de8b2bcf70bbd4a8cf94be39aae55cf4fe",
+    "tests/test_edit_comparison.py": "05bd934e207eea97d15dc14b337f114d69e2fdaa78ad6baccf2635c900c22da2",
+    "examples/rally-edit-v1.json": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca"
+  },
+  "post_render_changes": "HTML: deferred media loading, one active player, six-clip completeness gate, reverse reel order, media/sequence binding. Validator adds workload cap. Encoding and source cuts unchanged.",
+  "input_overlay": {
+    "files": 88,
+    "manifest_sha256": "ccfe08ca335e5c404f7291c61fd9441d33ec5f63bee1390d5cc5a4fa27303b49"
+  }
+}

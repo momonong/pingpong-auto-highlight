@@ -1,0 +1,599 @@
+{
+  "version": "rally-edit-v1",
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "source_duration": 221.687,
+  "frozen_packet_sha256": "77b3e923a533d664dbbc350705fb9acd7e6f193eb4127ae9719a2a016d0e7a35",
+  "frozen_reel_sha256": "45e416b17deb45c883985849401ceec2c546f1fadab62ecc91c8d44ef89e284a",
+  "frozen_order": [
+    "b2",
+    "v4-3",
+    "v4-6",
+    "b15",
+    "v4-9",
+    "v4-11"
+  ],
+  "presentation_order": [
+    "v4-11",
+    "b2",
+    "v4-3",
+    "v4-6",
+    "b15",
+    "v4-9"
+  ],
+  "presentation_hypothesis": "Same clips; long exchange first, remaining chronological. Playback order only, no rank edits.",
+  "blind_seed": 18092026,
+  "event_semantics": "Serve movement onset and visible end of play, bracketed at 8 fps; exact contact, bounce, scoring winner may be unknown. Assistant inspection is not human truth.",
+  "annotation_time_semantics": "unknown: historical contract human-selected point interval does not distinguish event vs preferred edit vs coarse highlight",
+  "max_output_seconds": 650,
+  "max_media_files": 40,
+  "candidates": [
+    {
+      "candidate_id": "b2",
+      "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "original_candidate_range": [
+        29.75,
+        33.5
+      ],
+      "original_render": [
+        28.25,
+        35.0
+      ],
+      "event": {
+        "start_uncertainty": [
+          27.625,
+          28.125
+        ],
+        "end_uncertainty": [
+          31.125,
+          31.5
+        ],
+        "exact_serve_contact": null,
+        "exact_last_contact": null,
+        "winner": null,
+        "next_start_lower_bound": null,
+        "provenance": "assistant_visual_inspection_not_human_truth",
+        "sample_fps": 8,
+        "human_complete": null
+      },
+      "context": [
+        25,
+        37
+      ],
+      "proposed_acceptable_render": {
+        "in": [
+          26.5,
+          27.25
+        ],
+        "out": [
+          32.1,
+          33.0
+        ],
+        "status": "hypothesis_pending_human"
+      },
+      "human_acceptable_render": {
+        "in": null,
+        "out": null
+      },
+      "selected_render": [
+        26.75,
+        32.5
+      ],
+      "selected_render_reason": "原入點 28.25 已在發球動作後；31.5 雙方停止對打，35 秒保留了走離球桌。",
+      "inspection_evidence": [
+        "serve1.jpg",
+        "end1.jpg"
+      ],
+      "human_original_annotations": [],
+      "human_feedback": {
+        "complete": null,
+        "rhythm": null
+      },
+      "version": 1
+    },
+    {
+      "candidate_id": "v4-3",
+      "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "original_candidate_range": [
+        45.875,
+        49.192
+      ],
+      "original_render": [
+        44.375,
+        50.692
+      ],
+      "event": {
+        "start_uncertainty": [
+          44.875,
+          45.375
+        ],
+        "end_uncertainty": [
+          48.625,
+          49.125
+        ],
+        "exact_serve_contact": null,
+        "exact_last_contact": null,
+        "winner": null,
+        "next_start_lower_bound": 52.75,
+        "provenance": "assistant_visual_inspection_not_human_truth",
+        "sample_fps": 8,
+        "human_complete": null
+      },
+      "context": [
+        41,
+        54
+      ],
+      "proposed_acceptable_render": {
+        "in": [
+          44.0,
+          44.5
+        ],
+        "out": [
+          49.5,
+          50.0
+        ],
+        "status": "hypothesis_pending_human"
+      },
+      "human_acceptable_render": {
+        "in": null,
+        "out": null
+      },
+      "selected_render": [
+        44.375,
+        50.692
+      ],
+      "selected_render_reason": "原入點包含發球準備，原出點已在下一分準備階段；本輪維持此段，不把每段都改短。",
+      "inspection_evidence": [
+        "serve2b.jpg",
+        "end2b.jpg"
+      ],
+      "human_original_annotations": [],
+      "human_feedback": {
+        "complete": null,
+        "rhythm": null
+      },
+      "version": 1
+    },
+    {
+      "candidate_id": "v4-6",
+      "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "original_candidate_range": [
+        80.408,
+        86.875
+      ],
+      "original_render": [
+        78.908,
+        88.375
+      ],
+      "event": {
+        "start_uncertainty": [
+          77.25,
+          77.875
+        ],
+        "end_uncertainty": [
+          81.875,
+          82.5
+        ],
+        "exact_serve_contact": null,
+        "exact_last_contact": null,
+        "winner": null,
+        "next_start_lower_bound": 90.75,
+        "provenance": "assistant_visual_inspection_not_human_truth",
+        "sample_fps": 8,
+        "human_complete": null
+      },
+      "context": [
+        75,
+        95
+      ],
+      "proposed_acceptable_render": {
+        "in": [
+          76.0,
+          76.75
+        ],
+        "out": [
+          83.0,
+          83.75
+        ],
+        "status": "hypothesis_pending_human"
+      },
+      "human_acceptable_render": {
+        "in": null,
+        "out": null
+      },
+      "selected_render": [
+        76.25,
+        83.5
+      ],
+      "selected_render_reason": "原入點 78.908 漏發球；82.5 已鬆開準備姿態，原尾巴延續到下一分準備。",
+      "inspection_evidence": [
+        "serve3.jpg",
+        "end3.jpg"
+      ],
+      "human_original_annotations": [],
+      "human_feedback": {
+        "complete": null,
+        "rhythm": null
+      },
+      "version": 1
+    },
+    {
+      "candidate_id": "b15",
+      "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "original_candidate_range": [
+        91.392,
+        92.144
+      ],
+      "original_render": [
+        89.892,
+        93.644
+      ],
+      "event": {
+        "start_uncertainty": [
+          90.875,
+          91.375
+        ],
+        "end_uncertainty": [
+          93.625,
+          94.125
+        ],
+        "exact_serve_contact": null,
+        "exact_last_contact": null,
+        "winner": null,
+        "next_start_lower_bound": 97.75,
+        "provenance": "assistant_visual_inspection_not_human_truth",
+        "sample_fps": 8,
+        "human_complete": null
+      },
+      "context": [
+        87,
+        99
+      ],
+      "proposed_acceptable_render": {
+        "in": [
+          89.75,
+          90.25
+        ],
+        "out": [
+          94.65,
+          95.4
+        ],
+        "status": "hypothesis_pending_human"
+      },
+      "human_acceptable_render": {
+        "in": null,
+        "out": null
+      },
+      "selected_render": [
+        89.892,
+        95
+      ],
+      "selected_render_reason": "原出點 93.644 位在最後攻防轉為鬆開姿態之間；延到95保留結果脈絡，下一分發球晚於97.75。",
+      "inspection_evidence": [
+        "serve4.jpg",
+        "end4.jpg"
+      ],
+      "human_original_annotations": [],
+      "human_feedback": {
+        "complete": null,
+        "rhythm": null
+      },
+      "version": 1
+    },
+    {
+      "candidate_id": "v4-9",
+      "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "original_candidate_range": [
+        122.328,
+        132.375
+      ],
+      "original_render": [
+        120.828,
+        133.875
+      ],
+      "event": {
+        "start_uncertainty": [
+          119.625,
+          120.125
+        ],
+        "end_uncertainty": [
+          124.125,
+          124.75
+        ],
+        "exact_serve_contact": null,
+        "exact_last_contact": null,
+        "winner": null,
+        "next_start_lower_bound": 132.875,
+        "provenance": "assistant_visual_inspection_not_human_truth",
+        "sample_fps": 8,
+        "human_complete": null
+      },
+      "context": [
+        117,
+        138
+      ],
+      "proposed_acceptable_render": {
+        "in": [
+          118.5,
+          119.0
+        ],
+        "out": [
+          125.5,
+          126.25
+        ],
+        "status": "hypothesis_pending_human"
+      },
+      "human_acceptable_render": {
+        "in": null,
+        "out": null
+      },
+      "selected_render": [
+        118.5,
+        126
+      ],
+      "selected_render_reason": "原入點漏發球；133秒另一分發球可見。只保留原核心開始所屬的一分，原提案與排序不改。",
+      "inspection_evidence": [
+        "serve5.jpg",
+        "end5b.jpg",
+        "next5.jpg"
+      ],
+      "human_original_annotations": [],
+      "human_feedback": {
+        "complete": null,
+        "rhythm": null
+      },
+      "version": 1
+    },
+    {
+      "candidate_id": "v4-11",
+      "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "original_candidate_range": [
+        143.0,
+        155.125
+      ],
+      "original_render": [
+        141.5,
+        156.625
+      ],
+      "event": {
+        "start_uncertainty": [
+          141.875,
+          142.375
+        ],
+        "end_uncertainty": [
+          150.625,
+          151.25
+        ],
+        "exact_serve_contact": null,
+        "exact_last_contact": null,
+        "winner": null,
+        "next_start_lower_bound": null,
+        "provenance": "assistant_visual_inspection_not_human_truth",
+        "sample_fps": 8,
+        "human_complete": null
+      },
+      "context": [
+        136,
+        161
+      ],
+      "proposed_acceptable_render": {
+        "in": [
+          140.5,
+          141.25
+        ],
+        "out": [
+          152.1,
+          152.9
+        ],
+        "status": "hypothesis_pending_human"
+      },
+      "human_acceptable_render": {
+        "in": null,
+        "out": null
+      },
+      "selected_render": [
+        140.5,
+        152.9
+      ],
+      "selected_render_reason": "發球與長相持可見；151.25轉為鬆開姿態。P收尾151.492較緊，family原尾156.625已包含長時間走動。",
+      "inspection_evidence": [
+        "serve6.jpg",
+        "end6.jpg"
+      ],
+      "human_original_annotations": [
+        {
+          "created_at": "2026-08-12T17:23:38.939765+00:00",
+          "end_ms": 152900,
+          "id": "cd934039319e4f218cb3ca8334f290ba",
+          "label": "highlight",
+          "note": "相持",
+          "start_ms": 140500,
+          "updated_at": "2026-08-12T17:23:38.939765+00:00",
+          "upload_id": "a6ef1ae5b64d4f62b19bf2d850b9282b"
+        }
+      ],
+      "human_feedback": {
+        "complete": null,
+        "rhythm": null
+      },
+      "version": 1
+    }
+  ],
+  "comparisons": [
+    {
+      "id": "start-1",
+      "candidate_id": "b2",
+      "stage": "boundary",
+      "variants": [
+        {
+          "name": "original",
+          "range": [
+            28.25,
+            35
+          ]
+        },
+        {
+          "name": "earlier-start",
+          "range": [
+            26.75,
+            35
+          ]
+        }
+      ],
+      "difference": "只改入點：補入發球準備；出點相同。"
+    },
+    {
+      "id": "end-4",
+      "candidate_id": "b15",
+      "stage": "boundary",
+      "variants": [
+        {
+          "name": "original",
+          "range": [
+            89.892,
+            93.644
+          ]
+        },
+        {
+          "name": "visible-ending",
+          "range": [
+            89.892,
+            95
+          ]
+        }
+      ],
+      "difference": "只改出點：觀察是否缺少最後攻防與結果。"
+    },
+    {
+      "id": "start-5",
+      "candidate_id": "v4-9",
+      "stage": "boundary",
+      "variants": [
+        {
+          "name": "original",
+          "range": [
+            120.828,
+            133.875
+          ]
+        },
+        {
+          "name": "earlier-start",
+          "range": [
+            118.5,
+            133.875
+          ]
+        }
+      ],
+      "difference": "只改入點；兩片尾部都故意保留原本疑似下一分，供核對。"
+    },
+    {
+      "id": "purity-5",
+      "candidate_id": "v4-9",
+      "stage": "boundary",
+      "variants": [
+        {
+          "name": "earlier-start",
+          "range": [
+            118.5,
+            133.875
+          ]
+        },
+        {
+          "name": "exclude-next-point",
+          "range": [
+            118.5,
+            126
+          ]
+        }
+      ],
+      "difference": "入點固定，只改出點：排除下一分。原始候選不變。"
+    },
+    {
+      "id": "tail-1",
+      "candidate_id": "b2",
+      "stage": "rhythm",
+      "variants": [
+        {
+          "name": "long-tail",
+          "range": [
+            26.75,
+            35
+          ]
+        },
+        {
+          "name": "reaction-tail",
+          "range": [
+            26.75,
+            32.5
+          ]
+        }
+      ],
+      "difference": "完整事件包絡相同，只減去已走離球桌的尾段；不因短就視為較好。"
+    },
+    {
+      "id": "tail-6",
+      "candidate_id": "v4-11",
+      "stage": "rhythm",
+      "variants": [
+        {
+          "name": "brief-reaction",
+          "range": [
+            140.5,
+            152.1
+          ]
+        },
+        {
+          "name": "longer-reaction",
+          "range": [
+            140.5,
+            152.9
+          ]
+        }
+      ],
+      "difference": "相同發球與相持，只差0.8秒收尾；與P、P+的不同入點分開。"
+    }
+  ],
+  "human_feedback": {
+    "complete": null,
+    "rhythm": null,
+    "transition": null,
+    "order": null
+  },
+  "human_feedback_history": [
+    {
+      "created_at": "2026-09-17T09:57:14.787554+00:00",
+      "origin": "current user conversation",
+      "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+      "clip": "P.mp4",
+      "clip_sha256": "eb08e69eaa9e73546cce1ad9dba4e9118794b0c4290733ca2d5add8c206e6bd1",
+      "verbatim": "我應該會收錄 不過終點有點被截斷 雖然看得出來最後一球結束了 但感覺有點突然結束的感覺 不夠流暢",
+      "interpretation": {
+        "worth_including": "tentative_yes",
+        "last_shot_end_visible": true,
+        "ending_abrupt": true,
+        "whole_rally_from_serve_confirmed": null
+      },
+      "human_seconds": null,
+      "blinded": false,
+      "automatic_truth_migration": false
+    },
+    {
+      "quote": "其實應該Ｘ比較接近 但有幾球的剪接的時間點沒有到真的很好 有辦法解決的嗎",
+      "source": "actual user message 2026-09-18",
+      "followup_quote": "開頭的第一球 都已經結束了 有點拖太久 然後也有一球是才剛結束就切掉了 話說感覺剪接會不會太突兀？ 但感覺又還好 不過我覺得一分鐘好像有點太短 幫我去查一下 是不是現在 insta reels 的時間限制是一分鐘 我們先以 insta reels 的時間限制為主好了",
+      "reviewed_artifact_sha256": "45e416b17deb45c883985849401ceec2c546f1fadab62ecc91c8d44ef89e284a",
+      "preference": "X closer than Y; tentative phrasing",
+      "boundary_quality": "first clip tail too long; another unspecified clip ends too soon",
+      "per_clip_inclusion": null,
+      "per_clip_completeness": null,
+      "acceptance_rate": null,
+      "correction_seconds": null,
+      "randomized_blind_trial": false,
+      "automatic_truth_migration": false
+    }
+  ],
+  "user_current_context_feedback": {
+    "verbatim": "好一點，但略急",
+    "specific_media_binding": null,
+    "source": "current user prompt; do not assign to P-plus without a receipt"
+  }
+}

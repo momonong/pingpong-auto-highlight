@@ -1,0 +1,569 @@
+{
+  "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+  "clips": [
+    {
+      "file": "point-1.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 26.733333333333334,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2297526851634302,
+          "threshold": 12
+        },
+        {
+          "output_time": 5.733333666666667,
+          "planned_source_time": 32.46666666666667,
+          "best_shift_seconds": -0.03333333333333333,
+          "gray_rmse": 2.2574644700046407,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9972698804774764,
+      "audio_rms": 0.07176988571882248,
+      "audio_peak": 0.7728209495544434,
+      "audio_decoded_samples": 46133,
+      "passed": true
+    },
+    {
+      "file": "point-2.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 44.36666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.201713186801798,
+          "threshold": 12
+        },
+        {
+          "output_time": 6.299999666666666,
+          "planned_source_time": 50.66666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.2619627968745295,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.998348995606315,
+      "audio_rms": 0.08607997000217438,
+      "audio_peak": 0.7400389909744263,
+      "audio_decoded_samples": 50667,
+      "passed": true
+    },
+    {
+      "file": "point-3.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 76.23333333333333,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2539382405489958,
+          "threshold": 12
+        },
+        {
+          "output_time": 7.233333666666667,
+          "planned_source_time": 83.46666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.0874875249128237,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9965180104442739,
+      "audio_rms": 0.06818630546331406,
+      "audio_peak": 0.6912888288497925,
+      "audio_decoded_samples": 58133,
+      "passed": true
+    },
+    {
+      "file": "point-4.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 89.86666666666666,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2372895443939818,
+          "threshold": 12
+        },
+        {
+          "output_time": 5.099999666666667,
+          "planned_source_time": 94.96666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.0754684879430103,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9989493556520216,
+      "audio_rms": 0.12762539088726044,
+      "audio_peak": 1.044023036956787,
+      "audio_decoded_samples": 41067,
+      "passed": true
+    },
+    {
+      "file": "point-5.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 118.5,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.338440738737099,
+          "threshold": 12
+        },
+        {
+          "output_time": 7.466666666666667,
+          "planned_source_time": 125.96666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.2288823806263682,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9967009488683183,
+      "audio_rms": 0.08381973206996918,
+      "audio_peak": 0.5036805272102356,
+      "audio_decoded_samples": 60000,
+      "passed": true
+    },
+    {
+      "file": "point-6.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 140.5,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.3246461791738955,
+          "threshold": 12
+        },
+        {
+          "output_time": 12.366666666666667,
+          "planned_source_time": 152.86666666666667,
+          "best_shift_seconds": -0.03333333333333333,
+          "gray_rmse": 2.0573631316701375,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9945384153974031,
+      "audio_rms": 0.07915680855512619,
+      "audio_peak": 1.0969102382659912,
+      "audio_decoded_samples": 99200,
+      "passed": true
+    },
+    {
+      "file": "306.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 28.233333333333334,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2818985485945793,
+          "threshold": 12
+        },
+        {
+          "output_time": 6.733333666666667,
+          "planned_source_time": 34.96666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.125077612961727,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9953022168784023,
+      "audio_rms": 0.07414349913597107,
+      "audio_peak": 0.8359118700027466,
+      "audio_decoded_samples": 54133,
+      "passed": true
+    },
+    {
+      "file": "778.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 26.733333333333334,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2297526851634302,
+          "threshold": 12
+        },
+        {
+          "output_time": 8.233333666666667,
+          "planned_source_time": 34.96666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.1050864326409235,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.996603461367653,
+      "audio_rms": 0.07213062793016434,
+      "audio_peak": 0.7728209495544434,
+      "audio_decoded_samples": 66133,
+      "passed": true
+    },
+    {
+      "file": "447.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 89.86666666666666,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2372895443939818,
+          "threshold": 12
+        },
+        {
+          "output_time": 5.099999666666667,
+          "planned_source_time": 94.96666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.0754684879430103,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9989493556520216,
+      "audio_rms": 0.12762539088726044,
+      "audio_peak": 1.044023036956787,
+      "audio_decoded_samples": 41067,
+      "passed": true
+    },
+    {
+      "file": "815.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 89.86666666666666,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2372895443939818,
+          "threshold": 12
+        },
+        {
+          "output_time": 3.7666666666666666,
+          "planned_source_time": 93.63333333333334,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.1232100304334787,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9985980878482057,
+      "audio_rms": 0.11483167111873627,
+      "audio_peak": 1.044023036956787,
+      "audio_decoded_samples": 30400,
+      "passed": true
+    },
+    {
+      "file": "167.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 120.8,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.4452027923828237,
+          "threshold": 12
+        },
+        {
+          "output_time": 13.066666666666666,
+          "planned_source_time": 133.86666666666667,
+          "best_shift_seconds": -0.03333333333333333,
+          "gray_rmse": 2.1088767415643597,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9958293590096713,
+      "audio_rms": 0.07619082927703857,
+      "audio_peak": 0.5297365188598633,
+      "audio_decoded_samples": 104800,
+      "passed": true
+    },
+    {
+      "file": "223.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 118.5,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.338440738737099,
+          "threshold": 12
+        },
+        {
+          "output_time": 15.366666666666667,
+          "planned_source_time": 133.86666666666667,
+          "best_shift_seconds": -0.03333333333333333,
+          "gray_rmse": 2.1150091935707724,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.995668611780171,
+      "audio_rms": 0.08193526417016983,
+      "audio_peak": 0.5364161729812622,
+      "audio_decoded_samples": 123200,
+      "passed": true
+    },
+    {
+      "file": "201.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 118.5,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.338440738737099,
+          "threshold": 12
+        },
+        {
+          "output_time": 7.466666666666667,
+          "planned_source_time": 125.96666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.2288823806263682,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9967009488683183,
+      "audio_rms": 0.08381973206996918,
+      "audio_peak": 0.5036805272102356,
+      "audio_decoded_samples": 60000,
+      "passed": true
+    },
+    {
+      "file": "265.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 118.5,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.338440738737099,
+          "threshold": 12
+        },
+        {
+          "output_time": 15.366666666666667,
+          "planned_source_time": 133.86666666666667,
+          "best_shift_seconds": -0.03333333333333333,
+          "gray_rmse": 2.1150091935707724,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.995668611780171,
+      "audio_rms": 0.08193526417016983,
+      "audio_peak": 0.5364161729812622,
+      "audio_decoded_samples": 123200,
+      "passed": true
+    },
+    {
+      "file": "972.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 26.733333333333334,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2297526851634302,
+          "threshold": 12
+        },
+        {
+          "output_time": 8.233333666666667,
+          "planned_source_time": 34.96666666666667,
+          "best_shift_seconds": 0,
+          "gray_rmse": 2.1050864326409235,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.996603461367653,
+      "audio_rms": 0.07213062793016434,
+      "audio_peak": 0.7728209495544434,
+      "audio_decoded_samples": 66133,
+      "passed": true
+    },
+    {
+      "file": "740.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 26.733333333333334,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.2297526851634302,
+          "threshold": 12
+        },
+        {
+          "output_time": 5.733333666666667,
+          "planned_source_time": 32.46666666666667,
+          "best_shift_seconds": -0.03333333333333333,
+          "gray_rmse": 2.2574644700046407,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9972698804774764,
+      "audio_rms": 0.07176988571882248,
+      "audio_peak": 0.7728209495544434,
+      "audio_decoded_samples": 46133,
+      "passed": true
+    },
+    {
+      "file": "945.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 140.5,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.3246461791738955,
+          "threshold": 12
+        },
+        {
+          "output_time": 12.366666666666667,
+          "planned_source_time": 152.86666666666667,
+          "best_shift_seconds": -0.03333333333333333,
+          "gray_rmse": 2.0573631316701375,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9945384153974031,
+      "audio_rms": 0.07915680855512619,
+      "audio_peak": 1.0969102382659912,
+      "audio_decoded_samples": 99200,
+      "passed": true
+    },
+    {
+      "file": "313.mp4",
+      "sha256_matches": true,
+      "endpoints": [
+        {
+          "output_time": 0,
+          "planned_source_time": 140.5,
+          "best_shift_seconds": 0,
+          "gray_rmse": 1.3246461791738955,
+          "threshold": 12
+        },
+        {
+          "output_time": 11.566666666666666,
+          "planned_source_time": 152.06666666666666,
+          "best_shift_seconds": -0.03333333333333333,
+          "gray_rmse": 2.0771784080547557,
+          "threshold": 12
+        }
+      ],
+      "audio_source_correlation": 0.9942837224138034,
+      "audio_rms": 0.07551999390125275,
+      "audio_peak": 1.0969102382659912,
+      "audio_decoded_samples": 92800,
+      "passed": true
+    }
+  ],
+  "reels": [
+    {
+      "file": "K.mp4",
+      "audio_seams": [
+        {
+          "time": 5.766667,
+          "rms": 0.07495184242725372,
+          "peak": 0.30314260721206665,
+          "max_adjacent_sample_jump": 0.19071631133556366
+        },
+        {
+          "time": 12.1,
+          "rms": 0.06009576469659805,
+          "peak": 0.3148077130317688,
+          "max_adjacent_sample_jump": 0.20754897594451904
+        },
+        {
+          "time": 19.366667,
+          "rms": 0.05885341763496399,
+          "peak": 0.24289710819721222,
+          "max_adjacent_sample_jump": 0.14567391574382782
+        },
+        {
+          "time": 24.5,
+          "rms": 0.1350073665380478,
+          "peak": 0.4994872808456421,
+          "max_adjacent_sample_jump": 0.28152111172676086
+        },
+        {
+          "time": 32.0,
+          "rms": 0.04293790087103844,
+          "peak": 0.15650570392608643,
+          "max_adjacent_sample_jump": 0.11304968595504761
+        }
+      ],
+      "clipped_sample_fraction": 8.445945945945946e-06
+    },
+    {
+      "file": "M.mp4",
+      "audio_seams": [
+        {
+          "time": 5.566667,
+          "rms": 0.051024287939071655,
+          "peak": 0.19281640648841858,
+          "max_adjacent_sample_jump": 0.11434941738843918
+        },
+        {
+          "time": 11.7,
+          "rms": 0.056386083364486694,
+          "peak": 0.21452182531356812,
+          "max_adjacent_sample_jump": 0.12337234616279602
+        },
+        {
+          "time": 18.766666999999998,
+          "rms": 0.05823797360062599,
+          "peak": 0.33692070841789246,
+          "max_adjacent_sample_jump": 0.46990108489990234
+        },
+        {
+          "time": 23.7,
+          "rms": 0.1328473687171936,
+          "peak": 0.48898541927337646,
+          "max_adjacent_sample_jump": 0.27796077728271484
+        },
+        {
+          "time": 31.0,
+          "rms": 0.04504983127117157,
+          "peak": 0.22118866443634033,
+          "max_adjacent_sample_jump": 0.09937635064125061
+        }
+      ],
+      "clipped_sample_fraction": 8.640552995391705e-06
+    },
+    {
+      "file": "N.mp4",
+      "audio_seams": [
+        {
+          "time": 12.4,
+          "rms": 0.05560162663459778,
+          "peak": 0.18443989753723145,
+          "max_adjacent_sample_jump": 0.13242480158805847
+        },
+        {
+          "time": 18.166667,
+          "rms": 0.07461238652467728,
+          "peak": 0.30804017186164856,
+          "max_adjacent_sample_jump": 0.18220843374729156
+        },
+        {
+          "time": 24.5,
+          "rms": 0.059527672827243805,
+          "peak": 0.3080749809741974,
+          "max_adjacent_sample_jump": 0.2035190761089325
+        },
+        {
+          "time": 31.766666999999998,
+          "rms": 0.0591936856508255,
+          "peak": 0.2429463267326355,
+          "max_adjacent_sample_jump": 0.1821572184562683
+        },
+        {
+          "time": 36.9,
+          "rms": 0.1317448914051056,
+          "peak": 0.5000789761543274,
+          "max_adjacent_sample_jump": 0.27709150314331055
+        }
+      ],
+      "clipped_sample_fraction": 8.445945945945946e-06
+    }
+  ],
+  "human_listening": null,
+  "human_visual_acceptance": null,
+  "semantics": "Decoded signal/clock fidelity, not perceptual acceptance",
+  "passed": true
+}

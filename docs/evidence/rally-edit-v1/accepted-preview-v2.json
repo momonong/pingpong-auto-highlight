@@ -1,0 +1,715 @@
+{
+  "recorded_at": "2026-09-18T07:16:02.455490+00:00",
+  "branch": "codex/rally-edit-comparison",
+  "head": "58ae3a3f77ec9aba53119f8ec3d06db777d27b67",
+  "uncommitted": true,
+  "packet": {
+    "schema": "rally-edit-decision-preview-v1",
+    "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+    "parent_plan_sha256": "2aba2b819a478ea68402b1d420ebd34b87a267707b32f71b04ccae91bdc5f7ca",
+    "plan_sha256": "20eb4fb341da05b35d76bc5b76f4f22226b051fb1ee98a76b0a53c4353cc630d",
+    "decisions_sha256": "4f571eb89dff883e81cc5a7e9e6761c4e6b5bd03ca08e6e93fda1a71cbabaf48",
+    "code_sha256": "0f6052c896a7ba5fbe85c70ac6953c3711e670f2bd0a5d2504972dc9f5be170b",
+    "frozen_order": [
+      "b2",
+      "v4-3",
+      "v4-6",
+      "b15",
+      "v4-9",
+      "v4-11"
+    ],
+    "selected_clips": [
+      {
+        "requested_source_range": [
+          26.75,
+          32.7
+        ],
+        "render_source_range": [
+          26.733333333333334,
+          32.7
+        ],
+        "wall_seconds": 1.596917165996274,
+        "sha256": "168ce86c09060c7c9fb103a3d2cb5d26c9d35987c50ae89b980fd527ba0b392b",
+        "duration": 5.966667,
+        "audio_duration": "5.966000",
+        "video_start": "0.000000",
+        "audio_start": "0.000000",
+        "width": 640,
+        "height": 360,
+        "decoded_frames": 179,
+        "full_av_decode": "passed",
+        "token": "582",
+        "file": "point-1.mp4",
+        "candidate_id": "b2",
+        "presentation_status": "human-accepted"
+      },
+      {
+        "requested_source_range": [
+          44.375,
+          50.692
+        ],
+        "render_source_range": [
+          44.36666666666667,
+          50.7
+        ],
+        "wall_seconds": 1.5657206370087806,
+        "sha256": "e1a51229ed21508a501db744bc6b67b4d6fd4c73c93e0226dcf02b1ff73986dd",
+        "duration": 6.333333,
+        "audio_duration": "6.333000",
+        "video_start": "0.000000",
+        "audio_start": "0.000000",
+        "width": 640,
+        "height": 360,
+        "decoded_frames": 190,
+        "full_av_decode": "passed",
+        "candidate_id": "v4-3",
+        "file": "point-2.mp4",
+        "presentation_status": "pending-human"
+      },
+      {
+        "requested_source_range": [
+          76.25,
+          83.5
+        ],
+        "render_source_range": [
+          76.23333333333333,
+          83.5
+        ],
+        "wall_seconds": 1.745048262993805,
+        "sha256": "729621df9771a1e768c59a3aeb62769bf13ba63927941c151cb7e8826b24b8fe",
+        "duration": 7.266667,
+        "audio_duration": "7.266000",
+        "video_start": "0.000000",
+        "audio_start": "0.000000",
+        "width": 640,
+        "height": 360,
+        "decoded_frames": 218,
+        "full_av_decode": "passed",
+        "candidate_id": "v4-6",
+        "file": "point-3.mp4",
+        "presentation_status": "pending-human"
+      },
+      {
+        "requested_source_range": [
+          89.892,
+          95
+        ],
+        "render_source_range": [
+          89.86666666666666,
+          95.0
+        ],
+        "wall_seconds": 1.4372325649892446,
+        "sha256": "48b087f5ff47dd48957f518ce2b322c70b517e22352ddf7cb7aeeb31745fa6fa",
+        "duration": 5.133333,
+        "audio_duration": "5.133000",
+        "video_start": "0.000000",
+        "audio_start": "0.000000",
+        "width": 640,
+        "height": 360,
+        "decoded_frames": 154,
+        "full_av_decode": "passed",
+        "candidate_id": "b15",
+        "file": "point-4.mp4",
+        "presentation_status": "pending-human"
+      },
+      {
+        "requested_source_range": [
+          118.5,
+          126
+        ],
+        "render_source_range": [
+          118.5,
+          126.0
+        ],
+        "wall_seconds": 1.880572652007686,
+        "sha256": "18390068e2dfde85e1879f4e6dc8ab9b15cbed0525d332632146f8c5fc95f608",
+        "duration": 7.5,
+        "audio_duration": "7.500000",
+        "video_start": "0.000000",
+        "audio_start": "0.000000",
+        "width": 640,
+        "height": 360,
+        "decoded_frames": 225,
+        "full_av_decode": "passed",
+        "candidate_id": "v4-9",
+        "file": "point-5.mp4",
+        "presentation_status": "pending-human"
+      },
+      {
+        "requested_source_range": [
+          140.5,
+          152.9
+        ],
+        "render_source_range": [
+          140.5,
+          152.9
+        ],
+        "wall_seconds": 2.9499171179777477,
+        "sha256": "12bdbd715533c5773341916ce76f2d84dd1f473636c890adbcfb6db72258cfc5",
+        "duration": 12.4,
+        "audio_duration": "12.400000",
+        "video_start": "0.000000",
+        "audio_start": "0.000000",
+        "width": 640,
+        "height": 360,
+        "decoded_frames": 372,
+        "full_av_decode": "passed",
+        "candidate_id": "v4-11",
+        "file": "point-6.mp4",
+        "presentation_status": "pending-human"
+      }
+    ],
+    "pairs": [],
+    "reels": [
+      {
+        "file": "preview.mp4",
+        "timeline": [
+          {
+            "candidate_id": "b2",
+            "source_range": [
+              26.733333333333334,
+              32.7
+            ],
+            "reel_range": [
+              0,
+              5.966666666666667
+            ]
+          },
+          {
+            "candidate_id": "v4-3",
+            "source_range": [
+              44.36666666666667,
+              50.7
+            ],
+            "reel_range": [
+              5.966666666666667,
+              12.3
+            ]
+          },
+          {
+            "candidate_id": "v4-6",
+            "source_range": [
+              76.23333333333333,
+              83.5
+            ],
+            "reel_range": [
+              12.3,
+              19.566666666666666
+            ]
+          },
+          {
+            "candidate_id": "b15",
+            "source_range": [
+              89.86666666666666,
+              95.0
+            ],
+            "reel_range": [
+              19.566666666666666,
+              24.7
+            ]
+          },
+          {
+            "candidate_id": "v4-9",
+            "source_range": [
+              118.5,
+              126.0
+            ],
+            "reel_range": [
+              24.7,
+              32.2
+            ]
+          },
+          {
+            "candidate_id": "v4-11",
+            "source_range": [
+              140.5,
+              152.9
+            ],
+            "reel_range": [
+              32.2,
+              44.6
+            ]
+          }
+        ],
+        "overlap_seconds": 0,
+        "transition_guards": [
+          {
+            "left": "b2",
+            "right": "v4-3",
+            "outgoing_source_overlap": [
+              32.7,
+              32.7
+            ],
+            "incoming_source_overlap": [
+              44.36666666666667,
+              44.36666666666667
+            ],
+            "observed_event_overlap": false,
+            "human_transition_accepted": null
+          },
+          {
+            "left": "v4-3",
+            "right": "v4-6",
+            "outgoing_source_overlap": [
+              50.7,
+              50.7
+            ],
+            "incoming_source_overlap": [
+              76.23333333333333,
+              76.23333333333333
+            ],
+            "observed_event_overlap": false,
+            "human_transition_accepted": null
+          },
+          {
+            "left": "v4-6",
+            "right": "b15",
+            "outgoing_source_overlap": [
+              83.5,
+              83.5
+            ],
+            "incoming_source_overlap": [
+              89.86666666666666,
+              89.86666666666666
+            ],
+            "observed_event_overlap": false,
+            "human_transition_accepted": null
+          },
+          {
+            "left": "b15",
+            "right": "v4-9",
+            "outgoing_source_overlap": [
+              95.0,
+              95.0
+            ],
+            "incoming_source_overlap": [
+              118.5,
+              118.5
+            ],
+            "observed_event_overlap": false,
+            "human_transition_accepted": null
+          },
+          {
+            "left": "v4-9",
+            "right": "v4-11",
+            "outgoing_source_overlap": [
+              126.0,
+              126.0
+            ],
+            "incoming_source_overlap": [
+              140.5,
+              140.5
+            ],
+            "observed_event_overlap": false,
+            "human_transition_accepted": null
+          }
+        ],
+        "budget_overrun_seconds": 0,
+        "sha256": "cfb969ec632792700719eaf7789b2718f9a09464f2376d1d47fa3a517be02a0a",
+        "duration": 44.6,
+        "audio_duration": "44.600000",
+        "video_start": "0.000000",
+        "audio_start": "0.000000",
+        "width": 640,
+        "height": 360,
+        "decoded_frames": 1338,
+        "full_av_decode": "passed"
+      }
+    ],
+    "decision_receipts": {
+      "b2": {
+        "feedback_sha256": "3b663c54946953c5a60dd177b0a358400e242f52d3e0aeb4c827c4e5c6b134be",
+        "manifest_sha256": "33b08843215652e292b25bb26456c58704b2a93416137f1c47afbe6a50c62ba3"
+      }
+    },
+    "presentation_accepted_count": 1,
+    "event_completeness_human_confirmed_count": 0,
+    "compilation_status": "preview-pending-human",
+    "scope": "Same six candidates/order, direct cuts; no new transition or ranking comparison."
+  },
+  "validation": {
+    "source_sha256": "414c278b38ce4de7bce5a9df3ab65ee7f335aec198e5d5443620e616fc5251ad",
+    "clips": [
+      {
+        "file": "point-1.mp4",
+        "sha256_matches": true,
+        "endpoints": [
+          {
+            "output_time": 0,
+            "planned_source_time": 26.733333333333334,
+            "best_shift_seconds": 0,
+            "gray_rmse": 1.2297526851634302,
+            "threshold": 12
+          },
+          {
+            "output_time": 5.933333666666667,
+            "planned_source_time": 32.66666666666667,
+            "best_shift_seconds": -0.03333333333333333,
+            "gray_rmse": 2.157898926682568,
+            "threshold": 12
+          }
+        ],
+        "audio_source_correlation": 0.997193452918793,
+        "audio_rms": 0.07113592326641083,
+        "audio_peak": 0.7728209495544434,
+        "audio_decoded_samples": 47733,
+        "passed": true
+      },
+      {
+        "file": "point-2.mp4",
+        "sha256_matches": true,
+        "endpoints": [
+          {
+            "output_time": 0,
+            "planned_source_time": 44.36666666666667,
+            "best_shift_seconds": 0,
+            "gray_rmse": 1.201713186801798,
+            "threshold": 12
+          },
+          {
+            "output_time": 6.299999666666666,
+            "planned_source_time": 50.66666666666667,
+            "best_shift_seconds": 0,
+            "gray_rmse": 2.2619627968745295,
+            "threshold": 12
+          }
+        ],
+        "audio_source_correlation": 0.998348995606315,
+        "audio_rms": 0.08607997000217438,
+        "audio_peak": 0.7400389909744263,
+        "audio_decoded_samples": 50667,
+        "passed": true
+      },
+      {
+        "file": "point-3.mp4",
+        "sha256_matches": true,
+        "endpoints": [
+          {
+            "output_time": 0,
+            "planned_source_time": 76.23333333333333,
+            "best_shift_seconds": 0,
+            "gray_rmse": 1.2539382405489958,
+            "threshold": 12
+          },
+          {
+            "output_time": 7.233333666666667,
+            "planned_source_time": 83.46666666666667,
+            "best_shift_seconds": 0,
+            "gray_rmse": 2.0874875249128237,
+            "threshold": 12
+          }
+        ],
+        "audio_source_correlation": 0.9965180104442739,
+        "audio_rms": 0.06818630546331406,
+        "audio_peak": 0.6912888288497925,
+        "audio_decoded_samples": 58133,
+        "passed": true
+      },
+      {
+        "file": "point-4.mp4",
+        "sha256_matches": true,
+        "endpoints": [
+          {
+            "output_time": 0,
+            "planned_source_time": 89.86666666666666,
+            "best_shift_seconds": 0,
+            "gray_rmse": 1.2372895443939818,
+            "threshold": 12
+          },
+          {
+            "output_time": 5.099999666666667,
+            "planned_source_time": 94.96666666666667,
+            "best_shift_seconds": 0,
+            "gray_rmse": 2.0754684879430103,
+            "threshold": 12
+          }
+        ],
+        "audio_source_correlation": 0.9989493556520216,
+        "audio_rms": 0.12762539088726044,
+        "audio_peak": 1.044023036956787,
+        "audio_decoded_samples": 41067,
+        "passed": true
+      },
+      {
+        "file": "point-5.mp4",
+        "sha256_matches": true,
+        "endpoints": [
+          {
+            "output_time": 0,
+            "planned_source_time": 118.5,
+            "best_shift_seconds": 0,
+            "gray_rmse": 1.338440738737099,
+            "threshold": 12
+          },
+          {
+            "output_time": 7.466666666666667,
+            "planned_source_time": 125.96666666666667,
+            "best_shift_seconds": 0,
+            "gray_rmse": 2.2288823806263682,
+            "threshold": 12
+          }
+        ],
+        "audio_source_correlation": 0.9967009488683183,
+        "audio_rms": 0.08381973206996918,
+        "audio_peak": 0.5036805272102356,
+        "audio_decoded_samples": 60000,
+        "passed": true
+      },
+      {
+        "file": "point-6.mp4",
+        "sha256_matches": true,
+        "endpoints": [
+          {
+            "output_time": 0,
+            "planned_source_time": 140.5,
+            "best_shift_seconds": 0,
+            "gray_rmse": 1.3246461791738955,
+            "threshold": 12
+          },
+          {
+            "output_time": 12.366666666666667,
+            "planned_source_time": 152.86666666666667,
+            "best_shift_seconds": -0.03333333333333333,
+            "gray_rmse": 2.0573631316701375,
+            "threshold": 12
+          }
+        ],
+        "audio_source_correlation": 0.9945384153974031,
+        "audio_rms": 0.07915680855512619,
+        "audio_peak": 1.0969102382659912,
+        "audio_decoded_samples": 99200,
+        "passed": true
+      }
+    ],
+    "reels": [
+      {
+        "file": "preview.mp4",
+        "audio_seams": [
+          {
+            "time": 5.966666666666667,
+            "rms": 0.07682063430547714,
+            "peak": 0.2948310971260071,
+            "max_adjacent_sample_jump": 0.18473462760448456
+          },
+          {
+            "time": 12.3,
+            "rms": 0.059489037841558456,
+            "peak": 0.3122311532497406,
+            "max_adjacent_sample_jump": 0.2237379401922226
+          },
+          {
+            "time": 19.566666666666666,
+            "rms": 0.05990614742040634,
+            "peak": 0.23510797321796417,
+            "max_adjacent_sample_jump": 0.16727861762046814
+          },
+          {
+            "time": 24.7,
+            "rms": 0.14022700488567352,
+            "peak": 0.5101072788238525,
+            "max_adjacent_sample_jump": 0.3225189745426178
+          },
+          {
+            "time": 32.2,
+            "rms": 0.04143128544092178,
+            "peak": 0.13797210156917572,
+            "max_adjacent_sample_jump": 0.10397381335496902
+          }
+        ],
+        "clipped_sample_fraction": 5.605381165919282e-06,
+        "direct_reel_endpoints": {
+          "segments": [
+            {
+              "candidate_id": "b2",
+              "reel_frame_indices": [
+                0,
+                178
+              ],
+              "rmse": [
+                0.8522437705518559,
+                1.845123076292383
+              ],
+              "passed": true
+            },
+            {
+              "candidate_id": "v4-3",
+              "reel_frame_indices": [
+                179,
+                368
+              ],
+              "rmse": [
+                0.9689090371248594,
+                1.505476115165343
+              ],
+              "passed": true
+            },
+            {
+              "candidate_id": "v4-6",
+              "reel_frame_indices": [
+                369,
+                586
+              ],
+              "rmse": [
+                1.506818991193774,
+                1.8606441163687852
+              ],
+              "passed": true
+            },
+            {
+              "candidate_id": "b15",
+              "reel_frame_indices": [
+                587,
+                740
+              ],
+              "rmse": [
+                1.020501646794904,
+                1.3931067897967397
+              ],
+              "passed": true
+            },
+            {
+              "candidate_id": "v4-9",
+              "reel_frame_indices": [
+                741,
+                965
+              ],
+              "rmse": [
+                0.8609083542656817,
+                1.6141840904239448
+              ],
+              "passed": true
+            },
+            {
+              "candidate_id": "v4-11",
+              "reel_frame_indices": [
+                966,
+                1337
+              ],
+              "rmse": [
+                0.8391153575840055,
+                1.5688316158494795
+              ],
+              "passed": true
+            }
+          ],
+          "passed": true
+        }
+      }
+    ],
+    "human_listening": null,
+    "human_visual_acceptance": null,
+    "semantics": "Decoded signal/clock fidelity, not perceptual acceptance",
+    "passed": true
+  },
+  "code_sha256": {
+    "src/pingpong_highlight/edit_decisions.py": "0f6052c896a7ba5fbe85c70ac6953c3711e670f2bd0a5d2504972dc9f5be170b",
+    "src/pingpong_highlight/edit_comparison.py": "f19a54a3ef38e76e91ec116409c1310db097ec8a77a3acd46fbde7e91f472da1",
+    "scripts/verify-edit-media.py": "96ed27b0fcce71f5cf8254acc45312f1d4d547359068422e6dbf2f60522366d1",
+    "tests/test_edit_decisions.py": "4a9851d47089da2545bf8cc0f4aca296db8fce96aab06dbd954ef899a03e1644",
+    "tests/test_edit_comparison.py": "950121b190c2aad488829424db8843b20f93ef65a78faf002db77c2f79b605c6",
+    "examples/rally-edit-decisions-v2.json": "4f571eb89dff883e81cc5a7e9e6761c4e6b5bd03ca08e6e93fda1a71cbabaf48"
+  },
+  "tests": {
+    "affected_passed": 18,
+    "seconds": 4.52,
+    "full_suite_rerun": false,
+    "ruff": "passed",
+    "diff_check": "passed"
+  },
+  "preservation": {
+    "main_overlay_unchanged_files": 88,
+    "accepted_clip_bytes_unchanged": true,
+    "other_five_clip_bytes_unchanged": true,
+    "event_observations_unchanged": true,
+    "original_labels_unchanged": true
+  },
+  "prior_failed_preview": {
+    "segments": [
+      {
+        "candidate_id": "b2",
+        "reel_frame_indices": [
+          0,
+          178
+        ],
+        "rmse": [
+          0.8522437705518559,
+          1.845123076292383
+        ],
+        "passed": true
+      },
+      {
+        "candidate_id": "v4-3",
+        "reel_frame_indices": [
+          179,
+          368
+        ],
+        "rmse": [
+          0.9689090371248594,
+          1.505476115165343
+        ],
+        "passed": true
+      },
+      {
+        "candidate_id": "v4-6",
+        "reel_frame_indices": [
+          369,
+          586
+        ],
+        "rmse": [
+          1.506818991193774,
+          1.873360394229222
+        ],
+        "passed": true
+      },
+      {
+        "candidate_id": "b15",
+        "reel_frame_indices": [
+          587,
+          740
+        ],
+        "rmse": [
+          1.0107237505866773,
+          9.640467369952098
+        ],
+        "passed": false
+      },
+      {
+        "candidate_id": "v4-9",
+        "reel_frame_indices": [
+          741,
+          965
+        ],
+        "rmse": [
+          38.68544263960569,
+          18.371079041223705
+        ],
+        "passed": false
+      },
+      {
+        "candidate_id": "v4-11",
+        "reel_frame_indices": [
+          966,
+          1337
+        ],
+        "rmse": [
+          49.44747090066612,
+          11.188778635807891
+        ],
+        "passed": false
+      }
+    ],
+    "passed": false
+  },
+  "limits": [
+    "Only b2 presentation accepted by user",
+    "Completeness and highlight selection not inferred",
+    "New compilation human acceptance pending",
+    "No new browser playback test for this output; decoded AV/frame endpoints verified"
+  ],
+  "resources": {
+    "gpu": 0,
+    "model_calls": 0,
+    "new_ports": 0
+  },
+  "endpoint_montage_viewed": true
+}

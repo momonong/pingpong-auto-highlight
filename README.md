@@ -1,6 +1,8 @@
 # HighlightCraft
 
-本次 Git/source 研究材料版本為 **1.4.1**：[E0 研究材料入口](docs/research/2026-10-27-e0-materials/README.md)。內容提供去識別的 E0 研究模板：抽樣規格、盲化空表、匯入契約、controller／tool／budget／MCP 契約與三條明標為 synthetic 的走讀。原片、人工 labels、來源對照與執行 receipts 留在本機，不隨 Git 公開；空表與合成走讀不代表已完成模型執行或選球品質驗證。
+本次 Git/source 研究材料版本為 **1.4.1**：[E0 研究材料入口](docs/research/2026-10-27-e0-materials/README.md)。內容提供去識別的 E0 研究模板：抽樣規格、盲化空表、匯入契約、controller／tool／budget／MCP 契約與三條明標為 synthetic 的走讀。本次 E0 的原片、人工 labels、來源對照與執行 receipts 留在本機，不隨 Git 公開；空表與合成走讀不代表已完成模型執行或選球品質驗證。
+
+固定回合剪輯與已接受決策的套用流程見[剪輯實驗](docs/rally-edit-experiment.md)。提供單播放器試看、獨立回饋保存、固定素材比較與可重跑的合輯預覽；不修改精彩排名。
 
 把一段完整桌球錄影，自動剪成「以得分為單位」的精彩集錦。
 

@@ -143,3 +143,17 @@ Forwarded／X-Forwarded-Host／Prefix／CF header；`PINGPONG_ALLOWED_HOSTS` 限
 部署模式設定 `PINGPONG_TRUSTED_PROXY_PROVIDER=none`，由 Uvicorn 的明確來源信任處理 IP，
 避免 legacy provider 再次解讀 header。所有 API（包含拒絕回應）、私人媒體及審核 export
 均為 private/no-store；入口與任何 CDN cache rule 必須 bypass 此子路徑。
+
+### Fixed-candidate edit comparison
+
+`edit_comparison.py` 是獨立本機剪輯原型，唯讀來源SHA與凍結候選。原候選、事件不確定區間、待驗可接受入出點、採用切點與人工回饋分開保存，不呼叫模型、不修改排名或DB。成品向外量化到30fps，保存實際來源與合輯時間映射；dissolve必須落在事件包絡之外。單因素試片與固定切點合輯另存，55秒只回報超出，不截球。實驗設定、影像與音訊核對限制見[剪輯比較](rally-edit-experiment.md)。
+
+`edit_review.py` 接續既有 immutable edit pack，啟動核對plan/media SHA，提供loopback單播放器與Range串流。
+回饋另檔追加，與原候選、事件時間、切點及原始標記分離；entry ID支援冪等重試，fsync加原子替換避免失敗污染已保存狀態。
+正式與fixture actor／cookie／資料分開。六段完整性gate可撤回，舊轉場評分保留歷史而不當作目前已接受。
+單一服務程序對應一份回饋檔；無多人合併或跨裝置同步。詳見實驗報告的review UI v2補記。
+
+`edit_decisions.py` 將human presentation acceptance視為逐片、綁定媒體與parent plan hash的覆層，
+驗證原話來源與render manifest後才產生新plan及固定順序預覽；不更動event observations或未評片段。
+可接受切點樣本與可接受範圍分開。合輯串接用decoded frame count對齐48kHz音訊樣本數，
+消除AAC補樣造成的接點累積漂移。此CLI輸出為decision preview receipt，不是完整blind comparison pack。

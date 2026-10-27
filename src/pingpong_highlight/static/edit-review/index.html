@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>固定回合試看</title>
+<style>
+*{box-sizing:border-box}body{max-width:1000px;margin:auto;padding:20px;background:#17191d;color:#eee;font:17px/1.55 system-ui}h1{font-size:26px}button,select,textarea{font:inherit;padding:8px;margin:4px 0;border-radius:6px}button,a{cursor:pointer}button:disabled{cursor:wait;opacity:.5}a{color:#99dfea}.player{background:#101114;padding:12px;border-radius:10px}video{display:block;width:100%;max-height:420px;background:black}#play-status{min-height:26px}.tools{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.cards{display:flex;gap:16px;flex-wrap:wrap}.card{flex:1;min-width:260px;border:1px solid #555;border-radius:10px;padding:14px}label{display:block;margin:8px 0}select,textarea{width:100%}textarea{height:78px}summary{cursor:pointer}#save-status{color:#b8dcad}#fixture{color:#ffbf69}#section-nav{max-width:600px}#reels-nav{margin-top:10px}small{color:#ccc}[hidden]{display:none!important}
+</style>
+<h1>固定回合試看</h1><p>先判斷每一分是否看得完整，再評觀看節奏。沒有把握請選「無法判定」或留白。</p>
+<p id="fixture" hidden>工程測試模式：本頁所有操作都標示為自動化 fixture，不計入人工驗收。</p>
+<div class="tools"><label>播放順序 <select id="sequence"><option value="0">第一輪</option><option value="1">反向順序</option></select></label><span id="save-status" role="status">正在讀取回饋…</span><button id="retry" hidden>重試保存</button><a id="export" href="/api/export" download>匯出已保存回饋</a></div>
+<p><small>每次評分自動保存到此試看的獨立檔案。可以重載繼續；原始人工標記不受影響。</small></p>
+<label>試看項目 <select id="section-nav" disabled></select></label>
+<div class="player"><strong id="playing">請選擇下方版本播放</strong><video id="player" controls preload="none" playsinline></video><div id="play-status" role="status"></div><div class="tools"><button id="replay" disabled>從頭重播</button><button id="pause" disabled>暫停／繼續</button><button id="back" disabled>退後 1 秒</button><button id="forward" disabled>前進 1 秒</button></div></div>
+<h2 id="section-title"></h2><div id="cards" class="cards"></div><div id="context"></div>
+<details id="disclosure"><summary>評完再看來源時間與差異</summary><div id="source-info"></div></details>
+<p id="gate"></p><script src="/review.js" defer></script></html>
