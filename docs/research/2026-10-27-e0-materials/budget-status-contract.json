@@ -1,0 +1,282 @@
+{
+  "contract_revision": "e0-controller-research-v1",
+  "document_kind": "research_proposal_not_json_schema_or_runtime_admission",
+  "status": "BLOCKED_PENDING_ADMISSION",
+  "identity": {
+    "fixed_windows": 16,
+    "questions": [
+      "Q1",
+      "Q2",
+      "Q3"
+    ],
+    "slots_per_arm": 48,
+    "fixed_slot_ids": [
+      "E0-W01-Q1",
+      "E0-W01-Q2",
+      "E0-W01-Q3",
+      "E0-W02-Q1",
+      "E0-W02-Q2",
+      "E0-W02-Q3",
+      "E0-W03-Q1",
+      "E0-W03-Q2",
+      "E0-W03-Q3",
+      "E0-W04-Q1",
+      "E0-W04-Q2",
+      "E0-W04-Q3",
+      "E0-W05-Q1",
+      "E0-W05-Q2",
+      "E0-W05-Q3",
+      "E0-W06-Q1",
+      "E0-W06-Q2",
+      "E0-W06-Q3",
+      "E0-W07-Q1",
+      "E0-W07-Q2",
+      "E0-W07-Q3",
+      "E0-W08-Q1",
+      "E0-W08-Q2",
+      "E0-W08-Q3",
+      "E0-W09-Q1",
+      "E0-W09-Q2",
+      "E0-W09-Q3",
+      "E0-W10-Q1",
+      "E0-W10-Q2",
+      "E0-W10-Q3",
+      "E0-W11-Q1",
+      "E0-W11-Q2",
+      "E0-W11-Q3",
+      "E0-W12-Q1",
+      "E0-W12-Q2",
+      "E0-W12-Q3",
+      "E0-W13-Q1",
+      "E0-W13-Q2",
+      "E0-W13-Q3",
+      "E0-W14-Q1",
+      "E0-W14-Q2",
+      "E0-W14-Q3",
+      "E0-W15-Q1",
+      "E0-W15-Q2",
+      "E0-W15-Q3",
+      "E0-W16-Q1",
+      "E0-W16-Q2",
+      "E0-W16-Q3"
+    ],
+    "resampling_or_boundary_changes_allowed": false,
+    "slot_identity_semantics": "E0-W01..16 are abstract public slot names with no private source mapping"
+  },
+  "gates": {
+    "runtime_required": {
+      "execution_authorization": {
+        "value": null,
+        "status": "pending"
+      },
+      "data_and_weight_terms": {
+        "value": null,
+        "status": "pending"
+      },
+      "model_weights_code_processor_decoder_versions": {
+        "value": {
+          "existing_proposal_ref": "existing_candidate_proposal",
+          "runtime_model_identity_verified": null,
+          "runtime_weight_bytes_verified": null,
+          "code_revision": null,
+          "processor_revision": null,
+          "decoder_revision": null,
+          "runtime_compatibility": null
+        },
+        "status": "pending"
+      },
+      "runtime_environment": {
+        "value": null,
+        "status": "pending"
+      },
+      "observation_recipe_grid_roi": {
+        "value": null,
+        "status": "pending"
+      },
+      "evidence_registry_native_pts_mapping": {
+        "value": null,
+        "status": "pending"
+      },
+      "pixels_caps": {
+        "value": null,
+        "status": "pending"
+      },
+      "input_output_tokens_caps": {
+        "value": null,
+        "status": "pending"
+      },
+      "gpu_wall_fee_caps": {
+        "value": null,
+        "status": "pending"
+      },
+      "whole_experiment_caps": {
+        "value": null,
+        "status": "pending"
+      },
+      "request_hash_encoding": {
+        "value": null,
+        "status": "pending"
+      },
+      "atomic_reservation_receipt_storage": {
+        "value": null,
+        "status": "pending"
+      }
+    },
+    "semantic_evaluation": {
+      "human_reference_status": "pending_adjudication",
+      "pending_reference_slots": 48,
+      "blocks_runtime_by_itself": false,
+      "blocks_truth_correctness_and_semantic_unsupported_scoring": true
+    },
+    "optional_mcp_switch": {
+      "required_for_local_functions": false,
+      "cross_host_or_multi_client_requirement": null,
+      "adapter_sdk_version_auth_permissions_receipt_admission": null,
+      "status": "not_requested_optional"
+    }
+  },
+  "caps": {
+    "model_plus_planner_calls_per_window_per_arm": 3,
+    "sent_frames_per_call": 32,
+    "sent_frames_per_window_per_arm": 64,
+    "B_initial_new_frames_proposal": 16,
+    "B_followup_new_frames_proposal": [
+      24,
+      24
+    ],
+    "pixels_per_call": null,
+    "pixels_per_window": null,
+    "input_tokens_per_call": null,
+    "output_tokens_per_call": null,
+    "tokens_per_window": null,
+    "gpu_seconds_per_window": null,
+    "wall_seconds_per_window": null,
+    "fee_per_window": null,
+    "whole_experiment_gpu_seconds": null,
+    "whole_experiment_wall_seconds": null,
+    "whole_experiment_fee": null,
+    "status_of_null_caps": "pending_and_blocking_runtime_not_zero_or_infinity"
+  },
+  "comparison_modes": {
+    "A": {
+      "evidence_policy": "identical_sealed_frame_ids_native_pts_roi_pixels_metadata_and_same_perception_raw",
+      "post_shared_model_input": "text_only_no_image_resubmission",
+      "shared_perception_logical_call_charge_each_arm": 1,
+      "remaining_planner_calls_if_shared_perception_one": 2,
+      "physical_shared_execution": "one_origin_operation_if_actually_executed",
+      "shared_physical_cost": "report_once_and_show_attribution_to_each_arm",
+      "shared_frame_count": null
+    },
+    "B": {
+      "initial_evidence_policy": "same_initial_recipe_and_evidence",
+      "subsequent_evidence": "may_differ_under_same_caps",
+      "fixed_schedule": "must_be_sealed_before_results",
+      "adaptive_request": "must_name_unknown_to_resolve",
+      "recipe_grid_roi_pixel_details": null
+    }
+  },
+  "budget_transaction": {
+    "dispatch_order": [
+      "persist_operation_id_and_request_hash",
+      "reserve_logical_and_physical_cost_caps",
+      "dispatch_only_after_host_checks",
+      "persist_raw_and_original_receipt",
+      "reconcile_without_overwriting_history"
+    ],
+    "logical_arm_budget": "used_plus_held_plus_request_must_not_exceed_admitted_caps",
+    "cache_reuse": "bind_original_operation_evidence_and_cost; charge_arm_evidence_and_call_entitlement; never_free_extra_evidence",
+    "physical_accounting": {
+      "shared_cost_reported_once": true,
+      "not_dispatched_actual_execution_count": 0,
+      "dispatched_outcome_unknown_actual_execution_count": null
+    },
+    "unknown_outcome_or_cost": "hold_reservation; stop_and_query_original_operation; never_release_as_zero_or_resend_with_new_id",
+    "retry_authorized_by_error_feedback": false,
+    "same_request_or_no_progress": "stop_without_new_counter_allowance"
+  },
+  "state_ids": [
+    "INIT_FIXED_SLOTS",
+    "CHECK_ADMISSION",
+    "BLOCKED_PENDING_ADMISSION",
+    "READY_WINDOW",
+    "RESERVE_OPERATION",
+    "ACQUIRE_EVIDENCE",
+    "MODEL_STEP",
+    "VALIDATE_RESPONSE",
+    "FINALIZE_WINDOW",
+    "SEAL_RUN",
+    "STOP_RECONCILE",
+    "STOP_PARTIAL_BUDGET",
+    "STOP_INVALID_RUN"
+  ],
+  "allowlisted_functions": [
+    "load_frozen_window",
+    "acquire_admitted_observation",
+    "model.observe_or_decide",
+    "persist_answer_batch",
+    "get_operation_receipt"
+  ],
+  "stop_rules": {
+    "normal_window_calls_or_frames_exhausted_with_valid_snapshot": "FINALIZE_WINDOW_preserve_explicit_answers_and_unknown_reasons",
+    "normal_exhaustion_without_valid_response": "preserve_invalid_or_not_executed_no_fabricated_unknown",
+    "whole_experiment_budget_insufficient_for_remaining_windows": "STOP_PARTIAL_BUDGET_keep_all_48_and_prior_valid_snapshots_no_complete_comparison",
+    "over_cap_dispatch_or_invalid_request_or_cannot_enforce_caps": "STOP_INVALID_RUN",
+    "source_hash_pts_schema_environment_oom_or_fallback_violation": "STOP_INVALID_RUN_entire_experiment",
+    "temporary_or_unknown_external_tool_failure": "STOP_RECONCILE_original_id_only_no_automatic_retry",
+    "prior_valid_snapshots": "retain_immutable_alongside_run_partial_or_invalid"
+  },
+  "answer_status": {
+    "legal_unknown_requires": [
+      "successful_schema_valid_response",
+      "explicit_evidence_insufficiency_reason"
+    ],
+    "yes_no_require": [
+      "actual_obtained_support_ids",
+      "registry_native_pts_refs",
+      "sufficient_observation_scope_for_no"
+    ],
+    "missing_support_or_pts": "raw_preserved_structural_invalid_not_rewritten_success",
+    "syntactic_support_is_semantic_support": false,
+    "tool_failure_or_no_response_is_unknown": false
+  },
+  "evaluation": {
+    "human_reference_pending_slots": 48,
+    "truth_correctness_status": "pending_reference",
+    "semantic_unsupported_status": "pending_independent_review",
+    "four_exclusive_human_known_classes": [
+      "correct_and_supported",
+      "wrong_or_unsupported",
+      "legal_model_unknown",
+      "model_invalid"
+    ],
+    "class_counts": null,
+    "human_unknown_count": null,
+    "formula_only_after_complete_reference": "sum(four_human_known_classes)+human_unknown=48",
+    "pending_reference_ledger_required_until_complete": true,
+    "unsupported_is_side_label_not_added_to_48": true,
+    "human_import_invalid_is_model_invalid": false
+  },
+  "implementation_status": {
+    "controller": "not_implemented",
+    "mcp_adapter": "not_implemented",
+    "runtime_registry": "not_created",
+    "model_calls": "not_executed",
+    "reference_publication": "not_performed"
+  },
+  "existing_candidate_proposal": {
+    "model_id": "Qwen/Qwen2.5-VL-7B-Instruct",
+    "weight_revision": "cc594898137f460bfe9f0759e9844b3ce807cfb5",
+    "status": "existing_candidate_proposal_not_runtime_admitted",
+    "fixed_design_head": "df1128f393344a666a151b23b939b3d2b8889c8a",
+    "reselection_or_external_lookup_this_package": false,
+    "source_document_ref": "../2026-10-26-direction/architecture.md",
+    "source_public_document_sha256": "ec81eb2f331c1a2a4f5d9595ce7c4599f827d07cf1d2f18f9aaeadf9459a8702",
+    "source_check_scope": "existing_public_fixed_proposal_no_new_model_selection"
+  },
+  "public_export_kind": "deidentified_template_not_runtime_dataset",
+  "public_document_sha256": {
+    "sampling-contract.md": "dd0f8256b64762b46f2e2c8d449a41fb02d5b055def286d5cc1d6e2739e58572",
+    "IMPORT-CONTRACT.md": "1257a3eef949032c71daaba633006d2fceb841b6bd0b3476833de531f331124d",
+    "../2026-10-26-direction/architecture.md": "ec81eb2f331c1a2a4f5d9595ce7c4599f827d07cf1d2f18f9aaeadf9459a8702"
+  }
+}

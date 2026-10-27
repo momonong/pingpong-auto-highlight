@@ -1,0 +1,4 @@
+case_id,question_id,answer,support_ids_json,time_ranges_us_json,unknown_reason,notes
+SYN-PUBLIC-CASE-01,Q1,yes,"[""SYN-PUBLIC-EV-01""]","[[0,1000]]",,"公開合成引號案例：逗號, 與 ""quote""，不是語義真值。"
+SYN-PUBLIC-CASE-01,Q2,no,"[""SYN-PUBLIC-EV-02""]","[[0,8000000]]",,
+SYN-PUBLIC-CASE-01,Q3,unknown,[],[],合成格式文字：可見序列不足；未觀察任何實際影片。,

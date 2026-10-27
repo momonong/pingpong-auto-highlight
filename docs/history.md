@@ -1,5 +1,9 @@
 # Project history
 
+## 2026-10-27：1.4.1 E0 研究材料 patch
+
+新增去識別的 E0 抽樣規格、盲化空表、匯入與 controller／tool／budget／MCP 契約，以及三條明標為 synthetic 的走讀；原片、人工 labels、來源對照與執行 receipts 不公開。Git/source 版本同步為 1.4.1，未新增 runtime 行為、模型能力或部署變更；未執行影片解碼、PTS 實測、模型推論或訓練，也無選球品質改善結論。本輪未 build/push Docker image，pull-only 設定保留歷史 1.4.0 image 參照，未查核 registry 現況。
+
 ## August 2026: threshold-selected point reels
 
 Version 1.3 removes the per-video six-point quota from the default selection policy:

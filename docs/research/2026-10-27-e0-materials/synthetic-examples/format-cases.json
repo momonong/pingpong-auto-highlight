@@ -1,0 +1,597 @@
+{
+  "synthetic_only": true,
+  "production_case_ids_permitted": false,
+  "expected_case_ids": [
+    "SYN-PUBLIC-CASE-01"
+  ],
+  "expected_question_ids": [
+    "Q1",
+    "Q2",
+    "Q3"
+  ],
+  "synthetic_expected_slots": 3,
+  "production_expected_slots": 48,
+  "valid_examples_status": "format_valid_pending_media; not semantic truth or reference",
+  "examples": [
+    {
+      "example_id": "SYN-format-valid",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": true
+    },
+    {
+      "example_id": "SYN-draft-blank",
+      "mode": "draft",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": true
+    },
+    {
+      "example_id": "SYN-duplicate",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-missing",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-unknown-case",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-UNASSIGNED",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-extra-question",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q4",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-blank-submitted",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-unknown-no-reason",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "unknown",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-empty-support",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-comma-not-json",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "SYN-PUBLIC-EV-01,SYN-PUBLIC-EV-02",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-json-string-not-array",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "\"SYN-PUBLIC-EV-01\"",
+          "time_ranges_us_json": "[[0,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-bool-time",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[true,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-float-time",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,1000.0]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-negative-time",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[-1,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-zero-length",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[1000,1000]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-past-window",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[[0,8000001]]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    },
+    {
+      "example_id": "SYN-range-shape",
+      "mode": "submitted",
+      "rows": [
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q1",
+          "answer": "yes",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-01\"]",
+          "time_ranges_us_json": "[0,1000]",
+          "unknown_reason": "",
+          "notes": "公開合成引號案例：逗號, 與 \"quote\"，不是語義真值。"
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q2",
+          "answer": "no",
+          "support_ids_json": "[\"SYN-PUBLIC-EV-02\"]",
+          "time_ranges_us_json": "[[0,8000000]]",
+          "unknown_reason": "",
+          "notes": ""
+        },
+        {
+          "case_id": "SYN-PUBLIC-CASE-01",
+          "question_id": "Q3",
+          "answer": "unknown",
+          "support_ids_json": "[]",
+          "time_ranges_us_json": "[]",
+          "unknown_reason": "合成格式文字：可見序列不足；未觀察任何實際影片。",
+          "notes": ""
+        }
+      ],
+      "expected_format_valid": false
+    }
+  ],
+  "public_deidentified_example": true,
+  "maps_to_private_sources": false
+}
