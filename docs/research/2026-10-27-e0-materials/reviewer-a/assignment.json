@@ -1,0 +1,26 @@
+{
+  "schema_version": "e0-blind-answer-v1",
+  "packet_id": "PUBLIC-E0-DEMO-V1",
+  "reviewer_code": "REVIEWER-DEMO-A",
+  "example_only": true,
+  "maps_to_private_sources": false,
+  "expected_slots": 48,
+  "case_order": [
+    "CASE-DEMO-01",
+    "CASE-DEMO-02",
+    "CASE-DEMO-03",
+    "CASE-DEMO-04",
+    "CASE-DEMO-05",
+    "CASE-DEMO-06",
+    "CASE-DEMO-07",
+    "CASE-DEMO-08",
+    "CASE-DEMO-09",
+    "CASE-DEMO-10",
+    "CASE-DEMO-11",
+    "CASE-DEMO-12",
+    "CASE-DEMO-13",
+    "CASE-DEMO-14",
+    "CASE-DEMO-15",
+    "CASE-DEMO-16"
+  ]
+}

@@ -1,5 +1,7 @@
 # HighlightCraft
 
+本次 Git/source 研究材料版本為 **1.4.1**：[E0 研究材料入口](docs/research/2026-10-27-e0-materials/README.md)。內容提供去識別的 E0 研究模板：抽樣規格、盲化空表、匯入契約、controller／tool／budget／MCP 契約與三條明標為 synthetic 的走讀。原片、人工 labels、來源對照與執行 receipts 留在本機，不隨 Git 公開；空表與合成走讀不代表已完成模型執行或選球品質驗證。
+
 把一段完整桌球錄影，自動剪成「以得分為單位」的精彩集錦。
 
 手機只負責錄影與提供影片；可以直接續傳，也可以先放上 Google Drive 再貼公開連結。電腦在本地完成下載、影片解碼、逐分切點、精彩度排序與 Reel 剪接。匯入後的原片副本與成品持久儲存在這台電腦；使用 ngrok 或 Cloudflare Tunnel 時，網頁流量會經過該入口服務，而 Drive 原片由電腦直接向 Google 下載。
@@ -300,7 +302,7 @@ docker compose -f compose.yaml -f compose.deploy.yaml up -d --wait
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-本版對應 `docker.io/momonong/pingpong-auto-highlight:1.4.0`，包含個人帳號、資料歸屬、Google Drive 匯入與中英介面。部署時以發佈流程驗證的 `data/published-image.txt` digest 為準；只有 registry 已存在的版本才能 pull。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+本節保留歷史 image 參照 `docker.io/momonong/pingpong-auto-highlight:1.4.0`，包含個人帳號、資料歸屬、Google Drive 匯入與中英介面。`compose.release.yaml` 是 pull-only 設定，預設 image 仍為 1.4.0；source 研究材料版本與 image 版本分開。本輪未 build/push 新 Docker image，未查核 registry 現況，不能假定 `1.4.1` image 可 pull。部署時以發佈流程驗證的 `data/published-image.txt` digest 為準，並另核 registry 中的實際可用版本。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
 逐球素材庫、跨影片集錦與 pCloud 封存目前保存在 `codex/preserve-local-20260907` 分支，未包含在 1.4.0。曾使用該開發分支的資料目錄，請先依部署手冊的相容性說明處理；首次試用 1.4.0 建議使用獨立資料目錄。
 

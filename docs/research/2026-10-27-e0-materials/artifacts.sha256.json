@@ -1,0 +1,30 @@
+{
+  "kind": "public-deidentified-template-artifact-hashes-v1",
+  "source_version": "1.4.1",
+  "scope": "public files only; no private dataset or execution receipt hashes",
+  "files": {
+    "IMPORT-CONTRACT.md": "1257a3eef949032c71daaba633006d2fceb841b6bd0b3476833de531f331124d",
+    "MCP-decision.md": "4eac9882f71efb5b4dbbe810e885ce2236c79bf5aafe9064b975e3d8a146d0b4",
+    "README.md": "965354bf50c6ceceb105f89d9829552e0b82a41963d38bb6a9e64b84de0a39e3",
+    "budget-status-contract.json": "d5d4cf228d259a6d3968cce97a4fed11a662cfc9973a4cc563c4c4977d2e85a1",
+    "controller-contract.md": "5c7ae726c628b28d86675974b363ddfe3a61e49be4788caa97222196749d0499",
+    "reviewer-a/README.md": "9c3365b865dc9c0ef6865a8c5109b6c7eed3ede37f97e809c8f2c23869623afd",
+    "reviewer-a/answers.csv": "860a1f38ac2dc6c5ff0b7b6e62b072f448fbbe368057fdb9a7217e652cf3fec8",
+    "reviewer-a/assignment.json": "7755fedf52b8419f5e410f9681150685273797bed431d9827fc516d23038533c",
+    "reviewer-a/rubric.json": "3efb0dba076f08cf4f89c295ede400dec681e46c8cdc18f243202dddcd07fa96",
+    "reviewer-b/README.md": "9c3365b865dc9c0ef6865a8c5109b6c7eed3ede37f97e809c8f2c23869623afd",
+    "reviewer-b/answers.csv": "aed93e0d8e93031759ceeca513f9d162b77c703a7126c97b00f3438626c4d795",
+    "reviewer-b/assignment.json": "54b995fbdaaf1a517be3cc539009b54c8483d283527c4b6284457b7a8873f59c",
+    "reviewer-b/rubric.json": "3efb0dba076f08cf4f89c295ede400dec681e46c8cdc18f243202dddcd07fa96",
+    "sampling-contract.md": "dd0f8256b64762b46f2e2c8d449a41fb02d5b055def286d5cc1d6e2739e58572",
+    "sources-and-versions.md": "7bce99432c2937571eea76582c9b50cf5b6c96e4cae0af421885dceeddc84478",
+    "synthetic-examples/README.md": "2aa0df46354089b6ad88a8071eb2375528c4c6c6b0430b961bd1dcc5243a0747",
+    "synthetic-examples/format-cases.json": "0d53cd580797059baf44de388f2e52684eb6b922950cbbd038654ff877c4b0ea",
+    "synthetic-examples/format-valid.csv": "cdcdf0ee20f99afb12f8fdcc6bbee9ae051b9d847fffe615410374e5ed0f104f",
+    "synthetic-examples/rejected-duplicate.csv": "a5deb45fbfdad9edb925ee622bd5e2c224cffc7c8cd26b1d26bf0dd510a4f953",
+    "synthetic-traces.json": "ce8b4e59daf7feba9d23c55ab955a5b0629dd6a6d2d27bb54e8a9f48c8d3a1ab",
+    "tool-contracts.md": "4156b25ed3576e114e2cd46713ffba6c5930f8fa53ad4c0d868a60189587ef00",
+    "unresolved-decisions.md": "14327f060756e56c8c24993528f340c8e4e238d5ab98571f6007fde3f193a6c2"
+  },
+  "excluded_self": "artifacts.sha256.json"
+}
