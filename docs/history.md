@@ -1,5 +1,9 @@
 # Project history
 
+## 2026-10-29：1.4.2 E0 工程保護 patch
+
+抽出實驗性 Linux 子程序觀察記帳與完整候選核心 metadata 檢查，保留程序退出競態、受控群組清理、未知記帳拒絕及整批區間拒絕診斷。公開內容只含獨立模組、合成回歸測試與使用說明，未接入產品流程；通過區間檢查不代表端點事件可見、完整回合或選球偏好。source 版本為 1.4.2，歷史 image 參照仍為 1.4.0；未發布 image、執行模型或進行影片品質驗證。
+
 ## 2026-10-27：1.4.1 E0 研究材料 patch
 
 新增去識別的 E0 抽樣規格、盲化空表、匯入與 controller／tool／budget／MCP 契約，以及三條明標為 synthetic 的走讀；原片、人工 labels、來源對照與執行 receipts 不公開。Git/source 版本同步為 1.4.1，未新增 runtime 行為、模型能力或部署變更；未執行影片解碼、PTS 實測、模型推論或訓練，也無選球品質改善結論。本輪未 build/push Docker image，pull-only 設定保留歷史 1.4.0 image 參照，未查核 registry 現況。
