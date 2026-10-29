@@ -6,6 +6,8 @@ from collections import Counter
 from html.parser import HTMLParser
 from pathlib import Path
 
+from pingpong_highlight import __version__
+
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "src/pingpong_highlight/static"
 INDEX_PATH = STATIC / "index.html"
@@ -191,8 +193,8 @@ def test_language_toggle_and_script_order() -> None:
         str(attrs.get("src", "")).replace("__HC_ROOT_PATH__", "")
         for _, attrs, _ in parser.scripts
     ]
-    i18n_index = script_sources.index("/static/i18n.js?v=1.4.0")
-    app_index = script_sources.index("/static/app.js?v=1.4.0")
+    i18n_index = script_sources.index(f"/static/i18n.js?v={__version__}")
+    app_index = script_sources.index(f"/static/app.js?v={__version__}")
     assert i18n_index < app_index, "i18n.js must initialize the global before app.js runs"
     assert "head" in parser.scripts[i18n_index][2]
     assert "defer" not in parser.scripts[i18n_index][1]

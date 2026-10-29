@@ -1,6 +1,6 @@
 # HighlightCraft
 
-本次 Git/source 研究材料版本為 **1.4.1**：[E0 研究材料入口](docs/research/2026-10-27-e0-materials/README.md)。內容提供去識別的 E0 研究模板：抽樣規格、盲化空表、匯入契約、controller／tool／budget／MCP 契約與三條明標為 synthetic 的走讀。本次 E0 的原片、人工 labels、來源對照與執行 receipts 留在本機，不隨 Git 公開；空表與合成走讀不代表已完成模型執行或選球品質驗證。
+本次 Git/source 研究材料版本為 **1.4.2**：[E0 研究材料入口](docs/research/2026-10-27-e0-materials/README.md)。內容提供去識別的 E0 研究模板：抽樣規格、盲化空表、匯入契約、controller／tool／budget／MCP 契約與三條明標為 synthetic 的走讀。本次 E0 的原片、人工 labels、來源對照與執行 receipts 留在本機，不隨 Git 公開；空表與合成走讀不代表已完成模型執行或選球品質驗證。
 
 固定回合剪輯與已接受決策的套用流程見[剪輯實驗](docs/rally-edit-experiment.md)。提供單播放器試看、獨立回饋保存、固定素材比較與可重跑的合輯預覽；不修改精彩排名。
 
@@ -15,6 +15,8 @@
 ## 方向研究（2026-10-26）
 
 [有界影片代理、公開資料與偏好集錦研究](docs/research/2026-10-26-direction/README.md)整理既有診斷、三條方向、工具契約與兩階段實驗提案。本輪未執行模型／訓練，研究結論不等於產品品質或新能力已發布。
+
+[實驗性 E0 工程檢查](docs/research/e0-engineering-checks.md)提供獨立的 Linux 子程序觀察記帳與候選核心區間 metadata 檢查；僅經合成測試，未接入產品流程。
 
 ## 模型輔助回合預標註（本機第一版）
 
@@ -304,7 +306,7 @@ docker compose -f compose.yaml -f compose.deploy.yaml up -d --wait
 
 ## 在 4090／其他 NVIDIA 電腦使用已發佈 image
 
-本節保留歷史 image 參照 `docker.io/momonong/pingpong-auto-highlight:1.4.0`，包含個人帳號、資料歸屬、Google Drive 匯入與中英介面。`compose.release.yaml` 是 pull-only 設定，預設 image 仍為 1.4.0；source 研究材料版本與 image 版本分開。本輪未 build/push 新 Docker image，未查核 registry 現況，不能假定 `1.4.1` image 可 pull。部署時以發佈流程驗證的 `data/published-image.txt` digest 為準，並另核 registry 中的實際可用版本。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
+本節保留歷史 image 參照 `docker.io/momonong/pingpong-auto-highlight:1.4.0`，包含個人帳號、資料歸屬、Google Drive 匯入與中英介面。`compose.release.yaml` 是 pull-only 設定，預設 image 仍為 1.4.0；source 研究材料版本與 image 版本分開。本輪未 build/push 新 Docker image，未查核 registry 現況，不能假定 `1.4.2` image 可 pull。部署時以發佈流程驗證的 `data/published-image.txt` digest 為準，並另核 registry 中的實際可用版本。RTX 5090 Laptop 與 RTX 4090 Desktop 都使用同一個 `linux/amd64` image；image 不包含 NVIDIA driver，啟動時由主機的 NVIDIA Container Toolkit 提供 NVDEC／NVENC 所需元件，因此不要建立 `5090` 或 `4090` 專用 tag。
 
 逐球素材庫、跨影片集錦與 pCloud 封存目前保存在 `codex/preserve-local-20260907` 分支，未包含在 1.4.0。曾使用該開發分支的資料目錄，請先依部署手冊的相容性說明處理；首次試用 1.4.0 建議使用獨立資料目錄。
 
